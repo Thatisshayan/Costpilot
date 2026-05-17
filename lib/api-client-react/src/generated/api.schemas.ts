@@ -16,11 +16,12 @@ export interface Platform {
   website?: string | null;
   /** @nullable */
   logoUrl?: string | null;
-  /**
-     * e.g. LLM, Image, Code, Audio, Video
-     * @nullable
-     */
+  /** @nullable */
   category?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  apiKey?: string | null;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
@@ -31,6 +32,8 @@ export interface PlatformInput {
   website?: string;
   logoUrl?: string;
   category?: string;
+  email?: string;
+  apiKey?: string;
   notes?: string;
 }
 
@@ -39,7 +42,15 @@ export interface PlatformUpdate {
   website?: string;
   logoUrl?: string;
   category?: string;
+  email?: string;
+  apiKey?: string;
   notes?: string;
+}
+
+export interface SyncResult {
+  success: boolean;
+  message: string;
+  expensesImported?: number;
 }
 
 export interface Project {
@@ -49,7 +60,6 @@ export interface Project {
   description?: string | null;
   /** @nullable */
   color?: string | null;
-  /** active | paused | completed */
   status?: string;
   createdAt: string;
 }
@@ -82,10 +92,7 @@ export interface Expense {
   currency?: string;
   /** @nullable */
   description?: string | null;
-  /**
-     * API usage, subscription, one-time, token purchase
-     * @nullable
-     */
+  /** @nullable */
   category?: string | null;
   date: string;
   createdAt: string;
@@ -121,10 +128,10 @@ export interface Subscription {
   /** @nullable */
   projectName?: string | null;
   planName: string;
-  /** free_trial | free | paid | paused */
   planType: string;
-  /** active | expired | cancelled */
   status?: string;
+  /** @nullable */
+  email?: string | null;
   /** @nullable */
   trialStartDate?: string | null;
   /** @nullable */
@@ -146,6 +153,7 @@ export interface SubscriptionInput {
   planName: string;
   planType: string;
   status?: string;
+  email?: string;
   trialStartDate?: string;
   trialEndDate?: string;
   renewalDate?: string;
@@ -159,6 +167,7 @@ export interface SubscriptionUpdate {
   planName?: string;
   planType?: string;
   status?: string;
+  email?: string;
   trialStartDate?: string;
   trialEndDate?: string;
   renewalDate?: string;
@@ -205,6 +214,45 @@ export interface ToolUpdate {
   isPinned?: boolean;
 }
 
+export interface CreditPurchase {
+  id: number;
+  platformId: number;
+  /** @nullable */
+  platformName?: string | null;
+  /** @nullable */
+  projectId?: number | null;
+  /** @nullable */
+  projectName?: string | null;
+  amount: number;
+  /** @nullable */
+  credits?: number | null;
+  currency?: string;
+  /** @nullable */
+  description?: string | null;
+  purchaseDate: string;
+  createdAt: string;
+}
+
+export interface CreditPurchaseInput {
+  platformId: number;
+  projectId?: number;
+  amount: number;
+  credits?: number;
+  currency?: string;
+  description?: string;
+  purchaseDate: string;
+}
+
+export interface CreditPurchaseUpdate {
+  platformId?: number;
+  projectId?: number;
+  amount?: number;
+  credits?: number;
+  currency?: string;
+  description?: string;
+  purchaseDate?: string;
+}
+
 export interface DashboardSummary {
   totalSpend: number;
   thisMonthSpend?: number;
@@ -214,6 +262,7 @@ export interface DashboardSummary {
   activeTrials: number;
   expiringTrials: number;
   totalTools: number;
+  totalCredits: number;
 }
 
 export interface PlatformExpenseStat {
@@ -233,5 +282,20 @@ export interface ProjectExpenseStat {
 export interface MonthlySpending {
   month: string;
   total: number;
+}
+
+export interface CalendarEvent {
+  id: string;
+  /** expense | trial_expiry | renewal | credit_purchase */
+  type: string;
+  title: string;
+  date: string;
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  platformName?: string | null;
+  /** @nullable */
+  projectName?: string | null;
+  urgent?: boolean;
 }
 

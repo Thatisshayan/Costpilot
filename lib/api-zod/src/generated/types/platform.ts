@@ -13,11 +13,12 @@ export interface Platform {
   website?: string | null;
   /** @nullable */
   logoUrl?: string | null;
-  /**
-     * e.g. LLM, Image, Code, Audio, Video
-     * @nullable
-     */
+  /** @nullable */
   category?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  apiKey?: string | null;
   /** @nullable */
   notes?: string | null;
   createdAt: string;

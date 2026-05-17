@@ -62,43 +62,35 @@
 }
 
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
-
-  --opaque-button-border-intensity: -8;
-
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
-
-  --background: 0 0% 100%;
-  --foreground: 240 10% 4%;
-  --border: 240 6% 90%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 4%;
-  --card-border: 240 6% 90%;
-  --sidebar: 240 5% 96%;
-  --sidebar-foreground: 240 10% 10%;
-  --sidebar-border: 240 6% 90%;
-  --sidebar-primary: 250 80% 50%;
+  --background: 240 10% 4%; /* #09090b */
+  --foreground: 0 0% 98%;
+  --border: 240 5% 12%;
+  --card: 240 10% 4%;
+  --card-foreground: 0 0% 98%;
+  --card-border: 240 5% 12%;
+  --sidebar: 240 10% 4%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-border: 240 5% 12%;
+  --sidebar-primary: 240 100% 67%; /* #6366f1 - Indigo */
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 5% 90%;
-  --sidebar-accent-foreground: 240 10% 10%;
-  --sidebar-ring: 250 80% 50%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 4%;
-  --popover-border: 240 6% 90%;
-  --primary: 250 80% 50%;
+  --sidebar-accent: 240 5% 12%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-ring: 240 100% 67%;
+  --popover: 240 10% 4%;
+  --popover-foreground: 0 0% 98%;
+  --popover-border: 240 5% 12%;
+  --primary: 240 100% 67%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 5% 96%;
-  --secondary-foreground: 240 10% 10%;
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 5% 40%;
-  --accent: 240 5% 96%;
-  --accent-foreground: 240 10% 10%;
+  --secondary: 240 5% 12%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 5% 12%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 240 5% 12%;
+  --accent-foreground: 0 0% 98%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 240 6% 90%;
-  --ring: 250 80% 50%;
+  --input: 240 5% 12%;
+  --ring: 240 100% 67%;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
@@ -107,43 +99,35 @@
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-
-  --opaque-button-border-intensity: 9;
-
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-
-  --background: 240 10% 4%;
+  --background: 240 10% 4%; /* #09090b */
   --foreground: 0 0% 98%;
-  --border: 240 6% 14%;
-  --card: 240 10% 6%;
+  --border: 240 5% 12%;
+  --card: 240 10% 4%;
   --card-foreground: 0 0% 98%;
-  --card-border: 240 6% 14%;
-  --sidebar: 240 10% 6%;
+  --card-border: 240 5% 12%;
+  --sidebar: 240 10% 4%;
   --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 240 6% 14%;
-  --sidebar-primary: 250 80% 60%;
+  --sidebar-border: 240 5% 12%;
+  --sidebar-primary: 240 100% 67%; /* #6366f1 - Indigo */
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 6% 14%;
+  --sidebar-accent: 240 5% 12%;
   --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-ring: 250 80% 60%;
-  --popover: 240 10% 6%;
+  --sidebar-ring: 240 100% 67%;
+  --popover: 240 10% 4%;
   --popover-foreground: 0 0% 98%;
-  --popover-border: 240 6% 14%;
-  --primary: 250 80% 60%;
+  --popover-border: 240 5% 12%;
+  --primary: 240 100% 67%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 6% 14%;
+  --secondary: 240 5% 12%;
   --secondary-foreground: 0 0% 98%;
-  --muted: 240 6% 14%;
+  --muted: 240 5% 12%;
   --muted-foreground: 240 5% 65%;
-  --accent: 240 6% 14%;
+  --accent: 240 5% 12%;
   --accent-foreground: 0 0% 98%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 240 6% 18%;
-  --ring: 250 80% 60%;
+  --input: 240 5% 12%;
+  --ring: 240 100% 67%;
 }
 
 @layer base {

@@ -1,5 +1,13 @@
 import { Router } from "express";
-import { db, expensesTable, platformsTable, projectsTable, subscriptionsTable, toolsTable } from "@workspace/db";
+import {
+  db,
+  expensesTable,
+  platformsTable,
+  projectsTable,
+  subscriptionsTable,
+  toolsTable,
+  creditPurchasesTable,
+} from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 
 const router = Router();
@@ -33,17 +41,9 @@ router.get("/summary", async (req, res) => {
     .from(expensesTable)
     .where(sql`${expensesTable.date} >= ${lastMonthStart} AND ${expensesTable.date} <= ${lastMonthEnd}`);
 
-  const [platformCount] = await db
-    .select({ count: sql<string>`COUNT(*)` })
-    .from(platformsTable);
-
-  const [projectCount] = await db
-    .select({ count: sql<string>`COUNT(*)` })
-    .from(projectsTable);
-
-  const [toolCount] = await db
-    .select({ count: sql<string>`COUNT(*)` })
-    .from(toolsTable);
+  const [platformCount] = await db.select({ count: sql<string>`COUNT(*)` }).from(platformsTable);
+  const [projectCount] = await db.select({ count: sql<string>`COUNT(*)` }).from(projectsTable);
+  const [toolCount] = await db.select({ count: sql<string>`COUNT(*)` }).from(toolsTable);
 
   const [activeTrialsRow] = await db
     .select({ count: sql<string>`COUNT(*)` })
@@ -57,6 +57,10 @@ router.get("/summary", async (req, res) => {
       sql`${subscriptionsTable.planType} = 'free_trial' AND ${subscriptionsTable.status} = 'active' AND ${subscriptionsTable.trialEndDate} IS NOT NULL AND ${subscriptionsTable.trialEndDate} >= ${today} AND ${subscriptionsTable.trialEndDate} <= ${sevenDaysFromNow}`
     );
 
+  const [totalCreditsRow] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${creditPurchasesTable.amount}), 0)` })
+    .from(creditPurchasesTable);
+
   res.json({
     totalSpend: Number(totalSpendRow.total),
     thisMonthSpend: Number(thisMonthRow.total),
@@ -66,6 +70,7 @@ router.get("/summary", async (req, res) => {
     activeTrials: Number(activeTrialsRow.count),
     expiringTrials: Number(expiringTrialsRow.count),
     totalTools: Number(toolCount.count),
+    totalCredits: Number(totalCreditsRow.total),
   });
 });
 
@@ -84,6 +89,7 @@ router.get("/expiring-trials", async (req, res) => {
       planName: subscriptionsTable.planName,
       planType: subscriptionsTable.planType,
       status: subscriptionsTable.status,
+      email: subscriptionsTable.email,
       trialStartDate: subscriptionsTable.trialStartDate,
       trialEndDate: subscriptionsTable.trialEndDate,
       renewalDate: subscriptionsTable.renewalDate,
@@ -160,6 +166,122 @@ router.get("/monthly-spending", async (req, res) => {
     .orderBy(sql`TO_CHAR(TO_DATE(${expensesTable.date}, 'YYYY-MM-DD'), 'YYYY-MM')`);
 
   res.json(rows.map((r) => ({ month: r.month, total: Number(r.total) })));
+});
+
+router.get("/calendar-events", async (req, res) => {
+  const events: Array<{
+    id: string;
+    type: string;
+    title: string;
+    date: string;
+    amount: number | null;
+    platformName: string | null;
+    projectName: string | null;
+    urgent: boolean;
+  }> = [];
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+
+  // Expenses
+  const expenses = await db
+    .select({
+      id: expensesTable.id,
+      platformName: platformsTable.name,
+      projectName: projectsTable.name,
+      amount: expensesTable.amount,
+      description: expensesTable.description,
+      date: expensesTable.date,
+    })
+    .from(expensesTable)
+    .leftJoin(platformsTable, eq(expensesTable.platformId, platformsTable.id))
+    .leftJoin(projectsTable, eq(expensesTable.projectId, projectsTable.id));
+
+  for (const e of expenses) {
+    events.push({
+      id: `expense-${e.id}`,
+      type: "expense",
+      title: e.description || e.platformName || "Expense",
+      date: e.date,
+      amount: Number(e.amount),
+      platformName: e.platformName,
+      projectName: e.projectName,
+      urgent: false,
+    });
+  }
+
+  // Trial expiries
+  const subs = await db
+    .select({
+      id: subscriptionsTable.id,
+      platformName: platformsTable.name,
+      projectName: projectsTable.name,
+      trialEndDate: subscriptionsTable.trialEndDate,
+      renewalDate: subscriptionsTable.renewalDate,
+      planName: subscriptionsTable.planName,
+      monthlyCost: subscriptionsTable.monthlyCost,
+    })
+    .from(subscriptionsTable)
+    .leftJoin(platformsTable, eq(subscriptionsTable.platformId, platformsTable.id))
+    .leftJoin(projectsTable, eq(subscriptionsTable.projectId, projectsTable.id))
+    .where(sql`${subscriptionsTable.status} = 'active'`);
+
+  for (const s of subs) {
+    if (s.trialEndDate) {
+      const days = calcDaysUntilExpiry(s.trialEndDate);
+      events.push({
+        id: `trial-${s.id}`,
+        type: "trial_expiry",
+        title: `${s.platformName ?? "Trial"} trial ends`,
+        date: s.trialEndDate,
+        amount: null,
+        platformName: s.platformName,
+        projectName: s.projectName,
+        urgent: days !== null && days <= 3,
+      });
+    }
+    if (s.renewalDate) {
+      events.push({
+        id: `renewal-${s.id}`,
+        type: "renewal",
+        title: `${s.platformName ?? "Subscription"} renewal`,
+        date: s.renewalDate,
+        amount: s.monthlyCost !== null ? Number(s.monthlyCost) : null,
+        platformName: s.platformName,
+        projectName: s.projectName,
+        urgent: s.renewalDate <= new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      });
+    }
+  }
+
+  // Credit purchases
+  const credits = await db
+    .select({
+      id: creditPurchasesTable.id,
+      platformName: platformsTable.name,
+      projectName: projectsTable.name,
+      amount: creditPurchasesTable.amount,
+      description: creditPurchasesTable.description,
+      purchaseDate: creditPurchasesTable.purchaseDate,
+    })
+    .from(creditPurchasesTable)
+    .leftJoin(platformsTable, eq(creditPurchasesTable.platformId, platformsTable.id))
+    .leftJoin(projectsTable, eq(creditPurchasesTable.projectId, projectsTable.id));
+
+  for (const c of credits) {
+    events.push({
+      id: `credit-${c.id}`,
+      type: "credit_purchase",
+      title: c.description || `${c.platformName ?? "Credit"} top-up`,
+      date: c.purchaseDate,
+      amount: Number(c.amount),
+      platformName: c.platformName,
+      projectName: c.projectName,
+      urgent: false,
+    });
+  }
+
+  res.json(events);
 });
 
 export default router;

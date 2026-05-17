@@ -6,13 +6,14 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
-// Placeholder components for pages
 import Dashboard from "@/pages/dashboard";
 import Expenses from "@/pages/expenses";
 import Subscriptions from "@/pages/subscriptions";
 import Projects from "@/pages/projects";
 import Platforms from "@/pages/platforms";
 import Tools from "@/pages/tools";
+import Calendar from "@/pages/calendar";
+import Credits from "@/pages/credits";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,8 @@ function Router() {
         <Route path="/projects" component={Projects} />
         <Route path="/platforms" component={Platforms} />
         <Route path="/tools" component={Tools} />
+        <Route path="/calendar" component={Calendar} />
+        <Route path="/credits" component={Credits} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

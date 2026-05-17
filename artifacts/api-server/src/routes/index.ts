@@ -6,6 +6,7 @@ import expensesRouter from "./expenses";
 import subscriptionsRouter from "./subscriptions";
 import toolsRouter from "./tools";
 import dashboardRouter from "./dashboard";
+import creditsRouter from "./credits";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/expenses", expensesRouter);
 router.use("/subscriptions", subscriptionsRouter);
 router.use("/tools", toolsRouter);
 router.use("/dashboard", dashboardRouter);
+router.use("/credits", creditsRouter);
 
 export default router;

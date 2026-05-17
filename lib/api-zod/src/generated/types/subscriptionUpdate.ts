@@ -12,6 +12,7 @@ export interface SubscriptionUpdate {
   planName?: string;
   planType?: string;
   status?: string;
+  email?: string;
   trialStartDate?: string;
   trialEndDate?: string;
   renewalDate?: string;

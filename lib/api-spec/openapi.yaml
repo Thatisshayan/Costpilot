@@ -8,19 +8,13 @@ servers:
     description: Base API path
 tags:
   - name: health
-    description: Health operations
   - name: platforms
-    description: AI platforms and services
   - name: projects
-    description: AI projects
   - name: expenses
-    description: Expense entries
   - name: subscriptions
-    description: Subscriptions and trial plans
   - name: tools
-    description: Project tools and websites
+  - name: credits
   - name: dashboard
-    description: Dashboard summaries
 
 paths:
   /healthz:
@@ -123,11 +117,29 @@ paths:
         "204":
           description: Deleted
 
+  /platforms/{id}/sync:
+    post:
+      operationId: syncPlatformUsage
+      tags: [platforms]
+      summary: Sync usage data from platform API
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
+
   /projects:
     get:
       operationId: listProjects
       tags: [projects]
-      summary: List all projects
       responses:
         "200":
           description: List of projects
@@ -140,7 +152,6 @@ paths:
     post:
       operationId: createProject
       tags: [projects]
-      summary: Create a new project
       requestBody:
         required: true
         content:
@@ -159,7 +170,6 @@ paths:
     get:
       operationId: getProject
       tags: [projects]
-      summary: Get a project by ID
       parameters:
         - name: id
           in: path
@@ -176,7 +186,6 @@ paths:
     patch:
       operationId: updateProject
       tags: [projects]
-      summary: Update a project
       parameters:
         - name: id
           in: path
@@ -199,7 +208,6 @@ paths:
     delete:
       operationId: deleteProject
       tags: [projects]
-      summary: Delete a project
       parameters:
         - name: id
           in: path
@@ -214,7 +222,6 @@ paths:
     get:
       operationId: listExpenses
       tags: [expenses]
-      summary: List all expenses
       responses:
         "200":
           description: List of expenses
@@ -227,7 +234,6 @@ paths:
     post:
       operationId: createExpense
       tags: [expenses]
-      summary: Log a new expense
       requestBody:
         required: true
         content:
@@ -246,7 +252,6 @@ paths:
     get:
       operationId: getExpense
       tags: [expenses]
-      summary: Get an expense by ID
       parameters:
         - name: id
           in: path
@@ -263,7 +268,6 @@ paths:
     patch:
       operationId: updateExpense
       tags: [expenses]
-      summary: Update an expense
       parameters:
         - name: id
           in: path
@@ -286,7 +290,6 @@ paths:
     delete:
       operationId: deleteExpense
       tags: [expenses]
-      summary: Delete an expense
       parameters:
         - name: id
           in: path
@@ -301,7 +304,6 @@ paths:
     get:
       operationId: listSubscriptions
       tags: [subscriptions]
-      summary: List all subscriptions and trial plans
       responses:
         "200":
           description: List of subscriptions
@@ -314,7 +316,6 @@ paths:
     post:
       operationId: createSubscription
       tags: [subscriptions]
-      summary: Add a subscription or trial plan
       requestBody:
         required: true
         content:
@@ -333,7 +334,6 @@ paths:
     get:
       operationId: getSubscription
       tags: [subscriptions]
-      summary: Get a subscription by ID
       parameters:
         - name: id
           in: path
@@ -350,7 +350,6 @@ paths:
     patch:
       operationId: updateSubscription
       tags: [subscriptions]
-      summary: Update a subscription
       parameters:
         - name: id
           in: path
@@ -373,7 +372,6 @@ paths:
     delete:
       operationId: deleteSubscription
       tags: [subscriptions]
-      summary: Delete a subscription
       parameters:
         - name: id
           in: path
@@ -388,7 +386,6 @@ paths:
     get:
       operationId: listTools
       tags: [tools]
-      summary: List all project tools and websites
       responses:
         "200":
           description: List of tools
@@ -401,7 +398,6 @@ paths:
     post:
       operationId: createTool
       tags: [tools]
-      summary: Add a tool or website to a project
       requestBody:
         required: true
         content:
@@ -420,7 +416,6 @@ paths:
     patch:
       operationId: updateTool
       tags: [tools]
-      summary: Update a tool
       parameters:
         - name: id
           in: path
@@ -443,7 +438,74 @@ paths:
     delete:
       operationId: deleteTool
       tags: [tools]
-      summary: Delete a tool
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /credits:
+    get:
+      operationId: listCreditPurchases
+      tags: [credits]
+      summary: List all credit top-up purchases
+      responses:
+        "200":
+          description: List of credit purchases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CreditPurchase"
+    post:
+      operationId: createCreditPurchase
+      tags: [credits]
+      summary: Log a credit top-up purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditPurchaseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditPurchase"
+
+  /credits/{id}:
+    patch:
+      operationId: updateCreditPurchase
+      tags: [credits]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditPurchaseUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditPurchase"
+    delete:
+      operationId: deleteCreditPurchase
+      tags: [credits]
       parameters:
         - name: id
           in: path
@@ -458,7 +520,6 @@ paths:
     get:
       operationId: getDashboardSummary
       tags: [dashboard]
-      summary: Overall dashboard summary stats
       responses:
         "200":
           description: Summary stats
@@ -471,10 +532,9 @@ paths:
     get:
       operationId: getExpiringTrials
       tags: [dashboard]
-      summary: Get trials expiring within 7 days
       responses:
         "200":
-          description: List of expiring subscriptions
+          description: Expiring subscriptions
           content:
             application/json:
               schema:
@@ -486,7 +546,6 @@ paths:
     get:
       operationId: getExpensesByPlatform
       tags: [dashboard]
-      summary: Expenses grouped by platform
       responses:
         "200":
           description: Expenses per platform
@@ -501,7 +560,6 @@ paths:
     get:
       operationId: getExpensesByProject
       tags: [dashboard]
-      summary: Expenses grouped by project
       responses:
         "200":
           description: Expenses per project
@@ -516,7 +574,6 @@ paths:
     get:
       operationId: getMonthlySpending
       tags: [dashboard]
-      summary: Monthly spending totals for the past 6 months
       responses:
         "200":
           description: Monthly spending data
@@ -527,6 +584,21 @@ paths:
                 items:
                   $ref: "#/components/schemas/MonthlySpending"
 
+  /dashboard/calendar-events:
+    get:
+      operationId: getCalendarEvents
+      tags: [dashboard]
+      summary: All events for calendar view (expenses, trials, renewals, credits)
+      responses:
+        "200":
+          description: Calendar events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarEvent"
+
 components:
   schemas:
     HealthStatus:
@@ -534,8 +606,7 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     Platform:
       type: object
@@ -551,7 +622,10 @@ components:
           type: ["string", "null"]
         category:
           type: ["string", "null"]
-          description: "e.g. LLM, Image, Code, Audio, Video"
+        email:
+          type: ["string", "null"]
+        apiKey:
+          type: ["string", "null"]
         notes:
           type: ["string", "null"]
         createdAt:
@@ -569,6 +643,10 @@ components:
           type: string
         category:
           type: string
+        email:
+          type: string
+        apiKey:
+          type: string
         notes:
           type: string
 
@@ -583,8 +661,23 @@ components:
           type: string
         category:
           type: string
+        email:
+          type: string
+        apiKey:
+          type: string
         notes:
           type: string
+
+    SyncResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        expensesImported:
+          type: integer
 
     Project:
       type: object
@@ -600,7 +693,6 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          description: "active | paused | completed"
         createdAt:
           type: string
 
@@ -651,7 +743,6 @@ components:
           type: ["string", "null"]
         category:
           type: ["string", "null"]
-          description: "API usage, subscription, one-time, token purchase"
         date:
           type: string
         createdAt:
@@ -712,10 +803,10 @@ components:
           type: string
         planType:
           type: string
-          description: "free_trial | free | paid | paused"
         status:
           type: string
-          description: "active | expired | cancelled"
+        email:
+          type: ["string", "null"]
         trialStartDate:
           type: ["string", "null"]
         trialEndDate:
@@ -745,6 +836,8 @@ components:
           type: string
         status:
           type: string
+        email:
+          type: string
         trialStartDate:
           type: string
         trialEndDate:
@@ -768,6 +861,8 @@ components:
         planType:
           type: string
         status:
+          type: string
+        email:
           type: string
         trialStartDate:
           type: string
@@ -844,9 +939,73 @@ components:
         isPinned:
           type: boolean
 
+    CreditPurchase:
+      type: object
+      required: [id, platformId, amount, purchaseDate, createdAt]
+      properties:
+        id:
+          type: integer
+        platformId:
+          type: integer
+        platformName:
+          type: ["string", "null"]
+        projectId:
+          type: ["integer", "null"]
+        projectName:
+          type: ["string", "null"]
+        amount:
+          type: number
+        credits:
+          type: ["number", "null"]
+        currency:
+          type: string
+        description:
+          type: ["string", "null"]
+        purchaseDate:
+          type: string
+        createdAt:
+          type: string
+
+    CreditPurchaseInput:
+      type: object
+      required: [platformId, amount, purchaseDate]
+      properties:
+        platformId:
+          type: integer
+        projectId:
+          type: integer
+        amount:
+          type: number
+        credits:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        purchaseDate:
+          type: string
+
+    CreditPurchaseUpdate:
+      type: object
+      properties:
+        platformId:
+          type: integer
+        projectId:
+          type: integer
+        amount:
+          type: number
+        credits:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        purchaseDate:
+          type: string
+
     DashboardSummary:
       type: object
-      required: [totalSpend, totalPlatforms, totalProjects, activeTrials, expiringTrials, totalTools]
+      required: [totalSpend, totalPlatforms, totalProjects, activeTrials, expiringTrials, totalTools, totalCredits]
       properties:
         totalSpend:
           type: number
@@ -864,6 +1023,8 @@ components:
           type: integer
         totalTools:
           type: integer
+        totalCredits:
+          type: number
 
     PlatformExpenseStat:
       type: object
@@ -899,3 +1060,25 @@ components:
           type: string
         total:
           type: number
+
+    CalendarEvent:
+      type: object
+      required: [id, type, title, date]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: "expense | trial_expiry | renewal | credit_purchase"
+        title:
+          type: string
+        date:
+          type: string
+        amount:
+          type: ["number", "null"]
+        platformName:
+          type: ["string", "null"]
+        projectName:
+          type: ["string", "null"]
+        urgent:
+          type: boolean

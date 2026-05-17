@@ -15,4 +15,5 @@ export interface DashboardSummary {
   activeTrials: number;
   expiringTrials: number;
   totalTools: number;
+  totalCredits: number;
 }

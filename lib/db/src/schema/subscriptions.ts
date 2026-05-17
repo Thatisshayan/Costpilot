@@ -11,6 +11,7 @@ export const subscriptionsTable = pgTable("subscriptions", {
   planName: text("plan_name").notNull(),
   planType: text("plan_type").notNull(),
   status: text("status").default("active").notNull(),
+  email: text("email"),
   trialStartDate: text("trial_start_date"),
   trialEndDate: text("trial_end_date"),
   renewalDate: text("renewal_date"),

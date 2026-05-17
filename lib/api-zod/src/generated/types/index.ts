@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './calendarEvent';
+export * from './creditPurchase';
+export * from './creditPurchaseInput';
+export * from './creditPurchaseUpdate';
 export * from './dashboardSummary';
 export * from './expense';
 export * from './expenseInput';
@@ -23,6 +27,7 @@ export * from './projectUpdate';
 export * from './subscription';
 export * from './subscriptionInput';
 export * from './subscriptionUpdate';
+export * from './syncResult';
 export * from './tool';
 export * from './toolInput';
 export * from './toolUpdate';

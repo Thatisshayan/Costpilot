@@ -8,18 +8,13 @@ import {
   UpdatePlatformParams,
   DeletePlatformParams,
 } from "@workspace/api-zod";
+import syncRouter from "./sync";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const platforms = await db
-    .select()
-    .from(platformsTable)
-    .orderBy(platformsTable.name);
-  res.json(platforms.map((p) => ({
-    ...p,
-    createdAt: p.createdAt.toISOString(),
-  })));
+  const platforms = await db.select().from(platformsTable).orderBy(platformsTable.name);
+  res.json(platforms.map((p) => ({ ...p, createdAt: p.createdAt.toISOString() })));
 });
 
 router.post("/", async (req, res) => {
@@ -38,11 +33,7 @@ router.get("/:id", async (req, res) => {
 router.patch("/:id", async (req, res) => {
   const { id } = UpdatePlatformParams.parse({ id: Number(req.params.id) });
   const body = UpdatePlatformBody.parse(req.body);
-  const [platform] = await db
-    .update(platformsTable)
-    .set(body)
-    .where(eq(platformsTable.id, id))
-    .returning();
+  const [platform] = await db.update(platformsTable).set(body).where(eq(platformsTable.id, id)).returning();
   if (!platform) return res.status(404).json({ error: "Not found" });
   res.json({ ...platform, createdAt: platform.createdAt.toISOString() });
 });
@@ -52,5 +43,7 @@ router.delete("/:id", async (req, res) => {
   await db.delete(platformsTable).where(eq(platformsTable.id, id));
   res.status(204).send();
 });
+
+router.use("/:id", syncRouter);
 
 export default router;

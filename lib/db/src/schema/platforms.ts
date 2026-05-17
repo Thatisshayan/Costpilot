@@ -8,6 +8,8 @@ export const platformsTable = pgTable("platforms", {
   website: text("website"),
   logoUrl: text("logo_url"),
   category: text("category"),
+  email: text("email"),
+  apiKey: text("api_key"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

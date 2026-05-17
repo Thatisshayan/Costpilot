@@ -6,10 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Expense {
+export interface CreditPurchase {
   id: number;
-  /** @nullable */
-  platformId?: number | null;
+  platformId: number;
   /** @nullable */
   platformName?: string | null;
   /** @nullable */
@@ -17,11 +16,11 @@ export interface Expense {
   /** @nullable */
   projectName?: string | null;
   amount: number;
+  /** @nullable */
+  credits?: number | null;
   currency?: string;
   /** @nullable */
   description?: string | null;
-  /** @nullable */
-  category?: string | null;
-  date: string;
+  purchaseDate: string;
   createdAt: string;
 }

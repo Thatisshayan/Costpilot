@@ -13,7 +13,6 @@ export interface Project {
   description?: string | null;
   /** @nullable */
   color?: string | null;
-  /** active | paused | completed */
   status?: string;
   createdAt: string;
 }

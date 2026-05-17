@@ -16,10 +16,10 @@ export interface Subscription {
   /** @nullable */
   projectName?: string | null;
   planName: string;
-  /** free_trial | free | paid | paused */
   planType: string;
-  /** active | expired | cancelled */
   status?: string;
+  /** @nullable */
+  email?: string | null;
   /** @nullable */
   trialStartDate?: string | null;
   /** @nullable */

@@ -11,5 +11,7 @@ export interface PlatformInput {
   website?: string;
   logoUrl?: string;
   category?: string;
+  email?: string;
+  apiKey?: string;
   notes?: string;
 }
