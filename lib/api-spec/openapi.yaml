@@ -1,22 +1,33 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AI Expense Tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: platforms
+    description: AI platforms and services
+  - name: projects
+    description: AI projects
+  - name: expenses
+    description: Expense entries
+  - name: subscriptions
+    description: Subscriptions and trial plans
+  - name: tools
+    description: Project tools and websites
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +35,498 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /platforms:
+    get:
+      operationId: listPlatforms
+      tags: [platforms]
+      summary: List all AI platforms
+      responses:
+        "200":
+          description: List of platforms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Platform"
+    post:
+      operationId: createPlatform
+      tags: [platforms]
+      summary: Create a new platform
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Platform"
+
+  /platforms/{id}:
+    get:
+      operationId: getPlatform
+      tags: [platforms]
+      summary: Get a platform by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Platform
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Platform"
+    patch:
+      operationId: updatePlatform
+      tags: [platforms]
+      summary: Update a platform
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Platform"
+    delete:
+      operationId: deletePlatform
+      tags: [platforms]
+      summary: Delete a platform
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a project by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: List all expenses
+      responses:
+        "200":
+          description: List of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      summary: Log a new expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  /expenses/{id}:
+    get:
+      operationId: getExpense
+      tags: [expenses]
+      summary: Get an expense by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+    patch:
+      operationId: updateExpense
+      tags: [expenses]
+      summary: Update an expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      summary: Delete an expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /subscriptions:
+    get:
+      operationId: listSubscriptions
+      tags: [subscriptions]
+      summary: List all subscriptions and trial plans
+      responses:
+        "200":
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subscription"
+    post:
+      operationId: createSubscription
+      tags: [subscriptions]
+      summary: Add a subscription or trial plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+
+  /subscriptions/{id}:
+    get:
+      operationId: getSubscription
+      tags: [subscriptions]
+      summary: Get a subscription by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+    patch:
+      operationId: updateSubscription
+      tags: [subscriptions]
+      summary: Update a subscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+    delete:
+      operationId: deleteSubscription
+      tags: [subscriptions]
+      summary: Delete a subscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /tools:
+    get:
+      operationId: listTools
+      tags: [tools]
+      summary: List all project tools and websites
+      responses:
+        "200":
+          description: List of tools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tool"
+    post:
+      operationId: createTool
+      tags: [tools]
+      summary: Add a tool or website to a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tool"
+
+  /tools/{id}:
+    patch:
+      operationId: updateTool
+      tags: [tools]
+      summary: Update a tool
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tool"
+    delete:
+      operationId: deleteTool
+      tags: [tools]
+      summary: Delete a tool
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Overall dashboard summary stats
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/expiring-trials:
+    get:
+      operationId: getExpiringTrials
+      tags: [dashboard]
+      summary: Get trials expiring within 7 days
+      responses:
+        "200":
+          description: List of expiring subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subscription"
+
+  /dashboard/expenses-by-platform:
+    get:
+      operationId: getExpensesByPlatform
+      tags: [dashboard]
+      summary: Expenses grouped by platform
+      responses:
+        "200":
+          description: Expenses per platform
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformExpenseStat"
+
+  /dashboard/expenses-by-project:
+    get:
+      operationId: getExpensesByProject
+      tags: [dashboard]
+      summary: Expenses grouped by project
+      responses:
+        "200":
+          description: Expenses per project
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectExpenseStat"
+
+  /dashboard/monthly-spending:
+    get:
+      operationId: getMonthlySpending
+      tags: [dashboard]
+      summary: Monthly spending totals for the past 6 months
+      responses:
+        "200":
+          description: Monthly spending data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonthlySpending"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +537,365 @@ components:
       required:
         - status
 
+    Platform:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        website:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+          description: "e.g. LLM, Image, Code, Audio, Video"
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    PlatformInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+        logoUrl:
+          type: string
+        category:
+          type: string
+        notes:
+          type: string
+
+    PlatformUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+        logoUrl:
+          type: string
+        category:
+          type: string
+        notes:
+          type: string
+
+    Project:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+        status:
+          type: string
+          description: "active | paused | completed"
+        createdAt:
+          type: string
+
+    ProjectInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          type: string
+        status:
+          type: string
+
+    ProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          type: string
+        status:
+          type: string
+
+    Expense:
+      type: object
+      required: [id, amount, date, createdAt]
+      properties:
+        id:
+          type: integer
+        platformId:
+          type: ["integer", "null"]
+        platformName:
+          type: ["string", "null"]
+        projectId:
+          type: ["integer", "null"]
+        projectName:
+          type: ["string", "null"]
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+          description: "API usage, subscription, one-time, token purchase"
+        date:
+          type: string
+        createdAt:
+          type: string
+
+    ExpenseInput:
+      type: object
+      required: [amount, date]
+      properties:
+        platformId:
+          type: integer
+        projectId:
+          type: integer
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        date:
+          type: string
+
+    ExpenseUpdate:
+      type: object
+      properties:
+        platformId:
+          type: integer
+        projectId:
+          type: integer
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        date:
+          type: string
+
+    Subscription:
+      type: object
+      required: [id, platformId, planName, planType, createdAt]
+      properties:
+        id:
+          type: integer
+        platformId:
+          type: integer
+        platformName:
+          type: ["string", "null"]
+        projectId:
+          type: ["integer", "null"]
+        projectName:
+          type: ["string", "null"]
+        planName:
+          type: string
+        planType:
+          type: string
+          description: "free_trial | free | paid | paused"
+        status:
+          type: string
+          description: "active | expired | cancelled"
+        trialStartDate:
+          type: ["string", "null"]
+        trialEndDate:
+          type: ["string", "null"]
+        renewalDate:
+          type: ["string", "null"]
+        monthlyCost:
+          type: ["number", "null"]
+        daysUntilExpiry:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    SubscriptionInput:
+      type: object
+      required: [platformId, planName, planType]
+      properties:
+        platformId:
+          type: integer
+        projectId:
+          type: integer
+        planName:
+          type: string
+        planType:
+          type: string
+        status:
+          type: string
+        trialStartDate:
+          type: string
+        trialEndDate:
+          type: string
+        renewalDate:
+          type: string
+        monthlyCost:
+          type: number
+        notes:
+          type: string
+
+    SubscriptionUpdate:
+      type: object
+      properties:
+        platformId:
+          type: integer
+        projectId:
+          type: integer
+        planName:
+          type: string
+        planType:
+          type: string
+        status:
+          type: string
+        trialStartDate:
+          type: string
+        trialEndDate:
+          type: string
+        renewalDate:
+          type: string
+        monthlyCost:
+          type: number
+        notes:
+          type: string
+
+    Tool:
+      type: object
+      required: [id, name, url, projectId, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        projectName:
+          type: ["string", "null"]
+        platformId:
+          type: ["integer", "null"]
+        platformName:
+          type: ["string", "null"]
+        name:
+          type: string
+        url:
+          type: string
+        description:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        isPinned:
+          type: boolean
+        createdAt:
+          type: string
+
+    ToolInput:
+      type: object
+      required: [name, url, projectId]
+      properties:
+        projectId:
+          type: integer
+        platformId:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        isPinned:
+          type: boolean
+
+    ToolUpdate:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        platformId:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        isPinned:
+          type: boolean
+
+    DashboardSummary:
+      type: object
+      required: [totalSpend, totalPlatforms, totalProjects, activeTrials, expiringTrials, totalTools]
+      properties:
+        totalSpend:
+          type: number
+        thisMonthSpend:
+          type: number
+        lastMonthSpend:
+          type: number
+        totalPlatforms:
+          type: integer
+        totalProjects:
+          type: integer
+        activeTrials:
+          type: integer
+        expiringTrials:
+          type: integer
+        totalTools:
+          type: integer
+
+    PlatformExpenseStat:
+      type: object
+      required: [platformId, platformName, total]
+      properties:
+        platformId:
+          type: integer
+        platformName:
+          type: string
+        total:
+          type: number
+        count:
+          type: integer
+
+    ProjectExpenseStat:
+      type: object
+      required: [projectId, projectName, total]
+      properties:
+        projectId:
+          type: integer
+        projectName:
+          type: string
+        total:
+          type: number
+        count:
+          type: integer
+
+    MonthlySpending:
+      type: object
+      required: [month, total]
+      properties:
+        month:
+          type: string
+        total:
+          type: number
