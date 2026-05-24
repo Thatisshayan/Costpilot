@@ -490,15 +490,20 @@ export const DeleteCreditPurchaseParams = zod.object({
 
 
 export const GetDashboardSummaryResponse = zod.object({
-  "totalSpend": zod.number(),
-  "thisMonthSpend": zod.number().optional(),
-  "lastMonthSpend": zod.number().optional(),
-  "totalPlatforms": zod.number(),
-  "totalProjects": zod.number(),
-  "activeTrials": zod.number(),
-  "expiringTrials": zod.number(),
-  "totalTools": zod.number(),
-  "totalCredits": zod.number()
+  "totalAiSpend": zod.number(),
+  "monthToDateSpend": zod.number(),
+  "lastMonthTotalSpend": zod.number().optional(),
+  "monthToDateChangePercent": zod.number(),
+  "activeAiTools": zod.number(),
+  "activeToolsUnusedCount": zod.number(),
+  "renewalsThisWeek": zod.number(),
+  "upcomingRenewalAmount": zod.number(),
+  "apiSpendToday": zod.number().optional(),
+  "budgetUsedPercent": zod.number().optional(),
+  "budgetTotal": zod.number(),
+  "forecastTotal": zod.number().optional(),
+  "avgApiCostPerRequest": zod.number().optional(),
+  "totalSavingsFound": zod.number().optional()
 })
 
 
@@ -543,7 +548,10 @@ export const GetExpensesByProjectResponse = zod.array(GetExpensesByProjectRespon
 
 export const GetMonthlySpendingResponseItem = zod.object({
   "month": zod.string(),
-  "total": zod.number()
+  "subscriptionSpend": zod.number(),
+  "apiUsageSpend": zod.number(),
+  "infrastructureSpend": zod.number(),
+  "forecastSpend": zod.number()
 })
 export const GetMonthlySpendingResponse = zod.array(GetMonthlySpendingResponseItem)
 
@@ -562,5 +570,299 @@ export const GetCalendarEventsResponseItem = zod.object({
   "urgent": zod.boolean().optional()
 })
 export const GetCalendarEventsResponse = zod.array(GetCalendarEventsResponseItem)
+
+
+/**
+ * @summary Upload and parse a receipt using Vision AI
+ */
+export const UploadReceiptBody = zod.object({
+  "receipt": zod.instanceof(File).optional()
+})
+
+export const UploadReceiptResponse = zod.object({
+  "success": zod.boolean(),
+  "data": zod.object({
+  "amount": zod.number().nullish(),
+  "platform": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "date": zod.string().nullish(),
+  "description": zod.string().nullish()
+})
+})
+
+
+/**
+ * @summary Get AI-driven cost optimization suggestions
+ */
+export const GetSmartSuggestionsResponseItem = zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['model_swap', 'subscription_consolidation', 'unused_credit']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "potentialSavings": zod.number(),
+  "confidence": zod.number().optional()
+})
+export const GetSmartSuggestionsResponse = zod.array(GetSmartSuggestionsResponseItem)
+
+
+/**
+ * @summary Get AI Waste Detection results
+ */
+export const ListSavingsOpportunitiesResponseItem = zod.object({
+  "id": zod.number(),
+  "issue": zod.string(),
+  "impact": zod.string(),
+  "action": zod.string(),
+  "description": zod.string(),
+  "evidence": zod.string(),
+  "confidence": zod.number()
+})
+export const ListSavingsOpportunitiesResponse = zod.array(ListSavingsOpportunitiesResponseItem)
+
+
+/**
+ * @summary Get spending and credit exhaustion forecasts
+ */
+export const GetForecastResponse = zod.object({
+  "dailySpendVelocity": zod.number(),
+  "predictedMonthlyTotal": zod.number(),
+  "creditExhaustionDates": zod.array(zod.object({
+  "platformName": zod.string().optional(),
+  "predictedExhaustionDate": zod.string().optional(),
+  "daysRemaining": zod.number().optional()
+}))
+})
+
+
+/**
+ * @summary Get high-level KPI metrics for the dashboard
+ */
+export const GetKpiSummaryResponse = zod.object({
+  "totalAiSpend": zod.number(),
+  "monthToDateSpend": zod.number(),
+  "lastMonthTotalSpend": zod.number().optional(),
+  "monthToDateChangePercent": zod.number(),
+  "activeAiTools": zod.number(),
+  "activeToolsUnusedCount": zod.number(),
+  "renewalsThisWeek": zod.number(),
+  "upcomingRenewalAmount": zod.number(),
+  "apiSpendToday": zod.number().optional(),
+  "budgetUsedPercent": zod.number().optional(),
+  "budgetTotal": zod.number(),
+  "forecastTotal": zod.number().optional(),
+  "avgApiCostPerRequest": zod.number().optional(),
+  "totalSavingsFound": zod.number().optional()
+})
+
+
+/**
+ * @summary List all workspaces the user belongs to
+ */
+export const ListWorkspacesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "ownerId": zod.string(),
+  "createdAt": zod.string()
+})
+export const ListWorkspacesResponse = zod.array(ListWorkspacesResponseItem)
+
+
+/**
+ * @summary Create a new workspace
+ */
+export const CreateWorkspaceBody = zod.object({
+  "name": zod.string(),
+  "slug": zod.string()
+})
+
+
+/**
+ * @summary List all members of a workspace
+ */
+export const ListWorkspaceMembersParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListWorkspaceMembersResponseItem = zod.object({
+  "id": zod.number(),
+  "workspaceId": zod.number(),
+  "userId": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['owner', 'admin', 'viewer']),
+  "createdAt": zod.string()
+})
+export const ListWorkspaceMembersResponse = zod.array(ListWorkspaceMembersResponseItem)
+
+
+/**
+ * @summary Invite a user to a workspace
+ */
+export const InviteToWorkspaceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const InviteToWorkspaceBody = zod.object({
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'viewer'])
+})
+
+
+/**
+ * @summary List all configured webhooks for the active workspace
+ */
+export const ListWebhooksResponseItem = zod.object({
+  "id": zod.number(),
+  "workspaceId": zod.number(),
+  "type": zod.enum(['slack', 'discord']),
+  "url": zod.string(),
+  "name": zod.string(),
+  "isActive": zod.boolean(),
+  "events": zod.string(),
+  "createdAt": zod.string()
+})
+export const ListWebhooksResponse = zod.array(ListWebhooksResponseItem)
+
+
+/**
+ * @summary Add a new Slack or Discord webhook
+ */
+export const CreateWebhookBody = zod.object({
+  "workspaceId": zod.number(),
+  "type": zod.enum(['slack', 'discord']),
+  "url": zod.string(),
+  "name": zod.string(),
+  "events": zod.string().optional()
+})
+
+
+/**
+ * @summary Validate a deployment against project budget policies
+ */
+export const ValidateDeploymentBody = zod.object({
+  "projectId": zod.number(),
+  "pipelineName": zod.string(),
+  "repository": zod.string(),
+  "branch": zod.string(),
+  "estimatedCost": zod.number().optional()
+})
+
+export const ValidateDeploymentResponse = zod.object({
+  "allowed": zod.boolean().optional(),
+  "status": zod.string().optional(),
+  "reason": zod.string().optional(),
+  "checkId": zod.string().optional()
+})
+
+
+/**
+ * @summary List recent CI/CD pipeline runs
+ */
+export const ListCicdRunsResponseItem = zod.object({
+  "id": zod.number().optional(),
+  "pipelineName": zod.string().optional(),
+  "status": zod.string().optional(),
+  "reason": zod.string().optional(),
+  "createdAt": zod.string().optional()
+})
+export const ListCicdRunsResponse = zod.array(ListCicdRunsResponseItem)
+
+
+/**
+ * @summary List available remediation actions
+ */
+export const ListRemediationActionsResponseItem = zod.object({
+  "id": zod.number().optional(),
+  "title": zod.string().optional(),
+  "description": zod.string().optional(),
+  "savingsPotential": zod.string().optional(),
+  "impact": zod.string().optional(),
+  "status": zod.string().optional()
+})
+export const ListRemediationActionsResponse = zod.array(ListRemediationActionsResponseItem)
+
+
+/**
+ * @summary Authorize and execute a remediation action
+ */
+export const ExecuteRemediationBody = zod.object({
+  "actionId": zod.number()
+})
+
+export const ExecuteRemediationResponse = zod.object({
+  "success": zod.boolean().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Ask the AI Co-pilot a question about spend
+ */
+export const PostIntelligenceQueryBody = zod.object({
+  "query": zod.string()
+})
+
+export const PostIntelligenceQueryResponse = zod.object({
+  "answer": zod.string().optional(),
+  "data": zod.object({
+
+}).passthrough().optional()
+})
+
+
+/**
+ * @summary Get live GPU cluster utilization telemetry
+ */
+export const GetTelemetryGpuResponse = zod.object({
+  "clusters": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "utilization": zod.number().optional(),
+  "memoryUsed": zod.number().optional(),
+  "costPerHour": zod.number().optional()
+})).optional()
+})
+
+
+/**
+ * @summary Record an LLM routing event
+ */
+export const PostTelemetryLlmRouteBody = zod.object({
+  "model": zod.string(),
+  "provider": zod.string().optional(),
+  "tokens": zod.number(),
+  "latency": zod.number().optional()
+})
+
+export const PostTelemetryLlmRouteResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * @summary List all AI infrastructure audits
+ */
+export const ListAuditsResponseItem = zod.object({
+  "id": zod.number().optional(),
+  "title": zod.string().optional(),
+  "severity": zod.string().optional(),
+  "status": zod.string().optional(),
+  "description": zod.string().optional(),
+  "createdAt": zod.string().optional()
+})
+export const ListAuditsResponse = zod.array(ListAuditsResponseItem)
+
+
+/**
+ * @summary Trigger a new AI infrastructure scan
+ */
+export const StartAuditScanResponse = zod.object({
+  "id": zod.number().optional(),
+  "title": zod.string().optional(),
+  "severity": zod.string().optional(),
+  "status": zod.string().optional(),
+  "description": zod.string().optional(),
+  "createdAt": zod.string().optional()
+})
 
 

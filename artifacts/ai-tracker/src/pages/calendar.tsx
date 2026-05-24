@@ -40,10 +40,10 @@ export default function Calendar() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-          <p className="text-sm text-muted-foreground mt-1">Expenses, trials, renewals and credit top-ups by date</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">AI Free Trials</h1>
+          <p className="text-slate-400 text-sm mt-1">Monitor trial expiration windows and upcoming renewal risks.</p>
         </div>
         <div className="flex items-center gap-2">
           <button

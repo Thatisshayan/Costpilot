@@ -1,26 +1,25 @@
 {
-  "name": "AI Expense Tracker",
-  "short_name": "AI Tracker",
-  "description": "Track AI tool expenses, trials, and projects across all platforms",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#6366f1",
-  "orientation": "portrait-primary",
+  "short_name": "CostPilot",
+  "name": "CostPilot AI Spend Intelligence",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
+      "src": "logo192.png",
       "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
     }
   ],
-  "categories": ["finance", "productivity", "utilities"],
-  "screenshots": []
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#000000"
 }

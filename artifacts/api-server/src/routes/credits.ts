@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, creditPurchasesTable, platformsTable, projectsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   CreateCreditPurchaseBody,
   UpdateCreditPurchaseBody,
@@ -49,6 +49,7 @@ router.get("/", async (req, res) => {
     .from(creditPurchasesTable)
     .leftJoin(platformsTable, eq(creditPurchasesTable.platformId, platformsTable.id))
     .leftJoin(projectsTable, eq(creditPurchasesTable.projectId, projectsTable.id))
+    .where(eq(creditPurchasesTable.userId, req.userId!))
     .orderBy(creditPurchasesTable.purchaseDate);
   res.json(rows.map(formatCredit));
 });
@@ -59,6 +60,7 @@ router.post("/", async (req, res) => {
     .insert(creditPurchasesTable)
     .values({
       ...body,
+      userId: req.userId!,
       amount: String(body.amount),
       credits: body.credits !== undefined ? String(body.credits) : undefined,
     })
@@ -79,7 +81,7 @@ router.patch("/:id", async (req, res) => {
   const [row] = await db
     .update(creditPurchasesTable)
     .set(updateData)
-    .where(eq(creditPurchasesTable.id, id))
+    .where(and(eq(creditPurchasesTable.id, id), eq(creditPurchasesTable.userId, req.userId!)))
     .returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   const [platform] = await db.select().from(platformsTable).where(eq(platformsTable.id, row.platformId));
@@ -91,7 +93,7 @@ router.patch("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const { id } = DeleteCreditPurchaseParams.parse({ id: Number(req.params.id) });
-  await db.delete(creditPurchasesTable).where(eq(creditPurchasesTable.id, id));
+  await db.delete(creditPurchasesTable).where(and(eq(creditPurchasesTable.id, id), eq(creditPurchasesTable.userId, req.userId!)));
   res.status(204).send();
 });
 

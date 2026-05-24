@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, toolsTable, platformsTable, projectsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   CreateToolBody,
   UpdateToolBody,
@@ -28,13 +28,14 @@ router.get("/", async (req, res) => {
     .from(toolsTable)
     .leftJoin(projectsTable, eq(toolsTable.projectId, projectsTable.id))
     .leftJoin(platformsTable, eq(toolsTable.platformId, platformsTable.id))
+    .where(eq(toolsTable.userId, req.userId!))
     .orderBy(toolsTable.isPinned, toolsTable.name);
   res.json(tools.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })));
 });
 
 router.post("/", async (req, res) => {
   const body = CreateToolBody.parse(req.body);
-  const [tool] = await db.insert(toolsTable).values(body).returning();
+  const [tool] = await db.insert(toolsTable).values({ ...body, userId: req.userId! }).returning();
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, tool.projectId));
   const [platform] = tool.platformId
     ? await db.select().from(platformsTable).where(eq(platformsTable.id, tool.platformId))
@@ -53,7 +54,7 @@ router.patch("/:id", async (req, res) => {
   const [tool] = await db
     .update(toolsTable)
     .set(body)
-    .where(eq(toolsTable.id, id))
+    .where(and(eq(toolsTable.id, id), eq(toolsTable.userId, req.userId!)))
     .returning();
   if (!tool) return res.status(404).json({ error: "Not found" });
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, tool.projectId));
@@ -70,7 +71,7 @@ router.patch("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const { id } = DeleteToolParams.parse({ id: Number(req.params.id) });
-  await db.delete(toolsTable).where(eq(toolsTable.id, id));
+  await db.delete(toolsTable).where(and(eq(toolsTable.id, id), eq(toolsTable.userId, req.userId!)));
   res.status(204).send();
 });
 

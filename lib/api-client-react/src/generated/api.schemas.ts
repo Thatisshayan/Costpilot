@@ -5,6 +5,120 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+export interface Workspace {
+  id: number;
+  name: string;
+  slug: string;
+  ownerId: string;
+  createdAt: string;
+}
+
+export interface CreateWorkspaceBody {
+  name: string;
+  slug: string;
+}
+
+export type WorkspaceMemberRole = typeof WorkspaceMemberRole[keyof typeof WorkspaceMemberRole];
+
+
+export const WorkspaceMemberRole = {
+  owner: 'owner',
+  admin: 'admin',
+  viewer: 'viewer',
+} as const;
+
+export interface WorkspaceMember {
+  id: number;
+  workspaceId: number;
+  userId: string;
+  email: string;
+  role: WorkspaceMemberRole;
+  createdAt: string;
+}
+
+export type WebhookType = typeof WebhookType[keyof typeof WebhookType];
+
+
+export const WebhookType = {
+  slack: 'slack',
+  discord: 'discord',
+} as const;
+
+export interface Webhook {
+  id: number;
+  workspaceId: number;
+  type: WebhookType;
+  url: string;
+  name: string;
+  isActive: boolean;
+  events: string;
+  createdAt: string;
+}
+
+export type CreateWebhookBodyType = typeof CreateWebhookBodyType[keyof typeof CreateWebhookBodyType];
+
+
+export const CreateWebhookBodyType = {
+  slack: 'slack',
+  discord: 'discord',
+} as const;
+
+export interface CreateWebhookBody {
+  workspaceId: number;
+  type: CreateWebhookBodyType;
+  url: string;
+  name: string;
+  events?: string;
+}
+
+export type SmartSuggestionType = typeof SmartSuggestionType[keyof typeof SmartSuggestionType];
+
+
+export const SmartSuggestionType = {
+  model_swap: 'model_swap',
+  subscription_consolidation: 'subscription_consolidation',
+  unused_credit: 'unused_credit',
+} as const;
+
+export interface SmartSuggestion {
+  id: string;
+  type: SmartSuggestionType;
+  title: string;
+  description: string;
+  potentialSavings: number;
+  confidence?: number;
+}
+
+export type AnalyticsForecastCreditExhaustionDatesItem = {
+  platformName?: string;
+  predictedExhaustionDate?: string;
+  daysRemaining?: number;
+};
+
+export interface AnalyticsForecast {
+  dailySpendVelocity: number;
+  predictedMonthlyTotal: number;
+  creditExhaustionDates: AnalyticsForecastCreditExhaustionDatesItem[];
+}
+
+export interface ReceiptParseData {
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  platform?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  date?: string | null;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface ReceiptParseResult {
+  success: boolean;
+  data: ReceiptParseData;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -254,15 +368,20 @@ export interface CreditPurchaseUpdate {
 }
 
 export interface DashboardSummary {
-  totalSpend: number;
-  thisMonthSpend?: number;
-  lastMonthSpend?: number;
-  totalPlatforms: number;
-  totalProjects: number;
-  activeTrials: number;
-  expiringTrials: number;
-  totalTools: number;
-  totalCredits: number;
+  totalAiSpend: number;
+  monthToDateSpend: number;
+  lastMonthTotalSpend?: number;
+  monthToDateChangePercent: number;
+  activeAiTools: number;
+  activeToolsUnusedCount: number;
+  renewalsThisWeek: number;
+  upcomingRenewalAmount: number;
+  apiSpendToday?: number;
+  budgetUsedPercent?: number;
+  budgetTotal: number;
+  forecastTotal?: number;
+  avgApiCostPerRequest?: number;
+  totalSavingsFound?: number;
 }
 
 export interface PlatformExpenseStat {
@@ -281,7 +400,10 @@ export interface ProjectExpenseStat {
 
 export interface MonthlySpending {
   month: string;
-  total: number;
+  subscriptionSpend: number;
+  apiUsageSpend: number;
+  infrastructureSpend: number;
+  forecastSpend: number;
 }
 
 export interface CalendarEvent {
@@ -298,4 +420,115 @@ export interface CalendarEvent {
   projectName?: string | null;
   urgent?: boolean;
 }
+
+export interface SavingsOpportunity {
+  id: number;
+  issue: string;
+  impact: string;
+  action: string;
+  description: string;
+  evidence: string;
+  confidence: number;
+}
+
+export interface CicdValidationResult {
+  allowed?: boolean;
+  status?: string;
+  reason?: string;
+  checkId?: string;
+}
+
+export interface CicdRun {
+  id?: number;
+  pipelineName?: string;
+  status?: string;
+  reason?: string;
+  createdAt?: string;
+}
+
+export interface RemediationAction {
+  id?: number;
+  title?: string;
+  description?: string;
+  savingsPotential?: string;
+  impact?: string;
+  status?: string;
+}
+
+export type GpuTelemetryClustersItem = {
+  id?: string;
+  name?: string;
+  utilization?: number;
+  memoryUsed?: number;
+  costPerHour?: number;
+};
+
+export interface GpuTelemetry {
+  clusters?: GpuTelemetryClustersItem[];
+}
+
+export interface AiAudit {
+  id?: number;
+  title?: string;
+  severity?: string;
+  status?: string;
+  description?: string;
+  createdAt?: string;
+}
+
+export type UploadReceiptBody = {
+  receipt?: Blob;
+};
+
+export type InviteToWorkspaceBodyRole = typeof InviteToWorkspaceBodyRole[keyof typeof InviteToWorkspaceBodyRole];
+
+
+export const InviteToWorkspaceBodyRole = {
+  admin: 'admin',
+  viewer: 'viewer',
+} as const;
+
+export type InviteToWorkspaceBody = {
+  email: string;
+  role: InviteToWorkspaceBodyRole;
+};
+
+export type ValidateDeploymentBody = {
+  projectId: number;
+  pipelineName: string;
+  repository: string;
+  branch: string;
+  estimatedCost?: number;
+};
+
+export type ExecuteRemediationBody = {
+  actionId: number;
+};
+
+export type ExecuteRemediation200 = {
+  success?: boolean;
+  message?: string;
+};
+
+export type PostIntelligenceQueryBody = {
+  query: string;
+};
+
+export type PostIntelligenceQuery200Data = { [key: string]: unknown };
+
+export type PostIntelligenceQuery200 = {
+  answer?: string;
+  data?: PostIntelligenceQuery200Data;
+};
+
+export type PostTelemetryLlmRouteBody = {
+  model: string;
+  provider?: string;
+  tokens: number;
+  latency?: number;
+};
+
+export type PostTelemetryLlmRoute200 = {
+  success?: boolean;
+};
 

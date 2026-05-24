@@ -4,6 +4,9 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
+import { requireAuth } from "./middlewares/auth";
+import { errorHandler } from "./middlewares/errors";
+
 const app: Express = express();
 
 app.use(
@@ -29,6 +32,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", router);
+// Apply Authentication middleware to all API routes
+app.use("/api", requireAuth, router);
+
+// Load global error handler (Must be placed AFTER all routing layers)
+app.use(errorHandler);
 
 export default app;

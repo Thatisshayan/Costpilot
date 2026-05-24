@@ -7,6 +7,17 @@ import subscriptionsRouter from "./subscriptions";
 import toolsRouter from "./tools";
 import dashboardRouter from "./dashboard";
 import creditsRouter from "./credits";
+import receiptsRouter from "./receipts";
+import analyticsRouter from "./analytics";
+import workspacesRouter from "./workspaces";
+import webhooksRouter from "./webhooks";
+import cicdRouter from "./cicd";
+import remediationRouter from "./remediation";
+import intelligenceRouter from "./intelligence";
+import telemetryRouter from "./telemetry";
+import auditsRouter from "./audits";
+import exportsRouter from "./exports";
+import provisioningRouter from "./provisioning";
 
 const router: IRouter = Router();
 
@@ -18,5 +29,16 @@ router.use("/subscriptions", subscriptionsRouter);
 router.use("/tools", toolsRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/credits", creditsRouter);
+router.use("/receipts", receiptsRouter);
+router.use("/analytics", analyticsRouter);
+router.use("/workspaces", workspacesRouter);
+router.use("/webhooks", webhooksRouter);
+router.use("/cicd", cicdRouter);
+router.use("/remediation", remediationRouter);
+router.use("/intelligence", intelligenceRouter);
+router.use("/telemetry", telemetryRouter);
+router.use("/audits", auditsRouter);
+router.use("/exports", exportsRouter);
+router.use("/provisioning", provisioningRouter);
 
 export default router;

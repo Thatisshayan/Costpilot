@@ -59,6 +59,10 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --color-darkBg: #09090b;
+  --color-glassBorder: rgba(255, 255, 255, 0.1);
+  --color-coralGlow: rgba(239, 68, 68, 0.15);
 }
 
 :root {

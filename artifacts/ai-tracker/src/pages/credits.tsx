@@ -11,7 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, Coins } from "lucide-react";
+import { Plus, Pencil, Trash2, Coins, Calendar, Folder, ArrowUpRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -138,191 +138,218 @@ export default function Credits() {
   const totalUnits = credits.reduce((sum, c) => sum + (c.credits ?? 0), 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+      {/* Header */}
+      <header className="flex justify-between items-center mb-10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Credit Top-ups</h1>
-          <p className="text-sm text-muted-foreground mt-1">Track credit purchases across all AI platforms</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Credit Top-ups</h1>
+          <p className="text-sm text-slate-400 mt-1">Track balance additions and token balance reserves for LLM platforms.</p>
         </div>
         <button
           onClick={openAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
         >
-          <Plus className="w-4 h-4" />
+          <Plus size={16} />
           Log Top-up
         </button>
+      </header>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-md">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium text-slate-400">Total Credit Costs</span>
+            <Coins size={16} className="text-slate-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-white">${totalCredits.toFixed(2)}</div>
+        </div>
+
+        <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-md">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium text-slate-400">Total Credits Acquired</span>
+            <Coins size={16} className="text-slate-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-white">{totalUnits > 0 ? totalUnits.toLocaleString() : "—"}</div>
+        </div>
+
+        <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-md">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium text-slate-400">Purchases Count</span>
+            <Coins size={16} className="text-slate-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-white">{credits.length}</div>
+        </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground">Total Spent on Credits</span>
-            <Coins className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="text-2xl font-bold font-mono">${totalCredits.toFixed(2)}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground">Credit Units Purchased</span>
-            <Coins className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="text-2xl font-bold font-mono">{totalUnits > 0 ? totalUnits.toLocaleString() : "—"}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground">Purchases Logged</span>
-            <Coins className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="text-2xl font-bold font-mono">{credits.length}</div>
-        </div>
-      </div>
+      {/* Table Container */}
+      <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-md">
+        <h2 className="text-lg font-semibold text-white mb-5">Top-up History</h2>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Platform</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Project</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Description</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Credits</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">Loading…</td>
+        {isLoading ? (
+          <div className="text-center py-12 text-slate-500 font-medium">Loading history...</div>
+        ) : credits.length === 0 ? (
+          <div className="text-center py-12 text-slate-500 font-medium">No top-ups recorded.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06] text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="pb-3 pl-2">Platform / Project</th>
+                  <th className="pb-3">Description</th>
+                  <th className="pb-3 text-right">Credits Acquired</th>
+                  <th className="pb-3">Top-up Date</th>
+                  <th className="pb-3 text-right pr-2">Amount</th>
+                  <th className="pb-3" />
                 </tr>
-              ) : credits.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No credit purchases logged yet.</td>
-                </tr>
-              ) : (
-                [...credits].reverse().map((c) => (
-                  <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {[...credits].reverse().map((c) => (
+                  <tr key={c.id} className="group hover:bg-white/[0.01] transition-colors">
+                    <td className="py-4 pl-2 flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg ${getHashColor(c.platformName || "Unknown")} flex items-center justify-center font-semibold text-white text-xs shadow-sm shrink-0`}>
+                        {(c.platformName || "U").charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-medium text-white flex items-center gap-1.5">
+                          {c.platformName || "Unknown Platform"}
+                          <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition text-slate-500" />
+                        </div>
+                        <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                          <Folder size={10} className="text-slate-500" />
+                          {c.projectName || "General"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4 text-slate-400 max-w-[200px] truncate" title={c.description || undefined}>
+                      {c.description || <span className="text-slate-600">No description</span>}
+                    </td>
+                    <td className="py-4 text-right font-mono font-medium text-slate-300">
+                      {c.credits !== null ? c.credits.toLocaleString() : <span className="text-slate-600">—</span>}
+                    </td>
+                    <td className="py-4 text-slate-400 font-medium">
                       {format(new Date(c.purchaseDate + "T12:00:00"), "MMM d, yyyy")}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                        {c.platformName ?? "Unknown"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{c.projectName ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{c.description ?? "—"}</td>
-                    <td className="px-4 py-3 font-mono text-right">
-                      {c.credits !== null ? c.credits.toLocaleString() : "—"}
-                    </td>
-                    <td className="px-4 py-3 font-mono font-bold text-right">
+                    <td className="py-4 text-right font-mono font-semibold text-white text-base">
                       ${c.amount.toFixed(2)}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="py-4 pr-2">
+                      <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => openEdit(c)}
-                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-white transition-colors"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => setDeleteId(c.id)}
-                          className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-zinc-950/90 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
           <DialogHeader>
-            <DialogTitle>{editTarget ? "Edit Credit Purchase" : "Log Credit Top-up"}</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-white tracking-tight">
+              {editTarget ? "Edit Credit Purchase" : "Log Credit Top-up"}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Platform *</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Platform *</label>
                 <select
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                   value={form.platformId}
                   onChange={(e) => setForm({ ...form, platformId: e.target.value })}
                 >
-                  <option value="">Select platform…</option>
-                  {platforms.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  <option value="" className="bg-zinc-950 text-slate-400">Select platform…</option>
+                  {platforms.map((p) => (
+                    <option key={p.id} value={p.id} className="bg-zinc-950 text-white">
+                      {p.name}
+                    </option>
+                  ))}
                 </select>
               </div>
+
               <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Project</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Project</label>
                 <select
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                   value={form.projectId}
                   onChange={(e) => setForm({ ...form, projectId: e.target.value })}
                 >
-                  <option value="">No project</option>
-                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  <option value="" className="bg-zinc-950 text-slate-400">No project</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id} className="bg-zinc-950 text-white">
+                      {p.name}
+                    </option>
+                  ))}
                 </select>
               </div>
+
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Amount ($) *</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount ($) *</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
                   placeholder="0.00"
                   value={form.amount}
                   onChange={(e) => setForm({ ...form, amount: e.target.value })}
                 />
               </div>
+
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Credits (units)</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Credits (units)</label>
                 <input
                   type="number"
                   step="any"
                   min="0"
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
                   placeholder="e.g. 10000"
                   value={form.credits}
                   onChange={(e) => setForm({ ...form, credits: e.target.value })}
                 />
               </div>
+
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Currency</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Currency</label>
                 <input
                   type="text"
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                   placeholder="USD"
                   value={form.currency}
                   onChange={(e) => setForm({ ...form, currency: e.target.value })}
                 />
               </div>
+
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Purchase Date *</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Purchase Date *</label>
                 <input
                   type="date"
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                   value={form.purchaseDate}
                   onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })}
                 />
               </div>
+
               <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</label>
                 <input
                   type="text"
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                   placeholder="e.g. OpenAI $10 credit top-up"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -330,17 +357,17 @@ export default function Credits() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <button
               onClick={() => setDialogOpen(false)}
-              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="px-4.5 py-2.5 text-sm font-semibold text-slate-400 hover:text-white transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
             >
               {createMutation.isPending || updateMutation.isPending ? "Saving…" : editTarget ? "Save Changes" : "Log Purchase"}
             </button>
@@ -350,22 +377,22 @@ export default function Credits() {
 
       {/* Delete confirm */}
       <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm bg-zinc-950/90 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
           <DialogHeader>
-            <DialogTitle>Delete credit purchase?</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-white tracking-tight">Delete credit purchase?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
-          <DialogFooter>
+          <p className="text-sm text-slate-400 mt-2">This action is permanent and cannot be undone.</p>
+          <DialogFooter className="gap-2 mt-4">
             <button
               onClick={() => setDeleteId(null)}
-              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={() => deleteId !== null && handleDelete(deleteId)}
               disabled={deleteMutation.isPending}
-              className="px-4 py-2 bg-destructive text-white text-sm font-medium rounded-lg hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-red-600/15"
             >
               {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </button>
@@ -374,4 +401,23 @@ export default function Credits() {
       </Dialog>
     </div>
   );
+}
+
+// Helper to generate a consistent color based on string
+function getHashColor(str: string) {
+  const colors = [
+    "bg-[#10a37f]", // OpenAI green
+    "bg-[#cc9966]", // Anthropic beige
+    "bg-[#1a1b1f]", // Midjourney dark
+    "bg-[#6366f1]", // Indigo
+    "bg-[#ec4899]", // Pink
+    "bg-[#8b5cf6]", // Purple
+    "bg-[#f59e0b]", // Amber
+    "bg-[#0ea5e9]", // Sky
+  ];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
 }

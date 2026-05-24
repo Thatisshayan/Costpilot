@@ -599,8 +599,531 @@ paths:
                 items:
                   $ref: "#/components/schemas/CalendarEvent"
 
+  /receipts/upload:
+    post:
+      operationId: uploadReceipt
+      tags: [expenses]
+      summary: Upload and parse a receipt using Vision AI
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                receipt:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Parsed receipt data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptParseResult"
+
+  /analytics/smart-suggestions:
+    get:
+      operationId: getSmartSuggestions
+      tags: [analytics]
+      summary: Get AI-driven cost optimization suggestions
+      responses:
+        "200":
+          description: List of suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SmartSuggestion"
+
+  /analytics/savings-opportunities:
+    get:
+      operationId: listSavingsOpportunities
+      tags: [analytics]
+      summary: Get AI Waste Detection results
+      responses:
+        "200":
+          description: List of savings opportunities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavingsOpportunity"
+
+  /analytics/forecast:
+    get:
+      operationId: getForecast
+      tags: [analytics]
+      summary: Get spending and credit exhaustion forecasts
+      responses:
+        "200":
+          description: Forecast data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsForecast"
+
+  /dashboard/kpi-summary:
+    get:
+      operationId: getKpiSummary
+      tags: [dashboard]
+      summary: Get high-level KPI metrics for the dashboard
+      responses:
+        "200":
+          description: KPI summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /analytics/export/csv:
+    get:
+      operationId: exportExpensesCsv
+      tags: [analytics]
+      summary: Export all expenses as CSV
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /workspaces:
+    get:
+      operationId: listWorkspaces
+      tags: [workspaces]
+      summary: List all workspaces the user belongs to
+      responses:
+        "200":
+          description: List of workspaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Workspace"
+    post:
+      operationId: createWorkspace
+      tags: [workspaces]
+      summary: Create a new workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkspaceBody"
+      responses:
+        "201":
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+
+  /workspaces/{id}/members:
+    get:
+      operationId: listWorkspaceMembers
+      tags: [workspaces]
+      summary: List all members of a workspace
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceMember"
+
+  /workspaces/{id}/invite:
+    post:
+      operationId: inviteToWorkspace
+      tags: [workspaces]
+      summary: Invite a user to a workspace
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                role:
+                  type: string
+                  enum: [admin, viewer]
+      responses:
+        "201":
+          description: Invite sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMember"
+
+  /webhooks:
+    get:
+      operationId: listWebhooks
+      tags: [webhooks]
+      summary: List all configured webhooks for the active workspace
+      responses:
+        "200":
+          description: List of webhooks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Webhook"
+    post:
+      operationId: createWebhook
+      tags: [webhooks]
+      summary: Add a new Slack or Discord webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookBody"
+      responses:
+        "201":
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+
+  /cicd/validate:
+    post:
+      operationId: validateDeployment
+      tags: [cicd]
+      summary: Validate a deployment against project budget policies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, pipelineName, repository, branch]
+              properties:
+                projectId: { type: integer }
+                pipelineName: { type: string }
+                repository: { type: string }
+                branch: { type: string }
+                estimatedCost: { type: number }
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CicdValidationResult"
+
+  /cicd/runs:
+    get:
+      operationId: listCicdRuns
+      tags: [cicd]
+      summary: List recent CI/CD pipeline runs
+      responses:
+        "200":
+          description: List of pipeline runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CicdRun"
+
+  /remediation:
+    get:
+      operationId: listRemediationActions
+      tags: [remediation]
+      summary: List available remediation actions
+      responses:
+        "200":
+          description: List of actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RemediationAction"
+
+  /remediation/execute:
+    post:
+      operationId: executeRemediation
+      tags: [remediation]
+      summary: Authorize and execute a remediation action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actionId]
+              properties:
+                actionId: { type: integer }
+      responses:
+        "200":
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+
+  /intelligence/query:
+    post:
+      operationId: postIntelligenceQuery
+      tags: [intelligence]
+      summary: Ask the AI Co-pilot a question about spend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string }
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answer: { type: string }
+                  data: { type: object }
+
+  /telemetry/gpu:
+    get:
+      operationId: getTelemetryGpu
+      tags: [telemetry]
+      summary: Get live GPU cluster utilization telemetry
+      responses:
+        "200":
+          description: GPU telemetry data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GpuTelemetry"
+
+  /telemetry/llm-route:
+    post:
+      operationId: postTelemetryLlmRoute
+      tags: [telemetry]
+      summary: Record an LLM routing event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, tokens]
+              properties:
+                model: { type: string }
+                provider: { type: string }
+                tokens: { type: integer }
+                latency: { type: integer }
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+
+  /audits:
+    get:
+      operationId: listAudits
+      tags: [audits]
+      summary: List all AI infrastructure audits
+      responses:
+        "200":
+          description: List of audits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiAudit"
+
+  /audits/scan:
+    post:
+      operationId: startAuditScan
+      tags: [audits]
+      summary: Trigger a new AI infrastructure scan
+      responses:
+        "200":
+          description: Scan results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiAudit"
+
 components:
   schemas:
+    Workspace:
+      type: object
+      required: [id, name, slug, ownerId, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        ownerId:
+          type: string
+        createdAt:
+          type: string
+
+    CreateWorkspaceBody:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+
+    WorkspaceMember:
+      type: object
+      required: [id, workspaceId, userId, email, role, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        userId:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, viewer]
+        createdAt:
+          type: string
+
+    Webhook:
+      type: object
+      required: [id, workspaceId, type, url, name, isActive, events, createdAt]
+      properties:
+        id:
+          type: integer
+        workspaceId:
+          type: integer
+        type:
+          type: string
+          enum: [slack, discord]
+        url:
+          type: string
+        name:
+          type: string
+        isActive:
+          type: boolean
+        events:
+          type: string
+        createdAt:
+          type: string
+
+    CreateWebhookBody:
+      type: object
+      required: [workspaceId, type, url, name]
+      properties:
+        workspaceId:
+          type: integer
+        type:
+          type: string
+          enum: [slack, discord]
+        url:
+          type: string
+        name:
+          type: string
+        events:
+          type: string
+
+    SmartSuggestion:
+      type: object
+      required: [id, type, title, description, potentialSavings]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [model_swap, subscription_consolidation, unused_credit]
+        title:
+          type: string
+        description:
+          type: string
+        potentialSavings:
+          type: number
+        confidence:
+          type: number
+
+    AnalyticsForecast:
+      type: object
+      required: [dailySpendVelocity, predictedMonthlyTotal, creditExhaustionDates]
+      properties:
+        dailySpendVelocity:
+          type: number
+        predictedMonthlyTotal:
+          type: number
+        creditExhaustionDates:
+          type: array
+          items:
+            type: object
+            properties:
+              platformName:
+                type: string
+              predictedExhaustionDate:
+                type: string
+              daysRemaining:
+                type: number
+
+    ReceiptParseResult:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/ReceiptParseData"
+
+    ReceiptParseData:
+      type: object
+      properties:
+        amount:
+          type: ["number", "null"]
+        platform:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        date:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
     HealthStatus:
       type: object
       properties:
@@ -1005,25 +1528,35 @@ components:
 
     DashboardSummary:
       type: object
-      required: [totalSpend, totalPlatforms, totalProjects, activeTrials, expiringTrials, totalTools, totalCredits]
+      required: [totalAiSpend, monthToDateSpend, activeAiTools, renewalsThisWeek, activeToolsUnusedCount, upcomingRenewalAmount, monthToDateChangePercent, budgetTotal]
       properties:
-        totalSpend:
+        totalAiSpend:
           type: number
-        thisMonthSpend:
+        monthToDateSpend:
           type: number
-        lastMonthSpend:
+        lastMonthTotalSpend:
           type: number
-        totalPlatforms:
+        monthToDateChangePercent:
+          type: number
+        activeAiTools:
           type: integer
-        totalProjects:
+        activeToolsUnusedCount:
           type: integer
-        activeTrials:
+        renewalsThisWeek:
           type: integer
-        expiringTrials:
-          type: integer
-        totalTools:
-          type: integer
-        totalCredits:
+        upcomingRenewalAmount:
+          type: number
+        apiSpendToday:
+          type: number
+        budgetUsedPercent:
+          type: number
+        budgetTotal:
+          type: number
+        forecastTotal:
+          type: number
+        avgApiCostPerRequest:
+          type: number
+        totalSavingsFound:
           type: number
 
     PlatformExpenseStat:
@@ -1054,11 +1587,17 @@ components:
 
     MonthlySpending:
       type: object
-      required: [month, total]
+      required: [month, subscriptionSpend, apiUsageSpend, infrastructureSpend, forecastSpend]
       properties:
         month:
           type: string
-        total:
+        subscriptionSpend:
+          type: number
+        apiUsageSpend:
+          type: number
+        infrastructureSpend:
+          type: number
+        forecastSpend:
           type: number
 
     CalendarEvent:
@@ -1082,3 +1621,73 @@ components:
           type: ["string", "null"]
         urgent:
           type: boolean
+
+    SavingsOpportunity:
+      type: object
+      required: [id, issue, impact, action, description, evidence, confidence]
+      properties:
+        id:
+          type: integer
+        issue:
+          type: string
+        impact:
+          type: string
+        action:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: string
+        confidence:
+          type: number
+
+    CicdValidationResult:
+      type: object
+      properties:
+        allowed: { type: boolean }
+        status: { type: string }
+        reason: { type: string }
+        checkId: { type: string }
+
+    CicdRun:
+      type: object
+      properties:
+        id: { type: integer }
+        pipelineName: { type: string }
+        status: { type: string }
+        reason: { type: string }
+        createdAt: { type: string }
+
+    RemediationAction:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        savingsPotential: { type: string }
+        impact: { type: string }
+        status: { type: string }
+
+    GpuTelemetry:
+      type: object
+      properties:
+        clusters:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              utilization: { type: number }
+              memoryUsed: { type: number }
+              costPerHour: { type: number }
+
+    AiAudit:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        severity: { type: string }
+        status: { type: string }
+        description: { type: string }
+        createdAt: { type: string }

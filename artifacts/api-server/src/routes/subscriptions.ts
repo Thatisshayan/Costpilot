@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, subscriptionsTable, platformsTable, projectsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   CreateSubscriptionBody,
   UpdateSubscriptionBody,
@@ -64,6 +64,7 @@ router.get("/", async (req, res) => {
     .from(subscriptionsTable)
     .leftJoin(platformsTable, eq(subscriptionsTable.platformId, platformsTable.id))
     .leftJoin(projectsTable, eq(subscriptionsTable.projectId, projectsTable.id))
+    .where(eq(subscriptionsTable.userId, req.userId!))
     .orderBy(subscriptionsTable.createdAt);
   res.json(subs.map(formatSub));
 });
@@ -72,7 +73,10 @@ router.post("/", async (req, res) => {
   const body = CreateSubscriptionBody.parse(req.body);
   const insertData: Record<string, unknown> = { ...body };
   if (body.monthlyCost !== undefined) insertData.monthlyCost = String(body.monthlyCost);
-  const [sub] = await db.insert(subscriptionsTable).values(insertData as Parameters<typeof db.insert>[1] extends { values: infer V } ? V : never).returning();
+  const [sub] = await db.insert(subscriptionsTable).values({
+    ...insertData,
+    userId: req.userId!
+  } as any).returning();
   const [platform] = await db.select().from(platformsTable).where(eq(platformsTable.id, sub.platformId));
   const [project] = sub.projectId
     ? await db.select().from(projectsTable).where(eq(projectsTable.id, sub.projectId))
@@ -102,7 +106,7 @@ router.get("/:id", async (req, res) => {
     .from(subscriptionsTable)
     .leftJoin(platformsTable, eq(subscriptionsTable.platformId, platformsTable.id))
     .leftJoin(projectsTable, eq(subscriptionsTable.projectId, projectsTable.id))
-    .where(eq(subscriptionsTable.id, id));
+    .where(and(eq(subscriptionsTable.id, id), eq(subscriptionsTable.userId, req.userId!)));
   if (!sub) return res.status(404).json({ error: "Not found" });
   res.json(formatSub(sub));
 });
@@ -115,7 +119,7 @@ router.patch("/:id", async (req, res) => {
   const [sub] = await db
     .update(subscriptionsTable)
     .set(updateData)
-    .where(eq(subscriptionsTable.id, id))
+    .where(and(eq(subscriptionsTable.id, id), eq(subscriptionsTable.userId, req.userId!)))
     .returning();
   if (!sub) return res.status(404).json({ error: "Not found" });
   const [platform] = await db.select().from(platformsTable).where(eq(platformsTable.id, sub.platformId));
@@ -127,7 +131,7 @@ router.patch("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const { id } = DeleteSubscriptionParams.parse({ id: Number(req.params.id) });
-  await db.delete(subscriptionsTable).where(eq(subscriptionsTable.id, id));
+  await db.delete(subscriptionsTable).where(and(eq(subscriptionsTable.id, id), eq(subscriptionsTable.userId, req.userId!)));
   res.status(204).send();
 });
 

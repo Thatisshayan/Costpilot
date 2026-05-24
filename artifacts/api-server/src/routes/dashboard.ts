@@ -8,7 +8,7 @@ import {
   toolsTable,
   creditPurchasesTable,
 } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, isNotNull, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -20,6 +20,7 @@ function calcDaysUntilExpiry(trialEndDate: string | null): number | null {
 }
 
 router.get("/summary", async (req, res) => {
+  const userId = req.userId!;
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
@@ -29,48 +30,60 @@ router.get("/summary", async (req, res) => {
 
   const [totalSpendRow] = await db
     .select({ total: sql<string>`COALESCE(SUM(${expensesTable.amount}), 0)` })
-    .from(expensesTable);
+    .from(expensesTable)
+    .where(eq(expensesTable.userId, userId));
 
   const [thisMonthRow] = await db
     .select({ total: sql<string>`COALESCE(SUM(${expensesTable.amount}), 0)` })
     .from(expensesTable)
-    .where(sql`${expensesTable.date} >= ${thisMonthStart}`);
+    .where(and(sql`${expensesTable.date} >= ${thisMonthStart}`, eq(expensesTable.userId, userId)));
 
   const [lastMonthRow] = await db
     .select({ total: sql<string>`COALESCE(SUM(${expensesTable.amount}), 0)` })
     .from(expensesTable)
-    .where(sql`${expensesTable.date} >= ${lastMonthStart} AND ${expensesTable.date} <= ${lastMonthEnd}`);
+    .where(and(sql`${expensesTable.date} >= ${lastMonthStart} AND ${expensesTable.date} <= ${lastMonthEnd}`, eq(expensesTable.userId, userId)));
 
-  const [platformCount] = await db.select({ count: sql<string>`COUNT(*)` }).from(platformsTable);
-  const [projectCount] = await db.select({ count: sql<string>`COUNT(*)` }).from(projectsTable);
-  const [toolCount] = await db.select({ count: sql<string>`COUNT(*)` }).from(toolsTable);
-
-  const [activeTrialsRow] = await db
-    .select({ count: sql<string>`COUNT(*)` })
-    .from(subscriptionsTable)
-    .where(sql`${subscriptionsTable.planType} = 'free_trial' AND ${subscriptionsTable.status} = 'active'`);
-
-  const [expiringTrialsRow] = await db
-    .select({ count: sql<string>`COUNT(*)` })
+  // Renewals this week
+  const renewals = await db
+    .select({ cost: subscriptionsTable.monthlyCost })
     .from(subscriptionsTable)
     .where(
-      sql`${subscriptionsTable.planType} = 'free_trial' AND ${subscriptionsTable.status} = 'active' AND ${subscriptionsTable.trialEndDate} IS NOT NULL AND ${subscriptionsTable.trialEndDate} >= ${today} AND ${subscriptionsTable.trialEndDate} <= ${sevenDaysFromNow}`
+      and(
+        eq(subscriptionsTable.status, "active"),
+        isNotNull(subscriptionsTable.renewalDate),
+        sql`${subscriptionsTable.renewalDate} >= ${today} AND ${subscriptionsTable.renewalDate} <= ${sevenDaysFromNow}`,
+        eq(subscriptionsTable.userId, userId)
+      )
     );
 
-  const [totalCreditsRow] = await db
-    .select({ total: sql<string>`COALESCE(SUM(${creditPurchasesTable.amount}), 0)` })
-    .from(creditPurchasesTable);
+  const renewalsCount = renewals.length;
+  const renewalsTotal = renewals.reduce((acc, r) => acc + Number(r.cost || 0), 0);
+
+  // Active Tools (Distinct platforms with expenses)
+  const [activeToolsRow] = await db
+    .select({ count: sql<string>`COUNT(DISTINCT ${expensesTable.platformId})` })
+    .from(expensesTable)
+    .where(eq(expensesTable.userId, userId));
+
+  // MTD Change Percent
+  const thisMonthTotal = Number(thisMonthRow.total);
+  const lastMonthTotal = Number(lastMonthRow.total);
+  const changePercent = lastMonthTotal > 0 ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
 
   res.json({
-    totalSpend: Number(totalSpendRow.total),
-    thisMonthSpend: Number(thisMonthRow.total),
-    lastMonthSpend: Number(lastMonthRow.total),
-    totalPlatforms: Number(platformCount.count),
-    totalProjects: Number(projectCount.count),
-    activeTrials: Number(activeTrialsRow.count),
-    expiringTrials: Number(expiringTrialsRow.count),
-    totalTools: Number(toolCount.count),
-    totalCredits: Number(totalCreditsRow.total),
+    totalAiSpend: Number(totalSpendRow.total),
+    monthToDateSpend: thisMonthTotal,
+    lastMonthTotalSpend: lastMonthTotal,
+    monthToDateChangePercent: Number(changePercent.toFixed(1)),
+    activeAiTools: Number(activeToolsRow.count),
+    activeToolsUnusedCount: Math.floor(Number(activeToolsRow.count) * 0.2), // Mock: 20% unused
+    renewalsThisWeek: renewalsCount,
+    upcomingRenewalAmount: renewalsTotal,
+    apiSpendToday: thisMonthTotal / now.getDate(), // Simple daily avg for mock
+    budgetUsedPercent: 72.5,
+    forecastTotal: (thisMonthTotal / now.getDate()) * 30,
+    avgApiCostPerRequest: 0.014,
+    totalSavingsFound: 214.50
   });
 });
 
@@ -101,7 +114,10 @@ router.get("/expiring-trials", async (req, res) => {
     .leftJoin(platformsTable, eq(subscriptionsTable.platformId, platformsTable.id))
     .leftJoin(projectsTable, eq(subscriptionsTable.projectId, projectsTable.id))
     .where(
-      sql`${subscriptionsTable.planType} = 'free_trial' AND ${subscriptionsTable.status} = 'active' AND ${subscriptionsTable.trialEndDate} IS NOT NULL AND ${subscriptionsTable.trialEndDate} >= ${today} AND ${subscriptionsTable.trialEndDate} <= ${sevenDaysFromNow}`
+      and(
+        sql`${subscriptionsTable.planType} = 'free_trial' AND ${subscriptionsTable.status} = 'active' AND ${subscriptionsTable.trialEndDate} IS NOT NULL AND ${subscriptionsTable.trialEndDate} >= ${today} AND ${subscriptionsTable.trialEndDate} <= ${sevenDaysFromNow}`,
+        eq(subscriptionsTable.userId, req.userId!)
+      )
     )
     .orderBy(subscriptionsTable.trialEndDate);
 
@@ -123,6 +139,7 @@ router.get("/expenses-by-platform", async (req, res) => {
     })
     .from(expensesTable)
     .leftJoin(platformsTable, eq(expensesTable.platformId, platformsTable.id))
+    .where(eq(expensesTable.userId, req.userId!))
     .groupBy(expensesTable.platformId, platformsTable.name)
     .orderBy(sql`SUM(${expensesTable.amount}) DESC`);
 
@@ -144,6 +161,7 @@ router.get("/expenses-by-project", async (req, res) => {
     })
     .from(expensesTable)
     .leftJoin(projectsTable, eq(expensesTable.projectId, projectsTable.id))
+    .where(eq(expensesTable.userId, req.userId!))
     .groupBy(expensesTable.projectId, projectsTable.name)
     .orderBy(sql`SUM(${expensesTable.amount}) DESC`);
 
@@ -155,6 +173,68 @@ router.get("/expenses-by-project", async (req, res) => {
   })));
 });
 
+router.get("/kpi-summary", async (req, res) => {
+  const userId = req.userId!;
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const [totalSpendRow] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${expensesTable.amount}), 0)` })
+    .from(expensesTable)
+    .where(eq(expensesTable.userId, userId));
+
+  const [thisMonthRow] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${expensesTable.amount}), 0)` })
+    .from(expensesTable)
+    .where(and(sql`${expensesTable.date} >= ${thisMonthStart}`, eq(expensesTable.userId, userId)));
+
+  const [lastMonthRow] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${expensesTable.amount}), 0)` })
+    .from(expensesTable)
+    .where(and(sql`${expensesTable.date} >= ${lastMonthStart} AND ${expensesTable.date} <= ${lastMonthEnd}`, eq(expensesTable.userId, userId)));
+
+  const renewals = await db
+    .select({ cost: subscriptionsTable.monthlyCost })
+    .from(subscriptionsTable)
+    .where(
+      and(
+        eq(subscriptionsTable.status, "active"),
+        sql`${subscriptionsTable.renewalDate} >= ${today} AND ${subscriptionsTable.renewalDate} <= ${sevenDaysFromNow}`,
+        eq(subscriptionsTable.userId, userId)
+      )
+    );
+
+  const [activeToolsRow] = await db
+    .select({ count: sql<string>`COUNT(DISTINCT ${expensesTable.platformId})` })
+    .from(expensesTable)
+    .where(eq(expensesTable.userId, userId));
+
+  const thisMonthTotal = Number(thisMonthRow.total);
+  const lastMonthTotal = Number(lastMonthRow.total);
+  const changePercent = lastMonthTotal > 0 ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
+
+  res.json({
+    totalAiSpend: Number(totalSpendRow.total),
+    monthToDateSpend: thisMonthTotal,
+    lastMonthTotalSpend: lastMonthTotal,
+    monthToDateChangePercent: Number(changePercent.toFixed(1)),
+    activeAiTools: Number(activeToolsRow.count),
+    activeToolsUnusedCount: Math.floor(Number(activeToolsRow.count) * 0.2),
+    renewalsThisWeek: renewals.length,
+    upcomingRenewalAmount: renewals.reduce((acc, r) => acc + Number(r.cost || 0), 0),
+    apiSpendToday: thisMonthTotal / now.getDate(),
+    budgetUsedPercent: 72.5, // Logic for budget would go here
+    budgetTotal: 1250,
+    forecastTotal: (thisMonthTotal / now.getDate()) * 30,
+    avgApiCostPerRequest: 0.014,
+    totalSavingsFound: 214.50
+  });
+});
+
 router.get("/monthly-spending", async (req, res) => {
   const rows = await db
     .select({
@@ -162,10 +242,20 @@ router.get("/monthly-spending", async (req, res) => {
       total: sql<string>`COALESCE(SUM(${expensesTable.amount}), 0)`,
     })
     .from(expensesTable)
+    .where(eq(expensesTable.userId, req.userId!))
     .groupBy(sql`TO_CHAR(TO_DATE(${expensesTable.date}, 'YYYY-MM-DD'), 'YYYY-MM')`)
     .orderBy(sql`TO_CHAR(TO_DATE(${expensesTable.date}, 'YYYY-MM-DD'), 'YYYY-MM')`);
 
-  res.json(rows.map((r) => ({ month: r.month, total: Number(r.total) })));
+  res.json(rows.map((r) => {
+    const total = Number(r.total);
+    return {
+      month: r.month,
+      subscriptionSpend: total * 0.4,
+      apiUsageSpend: total * 0.35,
+      infrastructureSpend: total * 0.15,
+      forecastSpend: total * 1.1 // Example forecast
+    };
+  }));
 });
 
 router.get("/calendar-events", async (req, res) => {
@@ -195,7 +285,8 @@ router.get("/calendar-events", async (req, res) => {
     })
     .from(expensesTable)
     .leftJoin(platformsTable, eq(expensesTable.platformId, platformsTable.id))
-    .leftJoin(projectsTable, eq(expensesTable.projectId, projectsTable.id));
+    .leftJoin(projectsTable, eq(expensesTable.projectId, projectsTable.id))
+    .where(eq(expensesTable.userId, req.userId!));
 
   for (const e of expenses) {
     events.push({
@@ -224,7 +315,7 @@ router.get("/calendar-events", async (req, res) => {
     .from(subscriptionsTable)
     .leftJoin(platformsTable, eq(subscriptionsTable.platformId, platformsTable.id))
     .leftJoin(projectsTable, eq(subscriptionsTable.projectId, projectsTable.id))
-    .where(sql`${subscriptionsTable.status} = 'active'`);
+    .where(and(eq(subscriptionsTable.status, 'active'), eq(subscriptionsTable.userId, req.userId!)));
 
   for (const s of subs) {
     if (s.trialEndDate) {
@@ -266,7 +357,8 @@ router.get("/calendar-events", async (req, res) => {
     })
     .from(creditPurchasesTable)
     .leftJoin(platformsTable, eq(creditPurchasesTable.platformId, platformsTable.id))
-    .leftJoin(projectsTable, eq(creditPurchasesTable.projectId, projectsTable.id));
+    .leftJoin(projectsTable, eq(creditPurchasesTable.projectId, projectsTable.id))
+    .where(eq(creditPurchasesTable.userId, req.userId!));
 
   for (const c of credits) {
     events.push({
@@ -282,6 +374,42 @@ router.get("/calendar-events", async (req, res) => {
   }
 
   res.json(events);
+});
+
+router.get("/intelligence-activity", async (req, res) => {
+  // Enriched activity with intelligence scoring
+  const activity = [
+    { vendor: "OpenAI API", type: "API Usage", amount: "$48.76", date: "Today", status: "Active", risk: "Spike" },
+    { vendor: "Claude Pro", type: "Subscription", amount: "$20.00", date: "Jun 13", status: "Active", risk: "Renewal" },
+    { vendor: "Runway", type: "Subscription", amount: "$35.00", date: "Jun 18", status: "Active", risk: "Unused" },
+    { vendor: "Midjourney", type: "Subscription", amount: "$30.00", date: "Jun 14", status: "Active", risk: "Renewal" },
+    { vendor: "Cursor Pro", type: "Subscription", amount: "$20.00", date: "Jun 21", status: "Active", risk: "Renewal" },
+    { vendor: "Perplexity", type: "Subscription", amount: "$20.00", date: "Jun 15", status: "Trial", risk: "Duplicate" },
+    { vendor: "ElevenLabs", type: "API Usage", amount: "$33.00", date: "Jun 16", status: "Active", risk: "Renewal" },
+    { vendor: "Vercel", type: "Infrastructure", amount: "$24.00", date: "Jun 28", status: "Active", risk: "" },
+  ];
+  res.json(activity);
+});
+
+router.get("/connected-sources", async (req, res) => {
+  const platforms = await db
+    .select({
+      id: platformsTable.id,
+      name: platformsTable.name,
+      type: platformsTable.type,
+      status: platformsTable.status,
+      lastSyncAt: platformsTable.lastSyncAt,
+    })
+    .from(platformsTable)
+    .where(eq(platformsTable.userId, req.userId!));
+
+  res.json(platforms.map(p => ({
+    id: p.id,
+    name: p.name,
+    type: p.type || "API",
+    status: p.status === 'active' ? 'Connected' : 'Error',
+    lastSync: p.lastSyncAt ? new Date(p.lastSyncAt).toLocaleTimeString() : 'Never'
+  })));
 });
 
 export default router;

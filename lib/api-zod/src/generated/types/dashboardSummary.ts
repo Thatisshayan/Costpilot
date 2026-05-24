@@ -7,13 +7,18 @@
  */
 
 export interface DashboardSummary {
-  totalSpend: number;
-  thisMonthSpend?: number;
-  lastMonthSpend?: number;
-  totalPlatforms: number;
-  totalProjects: number;
-  activeTrials: number;
-  expiringTrials: number;
-  totalTools: number;
-  totalCredits: number;
+  totalAiSpend: number;
+  monthToDateSpend: number;
+  lastMonthTotalSpend?: number;
+  monthToDateChangePercent: number;
+  activeAiTools: number;
+  activeToolsUnusedCount: number;
+  renewalsThisWeek: number;
+  upcomingRenewalAmount: number;
+  apiSpendToday?: number;
+  budgetUsedPercent?: number;
+  budgetTotal: number;
+  forecastTotal?: number;
+  avgApiCostPerRequest?: number;
+  totalSavingsFound?: number;
 }

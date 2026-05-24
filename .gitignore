@@ -47,3 +47,14 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# environment variables
+.env
+.env.local
+.env.*.local
+
+# build artifacts
+/dist
+/build
+/.next
+/out

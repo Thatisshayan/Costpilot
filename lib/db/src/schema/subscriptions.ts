@@ -3,9 +3,12 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { platformsTable } from "./platforms";
 import { projectsTable } from "./projects";
+import { workspacesTable } from "./workspaces";
 
 export const subscriptionsTable = pgTable("subscriptions", {
   id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  workspaceId: integer("workspace_id").references(() => workspacesTable.id, { onDelete: "set null" }),
   platformId: integer("platform_id").notNull().references(() => platformsTable.id, { onDelete: "cascade" }),
   projectId: integer("project_id").references(() => projectsTable.id, { onDelete: "set null" }),
   planName: text("plan_name").notNull(),

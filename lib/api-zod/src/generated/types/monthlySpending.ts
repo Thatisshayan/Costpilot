@@ -8,5 +8,8 @@
 
 export interface MonthlySpending {
   month: string;
-  total: number;
+  subscriptionSpend: number;
+  apiUsageSpend: number;
+  infrastructureSpend: number;
+  forecastSpend: number;
 }
