@@ -7,6 +7,7 @@ import { WorkspaceProvider } from "@/context/workspace-context";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
+import Analytics from "@/pages/analytics";
 import Dashboard from "@/pages/dashboard";
 import Expenses from "@/pages/expenses";
 import Subscriptions from "@/pages/subscriptions";
