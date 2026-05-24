@@ -30,7 +30,7 @@ import OnboardingWizard from '../components/onboarding/OnboardingWizard';
 import { costpilotMockData, formatCurrency } from '../data/costpilotMockData';
 import { 
   useGetKpiSummary, 
-  useListMonthlySpending, 
+  useGetMonthlySpending, 
   useListSavingsOpportunities, 
   useGetIntelligenceActivity, 
   useListConnectedSources 
@@ -43,7 +43,7 @@ export default function Dashboard() {
 
   // Live Data Hooks
   const { data: liveSummary, isLoading: kpiLoading } = useGetKpiSummary();
-  const { data: liveSpendingTrend, isLoading: trendLoading } = useListMonthlySpending();
+  const { data: liveSpendingTrend, isLoading: trendLoading } = useGetMonthlySpending();
   const { data: liveOpportunities, isLoading: oppsLoading } = useListSavingsOpportunities();
   const { data: liveActivity, isLoading: activityLoading } = useGetIntelligenceActivity();
   const { data: liveSources, isLoading: sourcesLoading } = useListConnectedSources();

@@ -678,6 +678,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
 
+  /dashboard/intelligence-activity:
+    get:
+      operationId: getIntelligenceActivity
+      tags: [dashboard]
+      summary: Get recent intelligence activity
+      responses:
+        "200":
+          description: List of activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    vendor: { type: string }
+                    type: { type: string }
+                    amount: { type: string }
+                    date: { type: string }
+                    status: { type: string }
+                    risk: { type: string }
+
+  /dashboard/connected-sources:
+    get:
+      operationId: listConnectedSources
+      tags: [dashboard]
+      summary: Get status of connected data sources
+      responses:
+        "200":
+          description: List of sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    name: { type: string }
+                    type: { type: string }
+                    status: { type: string }
+                    lastSync: { type: string }
+
   /analytics/export/csv:
     get:
       operationId: exportExpensesCsv
