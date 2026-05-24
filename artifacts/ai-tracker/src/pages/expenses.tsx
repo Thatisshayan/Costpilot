@@ -142,7 +142,7 @@ export default function Expenses() {
     if (!file) return;
 
     try {
-      const result = await uploadReceipt(file);
+      const result = await uploadReceipt({ data: { receipt: file } });
       if (result.success && result.data) {
         const { amount, platform, category, date, description } = result.data;
         
