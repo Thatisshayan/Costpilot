@@ -33,9 +33,12 @@ jobs:
       - name: Build Libraries & Generate API Client
         run: |
           pnpm --filter "@workspace/api-spec" run codegen
-          pnpm run typecheck:libs
+          pnpm -r build
 
       - name: Build Frontend
+        env:
+          NODE_ENV: production
+          BASE_PATH: /Costpilot/
         run: pnpm --filter "@workspace/ai-tracker" run build
 
       - name: Setup Pages
