@@ -19,7 +19,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export function WorkspaceSwitcher({ isCollapsed }: { isCollapsed: boolean }) {
-  const { workspaces } = useListWorkspaces() as any;
+  const { data: workspaces } = useListWorkspaces() as any;
   const { activeWorkspaceId, setActiveWorkspaceId, activeWorkspace } = useWorkspace();
   const createWorkspace = useCreateWorkspace();
   const [isCreating, setIsCreating] = useState(false);
