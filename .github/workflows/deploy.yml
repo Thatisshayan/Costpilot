@@ -20,7 +20,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -28,7 +28,12 @@ jobs:
           version: 9
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build Libraries & Generate API Client
+        run: |
+          pnpm --filter "@workspace/api-spec" run codegen
+          pnpm run typecheck:libs
 
       - name: Build Frontend
         run: pnpm --filter "@workspace/ai-tracker" run build
