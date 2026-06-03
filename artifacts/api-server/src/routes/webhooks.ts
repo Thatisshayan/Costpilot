@@ -4,11 +4,16 @@ import {
   webhooksTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { requireWorkspaceMember } from "../middlewares/authz";
+import { CreateWebhookBody } from "@workspace/api-zod";
+import { processStripeWebhook, processProviderUsage } from "../services/webhook-processor";
+import Stripe from "stripe";
 
 const router = Router();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock");
 
 // List Webhooks
-router.get("/", async (req, res) => {
+router.get("/", requireWorkspaceMember(["owner", "admin", "viewer"]), async (req, res) => {
   const workspaceId = parseInt(req.query.workspaceId as string);
   
   const webhooks = await db
@@ -20,8 +25,9 @@ router.get("/", async (req, res) => {
 });
 
 // Create Webhook
-router.post("/", async (req, res) => {
-  const { workspaceId, type, url, name, events } = req.body;
+router.post("/", requireWorkspaceMember(["owner", "admin"]), async (req, res) => {
+  const body = CreateWebhookBody.parse(req.body);
+  const { workspaceId, type, url, name, events } = body;
 
   const [webhook] = await db
     .insert(webhooksTable)
@@ -37,22 +43,22 @@ router.post("/", async (req, res) => {
   res.status(201).json(webhook);
 });
 
-import { processStripeWebhook, processProviderUsage } from "../services/webhook-processor";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock");
-
-// ... existing routes ...
-
 // Stripe Webhook Endpoint
 router.post("/stripe", async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    // In a real environment, we'd use stripe.webhooks.constructEvent
-    // For the demo, we'll process the body directly if verified by a header
-    event = req.body;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (webhookSecret && sig) {
+      event = stripe.webhooks.constructEvent(
+        (req as any).rawBody || req.body,
+        sig as string,
+        webhookSecret
+      );
+    } else {
+      event = req.body;
+    }
     
     const result = await processStripeWebhook(event);
     res.json(result);

@@ -36,9 +36,11 @@ import type {
   Expense,
   ExpenseInput,
   ExpenseUpdate,
+  GetIntelligenceActivity200Item,
   GpuTelemetry,
   HealthStatus,
   InviteToWorkspaceBody,
+  ListConnectedSources200Item,
   MonthlySpending,
   Platform,
   PlatformExpenseStat,
@@ -63,6 +65,7 @@ import type {
   Tool,
   ToolInput,
   ToolUpdate,
+  UpdateWorkspaceBody,
   UploadReceiptBody,
   ValidateDeploymentBody,
   Webhook,
@@ -2966,6 +2969,160 @@ export function useGetKpiSummary<TData = Awaited<ReturnType<typeof getKpiSummary
 
 
 
+export const getGetIntelligenceActivityUrl = () => {
+
+
+
+
+  return `/api/dashboard/intelligence-activity`
+}
+
+/**
+ * @summary Get recent intelligence activity
+ */
+export const getIntelligenceActivity = async ( options?: RequestInit): Promise<GetIntelligenceActivity200Item[]> => {
+
+  return customFetch<GetIntelligenceActivity200Item[]>(getGetIntelligenceActivityUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetIntelligenceActivityQueryKey = () => {
+    return [
+    `/api/dashboard/intelligence-activity`
+    ] as const;
+    }
+
+
+export const getGetIntelligenceActivityQueryOptions = <TData = Awaited<ReturnType<typeof getIntelligenceActivity>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIntelligenceActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetIntelligenceActivityQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getIntelligenceActivity>>> = ({ signal }) => getIntelligenceActivity({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getIntelligenceActivity>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetIntelligenceActivityQueryResult = NonNullable<Awaited<ReturnType<typeof getIntelligenceActivity>>>
+export type GetIntelligenceActivityQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get recent intelligence activity
+ */
+
+export function useGetIntelligenceActivity<TData = Awaited<ReturnType<typeof getIntelligenceActivity>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIntelligenceActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetIntelligenceActivityQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListConnectedSourcesUrl = () => {
+
+
+
+
+  return `/api/dashboard/connected-sources`
+}
+
+/**
+ * @summary Get status of connected data sources
+ */
+export const listConnectedSources = async ( options?: RequestInit): Promise<ListConnectedSources200Item[]> => {
+
+  return customFetch<ListConnectedSources200Item[]>(getListConnectedSourcesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListConnectedSourcesQueryKey = () => {
+    return [
+    `/api/dashboard/connected-sources`
+    ] as const;
+    }
+
+
+export const getListConnectedSourcesQueryOptions = <TData = Awaited<ReturnType<typeof listConnectedSources>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listConnectedSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListConnectedSourcesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listConnectedSources>>> = ({ signal }) => listConnectedSources({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listConnectedSources>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListConnectedSourcesQueryResult = NonNullable<Awaited<ReturnType<typeof listConnectedSources>>>
+export type ListConnectedSourcesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get status of connected data sources
+ */
+
+export function useListConnectedSources<TData = Awaited<ReturnType<typeof listConnectedSources>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listConnectedSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListConnectedSourcesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getExportExpensesCsvUrl = () => {
 
 
@@ -3189,6 +3346,78 @@ export const useCreateWorkspace = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateWorkspaceMutationOptions(options));
+    }
+
+export const getUpdateWorkspaceUrl = (id: number,) => {
+
+
+
+
+  return `/api/workspaces/${id}`
+}
+
+/**
+ * @summary Update workspace details
+ */
+export const updateWorkspace = async (id: number,
+    updateWorkspaceBody: UpdateWorkspaceBody, options?: RequestInit): Promise<Workspace> => {
+
+  return customFetch<Workspace>(getUpdateWorkspaceUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateWorkspaceBody,)
+  }
+);}
+
+
+
+
+export const getUpdateWorkspaceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWorkspace>>, TError,{id: number;data: BodyType<UpdateWorkspaceBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateWorkspace>>, TError,{id: number;data: BodyType<UpdateWorkspaceBody>}, TContext> => {
+
+const mutationKey = ['updateWorkspace'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateWorkspace>>, {id: number;data: BodyType<UpdateWorkspaceBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateWorkspace(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateWorkspaceMutationResult = NonNullable<Awaited<ReturnType<typeof updateWorkspace>>>
+    export type UpdateWorkspaceMutationBody = BodyType<UpdateWorkspaceBody>
+    export type UpdateWorkspaceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update workspace details
+ */
+export const useUpdateWorkspace = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWorkspace>>, TError,{id: number;data: BodyType<UpdateWorkspaceBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateWorkspace>>,
+        TError,
+        {id: number;data: BodyType<UpdateWorkspaceBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateWorkspaceMutationOptions(options));
     }
 
 export const getListWorkspaceMembersUrl = (id: number,) => {

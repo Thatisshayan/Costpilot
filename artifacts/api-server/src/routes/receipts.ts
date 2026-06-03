@@ -5,7 +5,12 @@ import { db, expensesTable, platformsTable, projectsTable } from "@workspace/db"
 import { logger } from "../lib/logger";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // Limit uploads to 5MB to prevent memory exhaustion / DoS (SEC-10)
+  },
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -71,7 +76,8 @@ router.post("/upload", upload.single("receipt"), async (req, res) => {
 
   } catch (err) {
     logger.error(err, "Failed to parse receipt");
-    res.status(500).json({ error: "Failed to parse receipt", message: (err as Error).message });
+    // Obfuscate underlying vendor API errors to client (SEC-09)
+    res.status(500).json({ error: "Failed to parse receipt", message: "AI scanner service is currently unavailable. Please try again later." });
   }
 });
 

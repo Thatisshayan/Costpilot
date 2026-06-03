@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useListWorkspaces } from "@workspace/api-client-react";
-
-type Workspace = { id: number; name: string; slug: string };
+import { useListWorkspaces, Workspace } from "@workspace/api-client-react";
 
 interface WorkspaceContextType {
   activeWorkspaceId: number | null;

@@ -31,15 +31,24 @@ import { costpilotMockData, formatCurrency } from '../data/costpilotMockData';
 import { 
   useGetKpiSummary, 
   useGetMonthlySpending, 
-  useListSavingsOpportunities 
+  useListSavingsOpportunities,
+  useUpdateWorkspace,
+  getListWorkspacesQueryKey
 } from '@workspace/api-client-react';
+import { useWorkspace } from '../context/workspace-context';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Dashboard() {
+  const qc = useQueryClient();
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
+  const updateWorkspaceMutation = useUpdateWorkspace();
+
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditComplete, setAuditComplete] = useState(false);
-  const [showWizard, setShowWizard] = useState(
-    () => localStorage.getItem("costpilot_onboarding_done") !== "true"
-  );
+  const [wizardDismissed, setWizardDismissed] = useState(false);
+
+  // Show wizard if there's an active workspace, it's not onboarded, and we haven't dismissed it locally
+  const showWizard = activeWorkspace ? (!activeWorkspace.onboarded && !wizardDismissed) : false;
 
   const { data: liveSummary, isLoading: kpiLoading } = useGetKpiSummary();
   const { data: liveSpendingTrend, isLoading: trendLoading } = useGetMonthlySpending();
@@ -91,9 +100,21 @@ export default function Dashboard() {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {showWizard && (
         <OnboardingWizard
-          onComplete={() => {
-            localStorage.setItem("costpilot_onboarding_done", "true");
-            setShowWizard(false);
+          onComplete={async () => {
+            if (!activeWorkspaceId) return;
+            try {
+              setWizardDismissed(true);
+              await updateWorkspaceMutation.mutateAsync({
+                id: activeWorkspaceId,
+                data: { onboarded: true }
+              });
+              localStorage.setItem("costpilot_onboarding_done", "true");
+              qc.invalidateQueries({ queryKey: getListWorkspacesQueryKey() });
+              toast.success("Workspace onboarding completed!");
+            } catch (err) {
+              setWizardDismissed(false);
+              toast.error("Failed to complete onboarding.");
+            }
           }}
         />
       )}

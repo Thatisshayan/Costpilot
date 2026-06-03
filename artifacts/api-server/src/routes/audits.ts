@@ -2,13 +2,18 @@ import { Router } from "express";
 import { db, aiAuditsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireWorkspaceMember } from "../middlewares/authz";
 
 const router = Router();
 
 // Get All Audits
-router.get("/", async (req, res) => {
+router.get("/", requireWorkspaceMember(["owner", "admin", "viewer"]), async (req, res) => {
+  const workspaceId = parseInt(req.query.workspaceId as string);
   try {
-    const audits = await db.select().from(aiAuditsTable);
+    const audits = await db
+      .select()
+      .from(aiAuditsTable)
+      .where(eq(aiAuditsTable.workspaceId, workspaceId));
     res.json(audits);
   } catch (err) {
     logger.error({ err }, "Failed to fetch audits");
@@ -17,9 +22,11 @@ router.get("/", async (req, res) => {
 });
 
 // Run a new scan (Mock)
-router.post("/scan", async (req, res) => {
+router.post("/scan", requireWorkspaceMember(["owner", "admin"]), async (req, res) => {
+  const workspaceId = parseInt(req.body.workspaceId as string);
   try {
     const [newAudit] = await db.insert(aiAuditsTable).values({
+      workspaceId,
       title: "Shadow AI Usage Detected",
       severity: "High",
       status: "Pending",

@@ -1,13 +1,20 @@
 import { Router } from "express";
 import { logger } from "../lib/logger";
+import { z } from "zod";
 
 const router = Router();
 
+const GenerateExportBody = z.object({
+  module: z.string(),
+  format: z.enum(["csv", "pdf"]),
+  dateRange: z.string().optional(),
+});
+
 // Generate Premium PDF/CSV Export
 router.post("/generate", async (req, res) => {
-  const { module, format, dateRange } = req.body;
-
   try {
+    const { module, format, dateRange } = GenerateExportBody.parse(req.body);
+
     logger.info({ module, format, dateRange }, "Generating export");
 
     // Mock generation delay
@@ -20,7 +27,7 @@ router.post("/generate", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Export generation failed");
-    res.status(500).json({ error: "Export engine failure" });
+    throw err;
   }
 });
 

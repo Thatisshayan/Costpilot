@@ -11,6 +11,7 @@ export interface Workspace {
   slug: string;
   ownerId: string;
   createdAt: string;
+  onboarded: boolean;
 }
 
 export interface CreateWorkspaceBody {
@@ -478,6 +479,29 @@ export interface AiAudit {
 
 export type UploadReceiptBody = {
   receipt?: Blob;
+};
+
+export type GetIntelligenceActivity200Item = {
+  vendor?: string;
+  type?: string;
+  amount?: string;
+  date?: string;
+  status?: string;
+  risk?: string;
+};
+
+export type ListConnectedSources200Item = {
+  id?: number;
+  name?: string;
+  type?: string;
+  status?: string;
+  lastSync?: string;
+};
+
+export type UpdateWorkspaceBody = {
+  name?: string;
+  slug?: string;
+  onboarded?: boolean;
 };
 
 export type InviteToWorkspaceBodyRole = typeof InviteToWorkspaceBodyRole[keyof typeof InviteToWorkspaceBodyRole];

@@ -101,6 +101,15 @@ router.get("/forecast", async (req, res) => {
   });
 });
 
+function sanitizeCsvField(val: string | null | undefined): string {
+  if (!val) return "";
+  const trimmed = val.trim();
+  if (trimmed.length > 0 && ["=", "+", "-", "@"].includes(trimmed.charAt(0))) {
+    return `'${trimmed}`;
+  }
+  return trimmed.replace(/"/g, '""'); // Escape double quotes
+}
+
 // 3. Export CSV
 router.get("/export/csv", async (req, res) => {
   const userId = req.userId!;
@@ -112,7 +121,9 @@ router.get("/export/csv", async (req, res) => {
 
   let csv = "ID,Date,Amount,Currency,Description,Category\n";
   for (const e of expenses) {
-    csv += `${e.id},${e.date},${e.amount},${e.currency},"${e.description || ""}","${e.category || ""}"\n`;
+    const descSanitized = sanitizeCsvField(e.description);
+    const catSanitized = sanitizeCsvField(e.category);
+    csv += `${e.id},${e.date},${e.amount},${e.currency},"${descSanitized}","${catSanitized}"\n`;
   }
 
   res.setHeader("Content-Type", "text/csv");

@@ -1,16 +1,37 @@
 import { Router } from "express";
-import { db, pipelineRunsTable, deploymentPoliciesTable } from "@workspace/db";
+import { db, pipelineRunsTable, deploymentPoliciesTable, projectsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireWorkspaceMember } from "../middlewares/authz";
+import { isWorkspaceMember } from "../middlewares/auth";
+import { ValidateDeploymentBody } from "@workspace/api-zod";
 
 const router = Router();
 
 // Validate Deployment (Called by CI/CD Pipeline)
 router.post("/validate", async (req, res) => {
-  const { projectId, pipelineName, repository, branch, estimatedCost = 0 } = req.body;
-
   try {
-    // 1. Fetch policies for this project
+    const { projectId, pipelineName, repository, branch, estimatedCost = 0 } = ValidateDeploymentBody.parse(req.body);
+
+    // 1. Fetch project to identify its workspace context
+    const [project] = await db
+      .select()
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId));
+
+    if (!project || !project.workspaceId) {
+      res.status(404).json({ error: "Not found", message: "Project context not found or invalid" });
+      return;
+    }
+
+    // 2. Authorize that caller is an owner or admin of the project's workspace
+    const authorized = await isWorkspaceMember(project.workspaceId, req.userId!, ["owner", "admin"]);
+    if (!authorized) {
+      res.status(403).json({ error: "Forbidden", message: "Insufficient workspace role to validate deployment" });
+      return;
+    }
+
+    // 3. Fetch policies for this project
     const policies = await db.select()
       .from(deploymentPoliciesTable)
       .where(and(
@@ -21,7 +42,7 @@ router.post("/validate", async (req, res) => {
     let status = "Healthy";
     let reason = "All checks passed";
 
-    // 2. Simple Budget Logic
+    // 4. Simple Budget Logic
     for (const policy of policies) {
       if (policy.ruleType === "budget_threshold" && estimatedCost > Number(policy.threshold)) {
         if (policy.action === "block") {
@@ -35,7 +56,7 @@ router.post("/validate", async (req, res) => {
       }
     }
 
-    // 3. Record Run
+    // 5. Record Run
     await db.insert(pipelineRunsTable).values({
       projectId,
       pipelineName,
@@ -53,20 +74,29 @@ router.post("/validate", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "CI/CD Validation Failed");
-    
-    // Fallback for demo
-    res.json({
-      allowed: true,
-      status: "Healthy",
-      reason: "Simulated Success (DB Offline)",
-    });
+    throw err;
   }
 });
 
 // Get Latest Runs
-router.get("/runs", async (req, res) => {
+router.get("/runs", requireWorkspaceMember(["owner", "admin", "viewer"]), async (req, res) => {
+  const workspaceId = parseInt(req.query.workspaceId as string);
   try {
-    const runs = await db.select().from(pipelineRunsTable).limit(50);
+    const runs = await db
+      .select({
+        id: pipelineRunsTable.id,
+        projectId: pipelineRunsTable.projectId,
+        pipelineName: pipelineRunsTable.pipelineName,
+        repository: pipelineRunsTable.repository,
+        branch: pipelineRunsTable.branch,
+        status: pipelineRunsTable.status,
+        reason: pipelineRunsTable.reason,
+        createdAt: pipelineRunsTable.createdAt,
+      })
+      .from(pipelineRunsTable)
+      .innerJoin(projectsTable, eq(pipelineRunsTable.projectId, projectsTable.id))
+      .where(eq(projectsTable.workspaceId, workspaceId))
+      .limit(50);
     res.json(runs);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch runs" });
@@ -74,12 +104,17 @@ router.get("/runs", async (req, res) => {
 });
 
 // Predictive Forecast (The "Crystal Ball")
-router.get("/forecast", async (req, res) => {
+router.get("/forecast", requireWorkspaceMember(["owner", "admin", "viewer"]), async (req, res) => {
+  const workspaceId = parseInt(req.query.workspaceId as string);
   try {
-    // In a real scenario, this would use an ML model or linear regression
-    // For now, we simulate a predictive analysis based on run frequency
-    const recentRuns = await db.select().from(pipelineRunsTable).limit(10);
-    const runCount = recentRuns.length;
+    const recentRuns = await db
+      .select({
+        id: pipelineRunsTable.id,
+      })
+      .from(pipelineRunsTable)
+      .innerJoin(projectsTable, eq(pipelineRunsTable.projectId, projectsTable.id))
+      .where(eq(projectsTable.workspaceId, workspaceId))
+      .limit(10);
     
     res.json({
       predictedMonthEndSpend: 4280.50,

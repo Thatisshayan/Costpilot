@@ -656,6 +656,33 @@ export const GetKpiSummaryResponse = zod.object({
 
 
 /**
+ * @summary Get recent intelligence activity
+ */
+export const GetIntelligenceActivityResponseItem = zod.object({
+  "vendor": zod.string().optional(),
+  "type": zod.string().optional(),
+  "amount": zod.string().optional(),
+  "date": zod.string().optional(),
+  "status": zod.string().optional(),
+  "risk": zod.string().optional()
+})
+export const GetIntelligenceActivityResponse = zod.array(GetIntelligenceActivityResponseItem)
+
+
+/**
+ * @summary Get status of connected data sources
+ */
+export const ListConnectedSourcesResponseItem = zod.object({
+  "id": zod.number().optional(),
+  "name": zod.string().optional(),
+  "type": zod.string().optional(),
+  "status": zod.string().optional(),
+  "lastSync": zod.string().optional()
+})
+export const ListConnectedSourcesResponse = zod.array(ListConnectedSourcesResponseItem)
+
+
+/**
  * @summary List all workspaces the user belongs to
  */
 export const ListWorkspacesResponseItem = zod.object({
@@ -663,7 +690,8 @@ export const ListWorkspacesResponseItem = zod.object({
   "name": zod.string(),
   "slug": zod.string(),
   "ownerId": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "onboarded": zod.boolean()
 })
 export const ListWorkspacesResponse = zod.array(ListWorkspacesResponseItem)
 
@@ -674,6 +702,29 @@ export const ListWorkspacesResponse = zod.array(ListWorkspacesResponseItem)
 export const CreateWorkspaceBody = zod.object({
   "name": zod.string(),
   "slug": zod.string()
+})
+
+
+/**
+ * @summary Update workspace details
+ */
+export const UpdateWorkspaceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateWorkspaceBody = zod.object({
+  "name": zod.string().optional(),
+  "slug": zod.string().optional(),
+  "onboarded": zod.boolean().optional()
+})
+
+export const UpdateWorkspaceResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "ownerId": zod.string(),
+  "createdAt": zod.string(),
+  "onboarded": zod.boolean()
 })
 
 

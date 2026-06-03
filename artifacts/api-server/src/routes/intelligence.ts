@@ -3,15 +3,16 @@ import { db, expensesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { logger } from "../lib/logger";
+import { PostIntelligenceQueryBody } from "@workspace/api-zod";
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 router.post("/query", async (req, res) => {
-  const { query } = req.body;
-  const userId = req.userId!;
-
   try {
+    const { query } = PostIntelligenceQueryBody.parse(req.body);
+    const userId = req.userId!;
+
     // 1. Fetch context scoped to the authenticated user
     const recentExpenses = await db.select()
       .from(expensesTable)

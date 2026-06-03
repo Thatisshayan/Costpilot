@@ -12,4 +12,5 @@ export interface Workspace {
   slug: string;
   ownerId: string;
   createdAt: string;
+  onboarded: boolean;
 }

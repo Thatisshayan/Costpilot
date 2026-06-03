@@ -12,7 +12,7 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  // Log the error
+  // Log the full detailed error for server side observability
   req.log?.error(err, `Error processing request ${req.method} ${req.url}`);
 
   // Handle Zod validation errors
@@ -29,12 +29,20 @@ export const errorHandler = (
     return;
   }
 
-  // Handle custom known errors
+  const isProduction = process.env.NODE_ENV === "production";
   const statusCode = err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
+  
+  // Obfuscate 500 errors or database leaks in production
+  let message = err.message || "Internal Server Error";
+  let errorName = err.name || "InternalServerError";
+
+  if (statusCode === 500 && isProduction) {
+    message = "An unexpected error occurred. Please try again later.";
+    errorName = "InternalServerError";
+  }
 
   res.status(statusCode).json({
-    error: err.name || "InternalServerError",
+    error: errorName,
     message,
     ...(process.env.NODE_ENV === "development" ? { stack: err.stack } : {}),
   });
