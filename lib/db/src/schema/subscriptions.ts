@@ -1,6 +1,6 @@
 import { pgTable, serial, text, timestamp, integer, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { platformsTable } from "./platforms";
 import { projectsTable } from "./projects";
 import { workspacesTable } from "./workspaces";
@@ -23,6 +23,5 @@ export const subscriptionsTable = pgTable("subscriptions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertSubscriptionSchema = createInsertSchema(subscriptionsTable).omit({ id: true, createdAt: true });
-export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type InsertSubscription = typeof subscriptionsTable.$inferInsert;
 export type Subscription = typeof subscriptionsTable.$inferSelect;
