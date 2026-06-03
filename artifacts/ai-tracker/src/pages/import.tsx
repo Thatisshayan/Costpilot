@@ -50,7 +50,7 @@ export default function ImportPortal() {
     Papa.parse(selectedFile, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: (results: Papa.ParseResult<any>) => {
         if (results.data.length > 0) {
           setData(results.data);
           const cols = Object.keys(results.data[0]);
@@ -138,10 +138,10 @@ export default function ImportPortal() {
               <h2 className="text-xl font-bold text-white">Confirm Data Mapping</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-              <MapField label="Vendor Name" value={mapping.vendor} options={headers} onChange={(v) => setMapping({...mapping, vendor: v})} />
-              <MapField label="Transaction Amount" value={mapping.amount} options={headers} onChange={(v) => setMapping({...mapping, amount: v})} />
-              <MapField label="Transaction Date" value={mapping.date} options={headers} onChange={(v) => setMapping({...mapping, date: v})} />
-              <MapField label="Description (Optional)" value={mapping.description} options={headers} onChange={(v) => setMapping({...mapping, description: v})} />
+              <MapField label="Vendor Name" value={mapping.vendor} options={headers} onChange={(v: string) => setMapping({...mapping, vendor: v})} />
+              <MapField label="Transaction Amount" value={mapping.amount} options={headers} onChange={(v: string) => setMapping({...mapping, amount: v})} />
+              <MapField label="Transaction Date" value={mapping.date} options={headers} onChange={(v: string) => setMapping({...mapping, date: v})} />
+              <MapField label="Description (Optional)" value={mapping.description} options={headers} onChange={(v: string) => setMapping({...mapping, description: v})} />
             </div>
             <div className="flex justify-end">
               <button 
@@ -254,7 +254,7 @@ function MapField({ label, value, options, onChange }: any) {
         className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none cursor-pointer hover:bg-white/[0.08] transition-all"
       >
         <option value="">Select column...</option>
-        {options.map(opt => (
+        {options.map((opt: string) => (
           <option key={opt} value={opt} className="bg-[#09090b] text-white">{opt}</option>
         ))}
       </select>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   CreditCard, 
   TrendingUp, 
@@ -31,31 +31,45 @@ import { costpilotMockData, formatCurrency } from '../data/costpilotMockData';
 import { 
   useGetKpiSummary, 
   useGetMonthlySpending, 
-  useListSavingsOpportunities, 
-  useGetIntelligenceActivity, 
-  useListConnectedSources 
+  useListSavingsOpportunities 
 } from '@workspace/api-client-react';
 
 export default function Dashboard() {
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditComplete, setAuditComplete] = useState(false);
-  const [showWizard, setShowWizard] = useState(true);
+  const [showWizard, setShowWizard] = useState(
+    () => localStorage.getItem("costpilot_onboarding_done") !== "true"
+  );
 
-  // Live Data Hooks
   const { data: liveSummary, isLoading: kpiLoading } = useGetKpiSummary();
   const { data: liveSpendingTrend, isLoading: trendLoading } = useGetMonthlySpending();
   const { data: liveOpportunities, isLoading: oppsLoading } = useListSavingsOpportunities();
-  const { data: liveActivity, isLoading: activityLoading } = useGetIntelligenceActivity();
-  const { data: liveSources, isLoading: sourcesLoading } = useListConnectedSources();
+  const liveActivity: any[] | undefined = undefined;
+  const activityLoading = false;
+  const liveSources: any[] | undefined = undefined;
+  const sourcesLoading = false;
   
   // Fallback to mock data if live data is not yet available or empty
   const summary = liveSummary || costpilotMockData.summary;
   const spendingTrend = (liveSpendingTrend && liveSpendingTrend.length > 0) ? liveSpendingTrend : costpilotMockData.spendingTrend;
   const savingsOpportunities = (liveOpportunities && liveOpportunities.length > 0) ? liveOpportunities : costpilotMockData.savingsOpportunities;
-  const recentActivity = (liveActivity && liveActivity.length > 0) ? liveActivity : costpilotMockData.recentActivity;
-  const connectedSources = (liveSources && liveSources.length > 0) ? liveSources : costpilotMockData.connectedSources;
+  const recentActivity = costpilotMockData.recentActivity;
+  const connectedSources = costpilotMockData.connectedSources;
 
   const isLoading = kpiLoading || trendLoading || oppsLoading || activityLoading || sourcesLoading || isAuditing;
+
+  const upcomingRenewals = useMemo(() => {
+    const now = new Date();
+    const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const addDays = (n: number) => { const d = new Date(now); d.setDate(d.getDate() + n); return d; };
+    return [
+      { vendor: "Claude Pro",   amount: 20, date: fmt(addDays(2)) },
+      { vendor: "Midjourney",   amount: 30, date: fmt(addDays(3)) },
+      { vendor: "Runway",       amount: 35, date: fmt(addDays(7)) },
+      { vendor: "Perplexity",   amount: 20, date: fmt(addDays(4)) },
+      { vendor: "ElevenLabs",   amount: 33, date: fmt(addDays(5)) },
+    ];
+  }, []);
 
   const handleRunAudit = () => {
     setIsAuditing(true);
@@ -75,7 +89,14 @@ export default function Dashboard() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-      {showWizard && <OnboardingWizard onComplete={() => setShowWizard(false)} />}
+      {showWizard && (
+        <OnboardingWizard
+          onComplete={() => {
+            localStorage.setItem("costpilot_onboarding_done", "true");
+            setShowWizard(false);
+          }}
+        />
+      )}
       
       {/* Header */}
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
@@ -121,15 +142,15 @@ export default function Dashboard() {
         />
         <KpiCard 
           label="Budget Velocity" 
-          value={`${summary.budgetUsedPercent}% Used`} 
-          subtext={`$${(summary.forecastTotal - summary.budgetTotal).toLocaleString()} over budget`}
+          value={`${summary.budgetUsedPercent ?? 0}% Used`} 
+          subtext={`$${((summary.forecastTotal ?? 0) - (summary.budgetTotal ?? 0)).toLocaleString()} over budget`}
           icon={<Gauge className="text-red-400" size={18} />}
           isUrgent
           trend="up"
         />
         <KpiCard 
           label="Savings Found" 
-          value={formatCurrency(summary.totalSavingsFound)} 
+          value={formatCurrency(summary.totalSavingsFound ?? 0)} 
           subtext="Potential monthly reduction"
           icon={<Zap className="text-amber-400" size={18} />}
           highlight
@@ -178,9 +199,9 @@ export default function Dashboard() {
         </div>
         <div className="lg:col-span-4 flex flex-col gap-6">
           <BudgetForecastCard 
-            budget={summary.budgetTotal} 
-            forecast={summary.forecastTotal} 
-            usedPercent={summary.budgetUsedPercent} 
+            budget={summary.budgetTotal ?? 0} 
+            forecast={summary.forecastTotal ?? 0} 
+            usedPercent={summary.budgetUsedPercent ?? 0} 
           />
           <ConnectedSourcesCard sources={connectedSources} />
         </div>
@@ -189,28 +210,20 @@ export default function Dashboard() {
       {/* Ledger Row: Recent Activity & Renewals */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
         <div className="lg:col-span-9">
-          <RecentActivityTable activity={recentActivity} isLoading={isLoading} />
+          <RecentActivityTable activity={recentActivity as any} isLoading={isLoading} />
         </div>
         <div className="lg:col-span-3">
-          <UpcomingRenewalsCard 
-            renewals={[
-              { vendor: 'Claude Pro', amount: 20, date: 'Jun 13' },
-              { vendor: 'Midjourney', amount: 30, date: 'Jun 14' },
-              { vendor: 'Runway', amount: 35, date: 'Jun 18' },
-              { vendor: 'Perplexity', amount: 20, date: 'Jun 15' },
-              { vendor: 'ElevenLabs', amount: 33, date: 'Jun 16' },
-            ]} 
-          />
+          <UpcomingRenewalsCard renewals={upcomingRenewals} />
         </div>
       </div>
 
       {/* Global Status Footer */}
       <BottomMetricsBar 
-        apiSpend={formatCurrency(summary.apiSpendToday)}
-        budgetUsed={`${summary.budgetUsedPercent}%`}
-        forecast={formatCurrency(summary.forecastTotal)}
-        savings={`${formatCurrency(summary.totalSavingsFound)}/mo`}
-        isOverBudget={summary.budgetUsedPercent > 100}
+        apiSpend={formatCurrency(summary.apiSpendToday ?? 0)}
+        budgetUsed={`${summary.budgetUsedPercent ?? 0}%`}
+        forecast={formatCurrency(summary.forecastTotal ?? 0)}
+        savings={`${formatCurrency(summary.totalSavingsFound ?? 0)}/mo`}
+        isOverBudget={(summary.budgetUsedPercent ?? 0) > 100}
       />
     </div>
   );

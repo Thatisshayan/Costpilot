@@ -177,7 +177,7 @@ export default function Calendar() {
                               {cfg.label}
                               {event.urgent && <span className="text-red-400 font-bold">!</span>}
                             </div>
-                            {event.amount !== null && event.amount > 0 && (
+                            {event.amount !== null && event.amount !== undefined && event.amount > 0 && (
                               <span className="font-mono text-sm font-bold">${event.amount.toFixed(2)}</span>
                             )}
                           </div>

@@ -14,11 +14,11 @@ import {
   Webhook
 } from 'lucide-react';
 
-import { useGetCicdRuns } from '@workspace/api-client-react';
+import { useListCicdRuns } from '@workspace/api-client-react';
 import { formatCurrencyGlobal } from '../lib/currency';
 
 export default function CicdIntegration() {
-  const { data: serverRuns, isLoading } = useGetCicdRuns();
+  const { data: serverRuns, isLoading } = useListCicdRuns();
 
   const fallbackPipelines = [
     { id: 1, name: 'Production-Deploy', repo: 'costpilot-core', status: 'Blocked', reason: `Budget Overrun (+${formatCurrencyGlobal(420)})`, type: 'GitHub Actions' },
@@ -63,7 +63,7 @@ export default function CicdIntegration() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-8 space-y-6">
           <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2">Active Pipeline Checks</h2>
-          {pipelines.map((p) => (
+          {pipelines.map((p: any) => (
             <div key={p.id} className="bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] p-8 backdrop-blur-md hover:bg-white/[0.03] transition-all group relative overflow-hidden">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-6">

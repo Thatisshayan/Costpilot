@@ -1,16 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useListWorkspaces } from "@workspace/api-client-react";
 
+type Workspace = { id: number; name: string; slug: string };
+
 interface WorkspaceContextType {
   activeWorkspaceId: number | null;
   setActiveWorkspaceId: (id: number | null) => void;
-  activeWorkspace: any | null;
+  activeWorkspace: Workspace | null;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const { data: workspaces } = useListWorkspaces();
+  const { data: workspaces } = useListWorkspaces() as { data: Workspace[] | undefined };
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [workspaces, activeWorkspaceId]);
 
-  const activeWorkspace = workspaces?.find((w: any) => w.id === activeWorkspaceId) || null;
+  const activeWorkspace = workspaces?.find((w) => w.id === activeWorkspaceId) ?? null;
 
   return (
     <WorkspaceContext.Provider value={{ activeWorkspaceId, setActiveWorkspaceId, activeWorkspace }}>

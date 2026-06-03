@@ -24,15 +24,15 @@ import { toast } from "sonner";
 type CreditPurchase = {
   id: number;
   platformId: number;
-  platformName: string | null;
-  projectId: number | null;
-  projectName: string | null;
+  platformName?: string | null;
+  projectId?: number | null;
+  projectName?: string | null;
   amount: number;
-  credits: number | null;
-  currency: string;
-  description: string | null;
+  credits?: number | null;
+  currency?: string;
+  description?: string | null;
   purchaseDate: string;
-  createdAt: string;
+  createdAt?: string;
 };
 
 type FormState = {
@@ -87,7 +87,7 @@ export default function Credits() {
       projectId: c.projectId ? String(c.projectId) : "",
       amount: String(c.amount),
       credits: c.credits !== null ? String(c.credits) : "",
-      currency: c.currency,
+      currency: c.currency ?? "USD",
       description: c.description ?? "",
       purchaseDate: c.purchaseDate,
     });
@@ -224,7 +224,7 @@ export default function Credits() {
                       {c.description || <span className="text-slate-600">No description</span>}
                     </td>
                     <td className="py-4 text-right font-mono font-medium text-slate-300">
-                      {c.credits !== null ? c.credits.toLocaleString() : <span className="text-slate-600">—</span>}
+                      {c.credits !== null && c.credits !== undefined ? c.credits.toLocaleString() : <span className="text-slate-600">—</span>}
                     </td>
                     <td className="py-4 text-slate-400 font-medium">
                       {format(new Date(c.purchaseDate + "T12:00:00"), "MMM d, yyyy")}

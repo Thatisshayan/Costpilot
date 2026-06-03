@@ -15,12 +15,13 @@ import {
   HardDrive,
   Loader2
 } from 'lucide-react';
-import { useGetRemediation, usePostRemediationExecute } from '@workspace/api-client-react';
+import { useListRemediationActions, useExecuteRemediation } from '@workspace/api-client-react';
+import { toast } from 'sonner';
 import { formatCurrencyGlobal } from '../lib/currency';
 
 export default function RemediationCenter() {
-  const { data: serverActions, isLoading } = useGetRemediation();
-  const { mutate: executeAction, isPending } = usePostRemediationExecute();
+  const { data: serverActions, isLoading } = useListRemediationActions();
+  const { mutate: executeAction, isPending } = useExecuteRemediation();
 
   // Merge static UI data with live backend data if available, or fallback to static for demo
   const fallbackActions = [

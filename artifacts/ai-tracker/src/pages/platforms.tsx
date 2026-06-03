@@ -22,12 +22,12 @@ import { toast } from "sonner";
 type Platform = {
   id: number;
   name: string;
-  category: string | null;
-  website: string | null;
-  logoUrl: string | null;
-  apiKey: string | null;
-  notes: string | null;
-  createdAt: string;
+  category?: string | null;
+  website?: string | null;
+  logoUrl?: string | null;
+  apiKey?: string | null;
+  notes?: string | null;
+  createdAt?: string;
 };
 
 type FormState = {

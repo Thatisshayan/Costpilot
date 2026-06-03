@@ -22,8 +22,8 @@ export default function Subscriptions() {
           {subscriptions.map((sub) => {
             const isTrial = sub.planType === "free_trial";
             const daysLeft = sub.daysUntilExpiry;
-            const isExpiringSoon = isTrial && daysLeft !== null && daysLeft <= 7;
-            const isExpiringVerySoon = isTrial && daysLeft !== null && daysLeft <= 3;
+            const isExpiringSoon = isTrial && daysLeft !== null && daysLeft !== undefined && daysLeft <= 7;
+            const isExpiringVerySoon = isTrial && daysLeft !== null && daysLeft !== undefined && daysLeft <= 3;
 
             return (
               <div 

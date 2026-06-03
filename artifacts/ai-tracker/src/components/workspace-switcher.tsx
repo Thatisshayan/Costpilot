@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 
 export function WorkspaceSwitcher({ isCollapsed }: { isCollapsed: boolean }) {
@@ -23,16 +23,19 @@ export function WorkspaceSwitcher({ isCollapsed }: { isCollapsed: boolean }) {
   const { activeWorkspaceId, setActiveWorkspaceId, activeWorkspace } = useWorkspace();
   const createWorkspace = useCreateWorkspace();
   const [isCreating, setIsCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleCreate = async () => {
-    const name = window.prompt("Workspace Name:");
+    const name = newName.trim();
     if (!name) return;
     const slug = name.toLowerCase().replace(/\s+/g, "-");
-    
     try {
       await createWorkspace.mutateAsync({ data: { name, slug } });
       toast.success("Workspace created!");
-    } catch (err) {
+      setNewName("");
+      setIsCreating(false);
+    } catch {
       toast.error("Failed to create workspace.");
     }
   };
@@ -71,13 +74,37 @@ export function WorkspaceSwitcher({ isCollapsed }: { isCollapsed: boolean }) {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator className="bg-white/[0.05]" />
-          <DropdownMenuItem 
-            onClick={handleCreate}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg focus:bg-indigo-500/10 text-indigo-400 cursor-pointer"
-          >
-            <Plus size={16} />
-            <span className="font-medium text-sm">Create Workspace</span>
-          </DropdownMenuItem>
+          {isCreating ? (
+            <div className="px-3 py-2.5 flex items-center gap-2">
+              <input
+                ref={inputRef}
+                autoFocus
+                className="flex-1 bg-white/[0.06] border border-white/[0.12] rounded-lg px-2.5 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="Workspace name..."
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreate();
+                  if (e.key === "Escape") { setIsCreating(false); setNewName(""); }
+                }}
+              />
+              <button
+                onClick={handleCreate}
+                disabled={!newName.trim() || createWorkspace.isPending}
+                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition-all"
+              >
+                {createWorkspace.isPending ? "…" : "Add"}
+              </button>
+            </div>
+          ) : (
+            <DropdownMenuItem
+              onClick={() => setIsCreating(true)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg focus:bg-indigo-500/10 text-indigo-400 cursor-pointer"
+            >
+              <Plus size={16} />
+              <span className="font-medium text-sm">Create Workspace</span>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

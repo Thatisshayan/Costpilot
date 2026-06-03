@@ -25,16 +25,16 @@ import { toast } from "sonner";
 
 type Expense = {
   id: number;
-  platformId: number | null;
-  platformName: string | null;
-  projectId: number | null;
-  projectName: string | null;
+  platformId?: number | null;
+  platformName?: string | null;
+  projectId?: number | null;
+  projectName?: string | null;
   amount: number;
-  currency: string;
-  description: string | null;
-  category: string | null;
+  currency?: string;
+  description?: string | null;
+  category?: string | null;
   date: string;
-  createdAt: string;
+  createdAt?: string;
 };
 
 type FormState = {
@@ -89,7 +89,7 @@ export default function Expenses() {
       platformId: e.platformId ? String(e.platformId) : "",
       projectId: e.projectId ? String(e.projectId) : "",
       amount: String(e.amount),
-      currency: e.currency,
+      currency: e.currency ?? "USD",
       description: e.description ?? "",
       category: e.category ?? "API Usage",
       date: e.date,
