@@ -9,7 +9,8 @@ import {
   DeletePlatformParams,
 } from "@workspace/api-zod";
 import syncRouter from "./sync";
-import { encrypt } from "../lib/encryption";
+import { encrypt, decrypt } from "../lib/kms-vault";
+import { isWorkspaceMember } from "../middlewares/auth";
 
 const router = Router();
 
@@ -19,20 +20,37 @@ const maskApiKey = (key: string | null) => {
   // If it's already masked or very short, just return a generic mask
   if (key.length < 8) return "********";
   // Usually API keys have a prefix like sk- or sk-proj-
-  const parts = key.split(":"); // Our encryption format is iv:tag:content
-  if (parts.length === 3) {
+  if (key.startsWith("{") || key.split(":").length >= 3) {
      return "••••••••••••••••";
   }
   return "********";
 };
 
 router.get("/", async (req, res) => {
+  const reveal = req.query.reveal === "true" || req.headers["x-reveal-key"] === "true";
   const platforms = await db.select().from(platformsTable).where(eq(platformsTable.userId, req.userId!)).orderBy(platformsTable.name);
-  res.json(platforms.map((p) => ({ 
-    ...p, 
-    apiKey: p.apiKey ? "••••••••" : null,
-    createdAt: p.createdAt.toISOString() 
-  })));
+  
+  const results = [];
+  for (const p of platforms) {
+    let apiKey: string | null = null;
+    if (p.apiKey) {
+      if (reveal) {
+        const authorized = p.workspaceId 
+          ? await isWorkspaceMember(p.workspaceId, req.userId!, ["owner", "admin"])
+          : true;
+        
+        apiKey = authorized ? decrypt(p.apiKey) : "••••••••";
+      } else {
+        apiKey = "••••••••";
+      }
+    }
+    results.push({
+      ...p,
+      apiKey,
+      createdAt: p.createdAt.toISOString()
+    });
+  }
+  res.json(results);
 });
 
 router.post("/", async (req, res) => {
@@ -50,14 +68,26 @@ router.post("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   const { id } = GetPlatformParams.parse({ id: Number(req.params.id) });
+  const reveal = req.query.reveal === "true" || req.headers["x-reveal-key"] === "true";
   const [platform] = await db.select().from(platformsTable).where(and(eq(platformsTable.id, id), eq(platformsTable.userId, req.userId!)));
   if (!platform) {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  let apiKey: string | null = null;
+  if (platform.apiKey) {
+    if (reveal) {
+      const authorized = platform.workspaceId
+        ? await isWorkspaceMember(platform.workspaceId, req.userId!, ["owner", "admin"])
+        : true;
+      apiKey = authorized ? decrypt(platform.apiKey) : "••••••••";
+    } else {
+      apiKey = "••••••••";
+    }
+  }
   res.json({ 
     ...platform, 
-    apiKey: platform.apiKey ? "••••••••" : null,
+    apiKey,
     createdAt: platform.createdAt.toISOString() 
   });
 });

@@ -18,6 +18,7 @@ import telemetryRouter from "./telemetry";
 import auditsRouter from "./audits";
 import exportsRouter from "./exports";
 import provisioningRouter from "./provisioning";
+import syncMobileRouter from "./sync-mobile";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use("/telemetry", telemetryRouter);
 router.use("/audits", auditsRouter);
 router.use("/exports", exportsRouter);
 router.use("/provisioning", provisioningRouter);
+router.use("/sync/mobile", syncMobileRouter);
 
 export default router;

@@ -1,5 +1,5 @@
 import { db, platformsTable, expensesTable } from "@workspace/db";
-import { decrypt } from "./encryption";
+import { decrypt } from "./kms-vault";
 import { logger } from "./logger";
 import { eq } from "drizzle-orm";
 
