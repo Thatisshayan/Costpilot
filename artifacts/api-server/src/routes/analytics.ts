@@ -4,7 +4,6 @@ import {
   expensesTable,
   platformsTable,
   creditPurchasesTable,
-  creditsTable,
 } from "@workspace/db";
 import { eq, sql, and, desc, gte } from "drizzle-orm";
 import PDFDocument from "pdfkit";
@@ -36,10 +35,10 @@ router.get("/smart-suggestions", async (req, res) => {
 
   // Logic B: Unused Credits
   const lowCredits = await db
-    .select({ platformName: platformsTable.name, amount: creditsTable.amount })
-    .from(creditsTable)
-    .leftJoin(platformsTable, eq(creditsTable.platformId, platformsTable.id))
-    .where(and(eq(creditsTable.userId, userId), sql`${creditsTable.amount} < 5`));
+    .select({ platformName: platformsTable.name, amount: creditPurchasesTable.amount })
+    .from(creditPurchasesTable)
+    .leftJoin(platformsTable, eq(creditPurchasesTable.platformId, platformsTable.id))
+    .where(and(eq(creditPurchasesTable.userId, userId), sql`${creditPurchasesTable.amount} < 5`));
 
   for (const credit of lowCredits) {
     suggestions.push({
@@ -75,10 +74,10 @@ router.get("/forecast", async (req, res) => {
 
   // Credit Exhaustion Prediction
   const userCredits = await db
-    .select({ platformName: platformsTable.name, balance: creditsTable.amount })
-    .from(creditsTable)
-    .leftJoin(platformsTable, eq(creditsTable.platformId, platformsTable.id))
-    .where(eq(creditsTable.userId, userId));
+    .select({ platformName: platformsTable.name, balance: creditPurchasesTable.amount })
+    .from(creditPurchasesTable)
+    .leftJoin(platformsTable, eq(creditPurchasesTable.platformId, platformsTable.id))
+    .where(eq(creditPurchasesTable.userId, userId));
 
   const creditExhaustionDates = userCredits.map(c => {
     const balance = Number(c.balance);

@@ -51,7 +51,10 @@ router.post("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   const { id } = GetPlatformParams.parse({ id: Number(req.params.id) });
   const [platform] = await db.select().from(platformsTable).where(and(eq(platformsTable.id, id), eq(platformsTable.userId, req.userId!)));
-  if (!platform) return res.status(404).json({ error: "Not found" });
+  if (!platform) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   res.json({ 
     ...platform, 
     apiKey: platform.apiKey ? "••••••••" : null,
@@ -68,7 +71,10 @@ router.patch("/:id", async (req, res) => {
   }
 
   const [platform] = await db.update(platformsTable).set(body).where(and(eq(platformsTable.id, id), eq(platformsTable.userId, req.userId!))).returning();
-  if (!platform) return res.status(404).json({ error: "Not found" });
+  if (!platform) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   res.json({ 
     ...platform, 
     apiKey: platform.apiKey ? "••••••••" : null,

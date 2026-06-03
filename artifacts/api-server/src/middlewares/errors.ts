@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodError } from "zod/v4";
+import { ZodError } from "zod";
 
 export interface CustomError extends Error {
   statusCode?: number;
@@ -11,21 +11,22 @@ export const errorHandler = (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   // Log the error
   req.log?.error(err, `Error processing request ${req.method} ${req.url}`);
 
   // Handle Zod validation errors
   if (err instanceof ZodError) {
-    return res.status(400).json({
+    res.status(400).json({
       error: "Bad Request",
       message: "Validation failed",
-      details: err.errors.map((e) => ({
+      details: err.issues.map((e: any) => ({
         path: e.path.join("."),
         message: e.message,
         code: e.code,
       })),
     });
+    return;
   }
 
   // Handle custom known errors

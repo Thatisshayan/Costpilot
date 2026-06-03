@@ -6,6 +6,7 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string;
+      userEmail?: string;
       auth?: any;
     }
   }
@@ -31,15 +32,15 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
       return next();
     }
 
-    // Fallback for development/testing if enabled
-    const simulatedUserId = req.headers["x-user-id"] as string;
-    if (simulatedUserId) {
-      req.userId = simulatedUserId;
-      return next();
+    // Development-only bypass via header (never enabled in production)
+    if (process.env.NODE_ENV !== "production") {
+      const simulatedUserId = req.headers["x-user-id"] as string;
+      if (simulatedUserId) {
+        req.userId = simulatedUserId;
+        return next();
+      }
     }
 
-    // Final fallback to ensure the UI remains functional during transition
-    req.userId = "default_user";
-    next();
+    return res.status(401).json({ error: "Unauthorized" });
   });
 };

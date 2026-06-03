@@ -8,6 +8,11 @@ import {
   UpdateExpenseParams,
   DeleteExpenseParams,
 } from "@workspace/api-zod";
+import { z } from "zod";
+
+const ImportBatchBody = z.object({
+  transactions: z.array(z.any()).min(1).max(500),
+});
 
 const router = Router();
 
@@ -80,7 +85,10 @@ router.get("/:id", async (req, res) => {
     .leftJoin(platformsTable, eq(expensesTable.platformId, platformsTable.id))
     .leftJoin(projectsTable, eq(expensesTable.projectId, projectsTable.id))
     .where(and(eq(expensesTable.id, id), eq(expensesTable.userId, req.userId!)));
-  if (!expense) return res.status(404).json({ error: "Not found" });
+  if (!expense) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   res.json({ ...expense, amount: Number(expense.amount), createdAt: expense.createdAt.toISOString() });
 });
 
@@ -94,7 +102,10 @@ router.patch("/:id", async (req, res) => {
     .set(updateData)
     .where(and(eq(expensesTable.id, id), eq(expensesTable.userId, req.userId!)))
     .returning();
-  if (!expense) return res.status(404).json({ error: "Not found" });
+  if (!expense) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   const [platform] = expense.platformId
     ? await db.select().from(platformsTable).where(eq(platformsTable.id, expense.platformId))
     : [null];
@@ -118,25 +129,20 @@ router.delete("/:id", async (req, res) => {
 
 // Bulk Import Transactions
 router.post("/import-batch", async (req, res) => {
-  const { transactions } = req.body;
+  const { transactions } = ImportBatchBody.parse(req.body);
   const userId = req.userId!;
-  
-  if (!Array.isArray(transactions)) {
-    return res.status(400).json({ error: "Transactions must be an array" });
-  }
 
-  try {
-    const formatted = transactions.map(t => ({
-      ...t,
+  const formatted = transactions.map((t: any) => {
+    const parsed = CreateExpenseBody.parse(t);
+    return {
+      ...parsed,
       userId,
-      amount: t.amount?.toString(),
-    }));
+      amount: String(parsed.amount),
+    };
+  });
 
-    const inserted = await db.insert(expensesTable).values(formatted).returning();
-    res.status(201).json({ count: inserted.length });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to import batch" });
-  }
+  const inserted = await db.insert(expensesTable).values(formatted).returning();
+  res.status(201).json({ count: inserted.length });
 });
 
 export default router;

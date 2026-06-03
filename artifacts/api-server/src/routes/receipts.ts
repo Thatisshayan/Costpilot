@@ -13,12 +13,20 @@ const openai = new OpenAI({
 
 router.post("/upload", upload.single("receipt"), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
+    res.status(400).json({ error: "No file uploaded" });
+    return;
   }
 
   try {
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const mimeType = req.file.mimetype || "image/jpeg";
+    if (!allowedMimeTypes.includes(mimeType)) {
+      res.status(400).json({ error: "Unsupported image type. Use JPEG, PNG, WebP, or GIF." });
+      return;
+    }
+
     const base64Image = req.file.buffer.toString("base64");
-    
+
     logger.info("Parsing receipt with OpenAI Vision...");
 
     const response = await openai.chat.completions.create({
@@ -31,7 +39,7 @@ router.post("/upload", upload.single("receipt"), async (req, res) => {
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`,
+                url: `data:${mimeType};base64,${base64Image}`,
               },
             },
           ],

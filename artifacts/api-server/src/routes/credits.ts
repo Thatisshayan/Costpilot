@@ -83,7 +83,10 @@ router.patch("/:id", async (req, res) => {
     .set(updateData)
     .where(and(eq(creditPurchasesTable.id, id), eq(creditPurchasesTable.userId, req.userId!)))
     .returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   const [platform] = await db.select().from(platformsTable).where(eq(platformsTable.id, row.platformId));
   const [project] = row.projectId
     ? await db.select().from(projectsTable).where(eq(projectsTable.id, row.projectId))

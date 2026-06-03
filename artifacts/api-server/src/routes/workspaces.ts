@@ -47,7 +47,7 @@ router.post("/", async (req, res) => {
     workspaceId: workspace.id,
     userId,
     role: "owner",
-    email: req.userEmail || "unknown@example.com", // Assuming Clerk provides email
+    email: (req as any).userEmail || "unknown@example.com", // Assuming Clerk provides email
   });
 
   res.status(201).json(workspace);

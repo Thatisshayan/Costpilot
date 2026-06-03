@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, expensesTable } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { logger } from "../lib/logger";
 
@@ -8,12 +8,14 @@ const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 router.post("/query", async (req, res) => {
-  const { query, workspaceId = 1 } = req.body;
+  const { query } = req.body;
+  const userId = req.userId!;
 
   try {
-    // 1. Fetch some context from the DB
+    // 1. Fetch context scoped to the authenticated user
     const recentExpenses = await db.select()
       .from(expensesTable)
+      .where(eq(expensesTable.userId, userId))
       .limit(10);
 
     // 2. Ask OpenAI to interpret the query based on the data

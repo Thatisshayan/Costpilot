@@ -107,7 +107,10 @@ router.get("/:id", async (req, res) => {
     .leftJoin(platformsTable, eq(subscriptionsTable.platformId, platformsTable.id))
     .leftJoin(projectsTable, eq(subscriptionsTable.projectId, projectsTable.id))
     .where(and(eq(subscriptionsTable.id, id), eq(subscriptionsTable.userId, req.userId!)));
-  if (!sub) return res.status(404).json({ error: "Not found" });
+  if (!sub) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   res.json(formatSub(sub));
 });
 
@@ -121,7 +124,10 @@ router.patch("/:id", async (req, res) => {
     .set(updateData)
     .where(and(eq(subscriptionsTable.id, id), eq(subscriptionsTable.userId, req.userId!)))
     .returning();
-  if (!sub) return res.status(404).json({ error: "Not found" });
+  if (!sub) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   const [platform] = await db.select().from(platformsTable).where(eq(platformsTable.id, sub.platformId));
   const [project] = sub.projectId
     ? await db.select().from(projectsTable).where(eq(projectsTable.id, sub.projectId))

@@ -32,7 +32,10 @@ router.post("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   const { id } = GetProjectParams.parse({ id: Number(req.params.id) });
   const [project] = await db.select().from(projectsTable).where(and(eq(projectsTable.id, id), eq(projectsTable.userId, req.userId!)));
-  if (!project) return res.status(404).json({ error: "Not found" });
+  if (!project) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   res.json({ ...project, createdAt: project.createdAt.toISOString() });
 });
 
@@ -44,7 +47,10 @@ router.patch("/:id", async (req, res) => {
     .set(body)
     .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, req.userId!)))
     .returning();
-  if (!project) return res.status(404).json({ error: "Not found" });
+  if (!project) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   res.json({ ...project, createdAt: project.createdAt.toISOString() });
 });
 

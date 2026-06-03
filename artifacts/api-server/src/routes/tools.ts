@@ -56,7 +56,10 @@ router.patch("/:id", async (req, res) => {
     .set(body)
     .where(and(eq(toolsTable.id, id), eq(toolsTable.userId, req.userId!)))
     .returning();
-  if (!tool) return res.status(404).json({ error: "Not found" });
+  if (!tool) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, tool.projectId));
   const [platform] = tool.platformId
     ? await db.select().from(platformsTable).where(eq(platformsTable.id, tool.platformId))

@@ -10,13 +10,7 @@ export interface SyncResult {
 }
 
 export async function syncPlatform(platformId: number, userId: string): Promise<SyncResult> {
-  const [platform] = await db
-    .select()
-    .from(platformsTable)
-    .where(platformsTable.id === platformId ? (platformsTable.id as any) : (platformsTable.id as any)); // Fix for drizzle type check in some envs
-  
-  // Actually let's just use the correct drizzle syntax
-  // import { eq, and } from "drizzle-orm"; is better but we are in a lib file
+
   
   const p = await db.query.platformsTable.findFirst({
     where: (platforms, { eq, and }) => and(eq(platforms.id, platformId), eq(platforms.userId, userId))
