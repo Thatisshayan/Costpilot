@@ -66,7 +66,7 @@ export default function Calendar() {
             Today
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Legend */}
       <div className="flex items-center gap-4 flex-wrap">
