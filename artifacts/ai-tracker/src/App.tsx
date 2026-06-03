@@ -59,12 +59,13 @@ import LlmRouter from "@/pages/llm-router";
 import CicdIntegration from "@/pages/cicd-integration";
 import RemediationCenter from "@/pages/remediation";
 
+import Budgets from "@/pages/budgets";
+import Settings from "@/pages/settings";
+
 // New/Rebranded Placeholders
 const ApiUsage = Analytics;
 const Trials = Calendar;
 const Vendors = Platforms;
-const Budgets = () => <div className="p-8 text-white">Budgets - Coming Soon</div>;
-const Settings = () => <div className="p-8 text-white">Settings - Coming Soon</div>;
 
 const queryClient = new QueryClient();
 
