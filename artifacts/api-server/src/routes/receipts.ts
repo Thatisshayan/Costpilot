@@ -12,15 +12,21 @@ const upload = multer({
   },
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 router.post("/upload", upload.single("receipt"), async (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: "No file uploaded" });
     return;
   }
+
+  if (!process.env.OPENAI_API_KEY) {
+    logger.error("OPENAI_API_KEY environment variable is not defined");
+    res.status(500).json({ error: "Failed to parse receipt", message: "AI scanner service is currently unavailable. Please try again later." });
+    return;
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
 
   try {
     const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];

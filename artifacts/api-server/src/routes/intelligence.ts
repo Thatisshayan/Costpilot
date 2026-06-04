@@ -6,10 +6,12 @@ import { logger } from "../lib/logger";
 import { PostIntelligenceQueryBody } from "@workspace/api-zod";
 
 const router = Router();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 router.post("/query", async (req, res) => {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
+    }
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const { query } = PostIntelligenceQueryBody.parse(req.body);
     const userId = req.userId!;
 
