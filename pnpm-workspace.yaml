@@ -69,8 +69,10 @@ catalog:
 autoInstallPeers: false
 
 onlyBuiltDependencies:
+  - '@clerk/shared'
   - '@swc/core'
   - esbuild
+  - msgpackr-extract
   - msw
   - unrs-resolver
 
@@ -88,3 +90,7 @@ overrides:
   "@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
+
+allowBuilds:
+  '@clerk/shared': true
+  msgpackr-extract: true
