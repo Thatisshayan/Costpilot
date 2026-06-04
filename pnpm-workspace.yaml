@@ -94,3 +94,7 @@ overrides:
 allowBuilds:
   '@clerk/shared': true
   msgpackr-extract: true
+  esbuild: true
+  '@swc/core': true
+  msw: true
+  unrs-resolver: true

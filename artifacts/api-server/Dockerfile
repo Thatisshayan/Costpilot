@@ -3,6 +3,7 @@
 FROM node:22-alpine AS builder
 
 WORKDIR /app
+ENV CI=true
 
 # Copy root configurations (for pnpm monorepo structure)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
@@ -25,6 +26,7 @@ RUN pnpm --filter @workspace/api-server build
 FROM node:22-alpine AS runner
 
 WORKDIR /app
+ENV CI=true
 
 ENV NODE_ENV=production
 
