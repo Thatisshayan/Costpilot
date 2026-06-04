@@ -1,0 +1,7 @@
+{
+  "$schema": "https://railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "./artifacts/api-server/Dockerfile"
+  }
+}
