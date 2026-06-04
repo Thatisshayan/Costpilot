@@ -104,7 +104,7 @@ app.use(
   express.json({
     limit: "1mb",
     verify: (req: any, res, buf) => {
-      if (req.originalUrl?.includes("/webhooks/stripe")) {
+      if (req.originalUrl?.includes("/webhooks/stripe") || req.originalUrl?.includes("/webhooks/clerk")) {
         req.rawBody = buf;
       }
     },
