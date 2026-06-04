@@ -1,3 +1,5 @@
+process.env["NODE_ENV"] = process.env["NODE_ENV"] || "development";
+
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initCronJobs } from "./lib/cron-service";
