@@ -1,6 +1,6 @@
 # Multi-stage build for optimized NodeJS Docker image
 # 1. Build Stage
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ COPY artifacts/api-server ./artifacts/api-server
 RUN pnpm --filter @workspace/api-server build
 
 # 2. Production Stage
-FROM node:18-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
