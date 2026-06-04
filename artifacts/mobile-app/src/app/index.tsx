@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -17,6 +17,19 @@ export default function HomeScreen() {
   const [lastSynced, setLastSynced] = useState('Never');
   const [syncDetails, setSyncDetails] = useState<string | null>(null);
 
+  // Live dynamic database states
+  const [isLiveMode, setIsLiveMode] = useState(false);
+  const [monthSpend, setMonthSpend] = useState('$3,240');
+  const [aiTokens, setAiTokens] = useState('14.8M');
+  const [trendText, setTrendText] = useState('+12.4% vs last mo');
+  const [riskCount, setRiskCount] = useState(3);
+  const [providerSpend, setProviderSpend] = useState({
+    AWS: 110,
+    Azure: 75,
+    GCP: 45,
+    OpenAI: 95
+  });
+
   // Dynamic Host IP finder to connect the physical iOS phone directly to their running local Express backend.
   const getBackendUrl = () => {
     const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.1.100:8081"
@@ -24,6 +37,83 @@ export default function HomeScreen() {
     const ip = hostUri.split(':')[0];
     return `http://${ip}:3000`;
   };
+
+  useEffect(() => {
+    const fetchLiveData = async () => {
+      const backendUrl = getBackendUrl();
+      try {
+        // 1. Fetch KPI Summary from local server
+        const kpiRes = await fetch(`${backendUrl}/api/dashboard/kpi-summary`, {
+          headers: {
+            'x-simulated-user-id': 'dev-user-1',
+          }
+        });
+        
+        if (kpiRes.ok) {
+          const kpiData = await kpiRes.json();
+          setMonthSpend(`$${Number(kpiData.monthToDateSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+          
+          // Format tokens nicely
+          const tokens = Number(kpiData.totalAiSpend || 0);
+          if (tokens >= 1000000) {
+            setAiTokens(`${(tokens / 1000000).toFixed(1)}M`);
+          } else if (tokens >= 1000) {
+            setAiTokens(`${(tokens / 1000).toFixed(0)}k`);
+          } else {
+            setAiTokens(tokens.toString());
+          }
+
+          const change = kpiData.monthToDateChangePercent || 0;
+          setTrendText(`${change >= 0 ? '+' : ''}${change}% vs last mo`);
+          setIsLiveMode(true);
+        }
+
+        // 2. Fetch platform distribution
+        const platformRes = await fetch(`${backendUrl}/api/dashboard/expenses-by-platform`, {
+          headers: {
+            'x-simulated-user-id': 'dev-user-1',
+          }
+        });
+        if (platformRes.ok) {
+          const platformData = await platformRes.json();
+          const newSpend = { AWS: 0, Azure: 0, GCP: 0, OpenAI: 0 };
+          
+          platformData.forEach((p: any) => {
+            const name = p.platformName?.toUpperCase() || '';
+            if (name.includes('AWS')) newSpend.AWS += p.total;
+            else if (name.includes('AZURE')) newSpend.Azure += p.total;
+            else if (name.includes('GCP') || name.includes('GOOGLE')) newSpend.GCP += p.total;
+            else if (name.includes('OPENAI')) newSpend.OpenAI += p.total;
+          });
+
+          const maxVal = Math.max(newSpend.AWS, newSpend.Azure, newSpend.GCP, newSpend.OpenAI, 1);
+          setProviderSpend({
+            AWS: Math.max(20, (newSpend.AWS / maxVal) * 115),
+            Azure: Math.max(20, (newSpend.Azure / maxVal) * 115),
+            GCP: Math.max(20, (newSpend.GCP / maxVal) * 115),
+            OpenAI: Math.max(20, (newSpend.OpenAI / maxVal) * 115),
+          });
+        }
+
+        // 3. Fetch active spending alerts
+        const auditRes = await fetch(`${backendUrl}/api/audits?workspaceId=1`, {
+          headers: {
+            'x-simulated-user-id': 'dev-user-1',
+            'x-simulated-workspace-role': 'owner'
+          }
+        });
+        if (auditRes.ok) {
+          const auditData = await auditRes.json();
+          setRiskCount(auditData.length || 0);
+        }
+      } catch (err) {
+        // Fall back silently to mock data if backend server is unreachable
+        console.log('Backend server unreachable; running in offline mock sandbox.');
+      }
+    };
+
+    fetchLiveData();
+  }, []);
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -90,7 +180,12 @@ export default function HomeScreen() {
             <Text style={styles.logoText}>CostPilot</Text>
             <View style={styles.glowingDot} />
           </View>
-          <Text style={styles.subtitle}>Mobile Telemetry & Sync</Text>
+          <View style={styles.headerSubRow}>
+            <Text style={styles.subtitle}>Mobile Telemetry & Sync</Text>
+            <View style={[styles.statusBadge, isLiveMode ? styles.liveBadge : styles.sandboxBadge]}>
+              <Text style={styles.badgeText}>{isLiveMode ? '● LIVE DB' : '● OFFLINE'}</Text>
+            </View>
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -99,12 +194,12 @@ export default function HomeScreen() {
           <View style={styles.kpiRow}>
             <View style={[styles.glassCard, styles.kpiCard]}>
               <Text style={styles.kpiLabel}>Month Spend</Text>
-              <Text style={styles.kpiValue}>$3,240</Text>
-              <Text style={styles.kpiTrend}>+12.4% vs last mo</Text>
+              <Text style={styles.kpiValue}>{monthSpend}</Text>
+              <Text style={styles.kpiTrend}>{trendText}</Text>
             </View>
             <View style={[styles.glassCard, styles.kpiCard]}>
               <Text style={styles.kpiLabel}>AI Tokens</Text>
-              <Text style={styles.kpiValue}>14.8M</Text>
+              <Text style={styles.kpiValue}>{aiTokens}</Text>
               <Text style={styles.kpiTrendSecondary}>8.2k avg/req</Text>
             </View>
           </View>
@@ -116,7 +211,9 @@ export default function HomeScreen() {
               <Text style={styles.anomalyTitle}>Real-Time Spend Audits</Text>
             </View>
             <Text style={styles.anomalyText}>
-              3 active spending spikes flagged on your production workspaces.
+              {riskCount > 0 
+                ? `${riskCount} active spending spikes flagged on your production workspaces.` 
+                : 'No severe cloud billing anomalies detected on your workspaces.'}
             </Text>
             <TouchableOpacity style={styles.remediateButton} activeOpacity={0.8}>
               <Text style={styles.remediateButtonText}>Review Spikes</Text>
@@ -128,19 +225,19 @@ export default function HomeScreen() {
             <Text style={styles.cardTitle}>Spending by Provider</Text>
             <View style={styles.histogramContainer}>
               <View style={styles.histogramColumn}>
-                <View style={[styles.histogramBar, { height: 110, backgroundColor: '#FF9900' }]} />
+                <View style={[styles.histogramBar, { height: providerSpend.AWS, backgroundColor: '#FF9900' }]} />
                 <Text style={styles.histogramLabel}>AWS</Text>
               </View>
               <View style={styles.histogramColumn}>
-                <View style={[styles.histogramBar, { height: 75, backgroundColor: '#007FFF' }]} />
+                <View style={[styles.histogramBar, { height: providerSpend.Azure, backgroundColor: '#007FFF' }]} />
                 <Text style={styles.histogramLabel}>Azure</Text>
               </View>
               <View style={styles.histogramColumn}>
-                <View style={[styles.histogramBar, { height: 45, backgroundColor: '#34A853' }]} />
+                <View style={[styles.histogramBar, { height: providerSpend.GCP, backgroundColor: '#34A853' }]} />
                 <Text style={styles.histogramLabel}>GCP</Text>
               </View>
               <View style={styles.histogramColumn}>
-                <View style={[styles.histogramBar, { height: 95, backgroundColor: '#8A2BE2' }]} />
+                <View style={[styles.histogramBar, { height: providerSpend.OpenAI, backgroundColor: '#8A2BE2' }]} />
                 <Text style={styles.histogramLabel}>OpenAI</Text>
               </View>
             </View>
@@ -185,6 +282,7 @@ export default function HomeScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -228,6 +326,32 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginTop: 2,
+  },
+  headerSubRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  statusBadge: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+  },
+  liveBadge: {
+    backgroundColor: 'rgba(65, 200, 152, 0.1)',
+    borderColor: '#41C898',
+  },
+  sandboxBadge: {
+    backgroundColor: 'rgba(148, 153, 195, 0.1)',
+    borderColor: '#9499C3',
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   scrollContent: {
     paddingHorizontal: 16,
