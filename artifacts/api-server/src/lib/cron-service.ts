@@ -4,6 +4,7 @@ import { isNotNull, eq, and, lte } from "drizzle-orm";
 import { syncPlatform } from "./sync-engine";
 import { logger } from "./logger";
 import { sendNotification } from "../services/notifications";
+import { auditEmitter } from "./audit-emitter";
 
 /**
  * Automatically triggers relevant policies (e.g. downgrades or alerts) for a severe anomaly
@@ -178,7 +179,7 @@ export async function runAnomalyDetection(): Promise<number> {
             const severity = amt > mean * 5 ? "Critical" : "High";
 
             // Write to audits table context
-            await db.insert(aiAuditsTable).values({
+            const [newAudit] = await db.insert(aiAuditsTable).values({
               workspaceId,
               title: `Cost Anomaly: ${platformName}`,
               severity,
@@ -196,7 +197,11 @@ export async function runAnomalyDetection(): Promise<number> {
                 date: exp.date,
                 reason
               }
-            });
+            }).returning();
+
+            if (newAudit) {
+              auditEmitter.emit("audit-created", newAudit);
+            }
 
             logger.warn(`Anomaly logged to audits table: Expense ID ${exp.id}, Amount $${exp.amount} for ${platformName}`);
             anomaliesFound++;

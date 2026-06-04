@@ -10,11 +10,12 @@ import {
 } from 'lucide-react';
 
 interface OnboardingWizardProps {
-  onComplete: () => void;
+  onComplete: (source: "stripe" | "csv") => void;
 }
 
 export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
+  const [selectedSource, setSelectedSource] = useState<'stripe' | 'csv' | null>(null);
   
   const steps = [
     {
@@ -47,7 +48,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
   const next = () => {
     if (step === steps.length) {
-      onComplete();
+      onComplete(selectedSource || 'stripe');
     } else {
       setStep(step + 1);
     }
@@ -57,7 +58,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
       <div className="bg-[#09090b] border border-white/10 rounded-[3rem] shadow-[0_0_100px_rgba(99,102,241,0.2)] max-w-xl w-full p-10 relative overflow-hidden">
         
-        {/* Progress Dots */}
+         {/* Progress Dots */}
         <div className="flex items-center gap-2 mb-10">
           {steps.map(s => (
             <div key={s.id} className={`h-1.5 rounded-full transition-all duration-500 ${s.id === step ? 'w-8 bg-indigo-500' : 'w-2 bg-white/10'}`} />
@@ -76,22 +77,32 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
           {currentStep?.options ? (
             <div className="space-y-4 mb-10">
-              {currentStep.options.map((opt, idx) => (
-                <button 
-                  key={idx} 
-                  onClick={next}
-                  className="w-full flex items-center justify-between p-5 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-indigo-500/40 hover:bg-white/[0.05] transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="text-indigo-400 group-hover:scale-110 transition-transform">{opt.icon}</div>
-                    <div className="text-left">
-                      <div className="text-sm font-bold text-white">{opt.name}</div>
-                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{opt.sub}</div>
+              {currentStep.options.map((opt, idx) => {
+                const optId = opt.name.toLowerCase().includes('stripe') ? 'stripe' : 'csv';
+                return (
+                  <button 
+                    key={idx} 
+                    onClick={() => {
+                      setSelectedSource(optId);
+                      setStep(step + 1);
+                    }}
+                    className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all group ${
+                      selectedSource === optId 
+                        ? 'border-indigo-500 bg-white/[0.08]' 
+                        : 'bg-white/[0.03] border-white/5 hover:border-indigo-500/40 hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="text-indigo-400 group-hover:scale-110 transition-transform">{opt.icon}</div>
+                      <div className="text-left">
+                        <div className="text-sm font-bold text-white">{opt.name}</div>
+                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{opt.sub}</div>
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight size={18} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
-                </button>
-              ))}
+                    <ChevronRight size={18} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <button 

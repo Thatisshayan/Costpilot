@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   CreditCard, 
   TrendingUp, 
@@ -11,7 +11,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 
 // Reusable Components
 import { HeaderAlert } from '../components/dashboard/HeaderAlert';
@@ -33,15 +33,64 @@ import {
   useGetMonthlySpending, 
   useListSavingsOpportunities,
   useUpdateWorkspace,
-  getListWorkspacesQueryKey
+  useCreatePlatform,
+  getListWorkspacesQueryKey,
+  getListPlatformsQueryKey,
+  getGetKpiSummaryQueryKey,
+  getListSavingsOpportunitiesQueryKey,
+  getListAuditsQueryKey
 } from '@workspace/api-client-react';
 import { useWorkspace } from '../context/workspace-context';
 import { useQueryClient } from '@tanstack/react-query';
 
 export default function Dashboard() {
   const qc = useQueryClient();
+  const [, setLocation] = useLocation();
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const updateWorkspaceMutation = useUpdateWorkspace();
+  const createPlatformMutation = useCreatePlatform();
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    const sseUrl = `/api/audits/sse?workspaceId=${activeWorkspaceId}&simulatedUserId=user_1`;
+    const eventSource = new EventSource(sseUrl, { withCredentials: true });
+
+    eventSource.onmessage = (event) => {
+      try {
+        const audit = JSON.parse(event.data);
+        if (audit && audit.title) {
+          toast.warning(`[CostPilot Alert] ${audit.title}`, {
+            description: audit.description || 'New spending anomaly detected. Direct remediation action is recommended.',
+            duration: 10000,
+            action: {
+              label: "Review Findings",
+              onClick: () => {
+                if (audit.remediationPath) {
+                  setLocation(audit.remediationPath);
+                }
+              }
+            }
+          });
+
+          // Invalidate cache queries to update UI in real-time
+          qc.invalidateQueries({ queryKey: getGetKpiSummaryQueryKey() });
+          qc.invalidateQueries({ queryKey: getListSavingsOpportunitiesQueryKey() });
+          qc.invalidateQueries({ queryKey: getListAuditsQueryKey() });
+        }
+      } catch (err) {
+        // Ignore heartbeats and parsing errors
+      }
+    };
+
+    eventSource.onerror = () => {
+      // EventSource automatically retries connections
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [activeWorkspaceId, qc, setLocation]);
 
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditComplete, setAuditComplete] = useState(false);
@@ -100,17 +149,32 @@ export default function Dashboard() {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {showWizard && (
         <OnboardingWizard
-          onComplete={async () => {
+          onComplete={async (source) => {
             if (!activeWorkspaceId) return;
             try {
               setWizardDismissed(true);
+
+              // 1. Create the platform
+              const platformName = source === 'stripe' ? 'Stripe' : 'Bank CSV';
+              const category = source === 'stripe' ? 'Payment Gateway' : 'Financial Statement';
+              await createPlatformMutation.mutateAsync({
+                data: {
+                  name: platformName,
+                  category: category,
+                  notes: 'Created during onboarding wizard completion.',
+                }
+              });
+
+              // 2. Mark workspace as onboarded
               await updateWorkspaceMutation.mutateAsync({
                 id: activeWorkspaceId,
                 data: { onboarded: true }
               });
+
               localStorage.setItem("costpilot_onboarding_done", "true");
               qc.invalidateQueries({ queryKey: getListWorkspacesQueryKey() });
-              toast.success("Workspace onboarding completed!");
+              qc.invalidateQueries({ queryKey: getListPlatformsQueryKey() });
+              toast.success(`Workspace onboarding completed with ${platformName}!`);
             } catch (err) {
               setWizardDismissed(false);
               toast.error("Failed to complete onboarding.");

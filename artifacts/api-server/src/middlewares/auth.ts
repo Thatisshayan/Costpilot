@@ -33,7 +33,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
   // Development-only bypass via header (strictly disabled in production)
   if (process.env.NODE_ENV !== "production") {
-    const simulatedUserId = req.headers["x-user-id"] as string;
+    const simulatedUserId = (req.headers["x-user-id"] as string) || (req.query.simulatedUserId as string);
     if (simulatedUserId) {
       req.userId = simulatedUserId;
       return next();
@@ -41,7 +41,10 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
   }
 
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
+  let token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
+  if (!token && req.query.token) {
+    token = req.query.token as string;
+  }
 
   if (!token) {
     return res.status(401).json({ error: "Unauthorized", message: "Authentication token missing" });
