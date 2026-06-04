@@ -43,6 +43,6 @@ COPY --from=builder /app/artifacts/api-server/dist ./artifacts/api-server/dist
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
 
-EXPOSE 4000
+EXPOSE 8080
 
 CMD ["pnpm", "--filter", "@workspace/api-server", "start"]
