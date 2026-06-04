@@ -18,9 +18,7 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 COPY lib ./lib
 COPY artifacts/api-server ./artifacts/api-server
 
-# Build all workspace packages
-RUN pnpm --filter @workspace/db build
-RUN pnpm --filter @workspace/api-zod build
+# Build the workspace API server (which bundles sibling workspaces natively)
 RUN pnpm --filter @workspace/api-server build
 
 # 2. Production Stage
