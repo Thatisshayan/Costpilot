@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Cpu, 
   Server, 
@@ -11,9 +11,29 @@ import {
   Layers,
   HardDrive
 } from 'lucide-react';
+import { useListPlatforms } from '@workspace/api-client-react';
+
+const GPU_PROVIDER_NAMES = ['Lambda Labs', 'AWS', 'RunPod', 'CoreWeave'];
 
 export default function GpuCalculator() {
   const [gpuType, setGpuType] = useState('H100');
+  const { data: platforms } = useListPlatforms();
+
+  const connectedProviders = useMemo(() => {
+    if (!platforms) return new Set<string>();
+    const names = platforms.map((p: any) => p.name.toLowerCase());
+    return new Set(GPU_PROVIDER_NAMES.map(n => n.toLowerCase()).filter(n => 
+      names.some((pn: string) => pn.includes(n) || n.includes(pn))
+    ));
+  }, [platforms]);
+
+  const isConnected = (providerName: string) => {
+    const lower = providerName.toLowerCase();
+    for (const cp of connectedProviders) {
+      if (lower.includes(cp) || cp.includes(lower)) return true;
+    }
+    return false;
+  };
   
   const comparisons = [
     { provider: 'Lambda Labs', hourly: 2.15, monthly: 1548, availability: 'Medium' },
@@ -94,29 +114,39 @@ export default function GpuCalculator() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
-                {comparisons.map((c) => (
-                  <tr key={c.provider} className="group hover:bg-white/[0.01] transition-colors">
-                    <td className="py-5 px-8">
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-400">
-                          <HardDrive size={16} />
+                {comparisons.map((c) => {
+                  const connected = isConnected(c.provider);
+                  return (
+                    <tr key={c.provider} className="group hover:bg-white/[0.01] transition-colors">
+                      <td className="py-5 px-8">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-400">
+                            <HardDrive size={16} />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-white">{c.provider}</span>
+                            {connected && (
+                              <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Connected
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-sm font-bold text-white">{c.provider}</span>
-                      </div>
-                    </td>
-                    <td className="py-5 px-4 text-sm font-mono font-bold text-white">${c.hourly.toFixed(2)}</td>
-                    <td className="py-5 px-4 text-sm font-mono font-bold text-white">${c.monthly.toLocaleString()}</td>
-                    <td className="py-5 px-8 text-right">
-                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                        c.availability === 'High' ? 'bg-emerald-500/10 text-emerald-400' :
-                        c.availability === 'Medium' ? 'bg-amber-500/10 text-amber-400' :
-                        'bg-red-500/10 text-red-400'
-                      }`}>
-                        {c.availability}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-5 px-4 text-sm font-mono font-bold text-white">${c.hourly.toFixed(2)}</td>
+                      <td className="py-5 px-4 text-sm font-mono font-bold text-white">${c.monthly.toLocaleString()}</td>
+                      <td className="py-5 px-8 text-right">
+                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                          c.availability === 'High' ? 'bg-emerald-500/10 text-emerald-400' :
+                          c.availability === 'Medium' ? 'bg-amber-500/10 text-amber-400' :
+                          'bg-red-500/10 text-red-400'
+                        }`}>
+                          {c.availability}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

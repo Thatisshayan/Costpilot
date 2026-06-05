@@ -11,9 +11,15 @@ import {
   Users
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useListWorkspaceMembers } from '@workspace/api-client-react';
+import { useWorkspace } from '../context/workspace-context';
 
 export default function SSOConfiguration() {
   const [method, setMethod] = useState<'saml' | 'oidc' | 'clerk'>('saml');
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
+  const { data: members } = useListWorkspaceMembers(activeWorkspaceId ?? 0);
+
+  const memberCount = members?.length ?? 0;
   
   const handleSave = () => {
     toast.success('SSO Configuration updated for your organization');
@@ -30,6 +36,25 @@ export default function SSOConfiguration() {
       </header>
 
       <div className="grid grid-cols-1 gap-8">
+        {/* Workspace Info */}
+        {activeWorkspace && (
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 backdrop-blur-md flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                <Building2 size={20} />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white">{activeWorkspace.name || 'Your Workspace'}</div>
+                <div className="text-[10px] text-slate-500 font-medium">Connected Members: {memberCount}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Users size={14} />
+              <span className="font-medium">{memberCount} user{memberCount !== 1 ? 's' : ''} affected by SSO changes</span>
+            </div>
+          </div>
+        )}
+
         {/* Method Selector */}
         <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-8 backdrop-blur-md">
           <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-6">Authentication Method</h2>
@@ -77,7 +102,7 @@ export default function SSOConfiguration() {
             <div className="pt-6 border-t border-white/[0.05] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Lock size={16} className="text-slate-500" />
-                <span className="text-xs text-slate-500 font-medium italic">Changes will require all members to re-authenticate.</span>
+                <span className="text-xs text-slate-500 font-medium italic">Changes will require all {memberCount} member{memberCount !== 1 ? 's' : ''} to re-authenticate.</span>
               </div>
               <button 
                 onClick={handleSave}

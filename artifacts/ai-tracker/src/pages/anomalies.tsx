@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   AlertTriangle, 
   TrendingUp, 
@@ -11,13 +11,65 @@ import {
   BarChart2,
   BrainCircuit
 } from 'lucide-react';
+import { useListAudits } from '@workspace/api-client-react';
+import type { AiAudit } from '@workspace/api-client-react';
+import { Skeleton } from "@/components/ui/skeleton";
+
+const severityColors: Record<string, string> = {
+  Critical: 'bg-red-500/20 text-red-400 border-red-500/30',
+  High: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  Medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  Low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+};
+
+const statusMap: Record<string, string> = {
+  Pending: 'Unreviewed',
+  'In Progress': 'Investigating',
+  Resolved: 'Resolved',
+};
+
+const statusColors: Record<string, string> = {
+  Unreviewed: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+  Investigating: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  Resolved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+};
+
+function relativeTime(dateStr?: string): string {
+  if (!dateStr) return 'Unknown';
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  if (isNaN(then)) return dateStr;
+  const diffSec = Math.floor((now - then) / 1000);
+  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  const days = Math.floor(diffSec / 86400);
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
+}
+
+const MOCK_ANOMALIES = [
+  { id: 1, title: 'Ghost Spike: OpenAI GPT-4', description: 'Subtle 4.2% daily growth detected in non-business hours. Indicates a possible runaway background loop.', severity: 'High', status: 'Pending', createdAt: new Date().toISOString() },
+  { id: 2, title: 'Regional Variance: Anthropic', description: 'Unexpected usage spike from US-West-2 endpoint compared to historical baseline.', severity: 'Medium', status: 'In Progress', createdAt: new Date().toISOString() },
+  { id: 3, title: 'Shadow API Key Usage', description: 'Activity detected on a key not associated with any active project tags.', severity: 'Critical', status: 'Pending', createdAt: new Date().toISOString() },
+];
 
 export default function AnomalyDetection() {
-  const anomalies = [
-    { id: 1, title: 'Ghost Spike: OpenAI GPT-4', description: 'Subtle 4.2% daily growth detected in non-business hours. Indicates a possible runaway background loop.', risk: 'High', impact: '+$842/mo if unchecked' },
-    { id: 2, title: 'Regional Variance: Anthropic', description: 'Unexpected usage spike from US-West-2 endpoint compared to historical baseline.', risk: 'Medium', impact: '+$120/wk' },
-    { id: 3, title: 'Shadow API Key Usage', description: 'Activity detected on a key not associated with any active project tags.', risk: 'Critical', impact: 'Security Risk' },
-  ];
+  const { data: liveAnomalies, isLoading } = useListAudits();
+
+  const anomalies = useMemo(() => {
+    if (!liveAnomalies || liveAnomalies.length === 0) {
+      return MOCK_ANOMALIES;
+    }
+    return liveAnomalies.map((a: AiAudit) => ({
+      id: a.id ?? 0,
+      title: a.title ?? 'Unknown Anomaly',
+      description: a.description ?? 'No details available',
+      severity: a.severity ?? 'Low',
+      status: statusMap[a.status ?? ''] ?? a.status ?? 'Unreviewed',
+      createdAt: a.createdAt,
+    }));
+  }, [liveAnomalies]);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-6xl mx-auto">
@@ -32,7 +84,7 @@ export default function AnomalyDetection() {
         <div className="flex items-center gap-3">
           <div className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
             <AlertTriangle size={16} className="text-red-400" />
-            <span className="text-xs font-bold text-red-400 uppercase tracking-widest">3 Active Risks</span>
+            <span className="text-xs font-bold text-red-400 uppercase tracking-widest">{anomalies.length} Active Risks</span>
           </div>
         </div>
       </header>
@@ -41,46 +93,89 @@ export default function AnomalyDetection() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-12">
         {/* Detection Feed */}
         <div className="lg:col-span-8 space-y-6">
-          {anomalies.map((a) => (
-            <div key={a.id} className="bg-white/[0.02] border border-white/[0.05] rounded-[3rem] p-8 backdrop-blur-md hover:bg-white/[0.03] transition-all group relative overflow-hidden">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${
-                    a.risk === 'Critical' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
-                  }`}>
-                    <BrainCircuit size={24} />
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white/[0.02] border border-white/[0.05] rounded-[3rem] p-8 backdrop-blur-md">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="w-12 h-12 rounded-2xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-64" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">{a.title}</h2>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Risk Level: {a.risk}</span>
+                  <div className="text-right space-y-2">
+                    <Skeleton className="h-3 w-20 ml-auto" />
+                    <Skeleton className="h-4 w-16 ml-auto" />
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Projected Impact</div>
-                  <div className={`text-sm font-mono font-bold ${a.risk === 'Critical' ? 'text-red-400' : 'text-amber-400'}`}>{a.impact}</div>
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-3/4 mb-8" />
+                <div className="flex items-center justify-between border-t border-white/[0.05] pt-6">
+                  <div className="flex gap-4">
+                    <Skeleton className="h-8 w-28 rounded-xl" />
+                    <Skeleton className="h-8 w-36 rounded-xl" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded-xl" />
                 </div>
               </div>
-              
-              <p className="text-sm text-slate-400 leading-relaxed mb-8 pr-12">
-                {a.description}
+            ))
+          ) : anomalies.length === 0 ? (
+            <div className="bg-white/[0.02] border border-white/[0.05] rounded-[3rem] p-12 backdrop-blur-md text-center">
+              <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 mx-auto mb-6">
+                <ShieldAlert size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No Anomalies Detected</h3>
+              <p className="text-sm text-slate-400 max-w-md mx-auto">
+                Your AI stack is operating within normal parameters. We'll alert you here if any unusual patterns emerge.
               </p>
-
-              <div className="flex items-center justify-between border-t border-white/[0.05] pt-6">
-                <div className="flex items-center gap-4">
-                  <button className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-xl text-white font-bold text-[10px] transition-all shadow-lg">Investigate Trace</button>
-                  <button className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-300 font-bold text-[10px] transition-all">Dismiss False Positive</button>
-                </div>
-                <button className="p-2.5 rounded-xl bg-white/5 text-slate-500 hover:text-white transition-all">
-                  <ArrowRight size={18} />
-                </button>
-              </div>
-
-              {/* Background Glow */}
-              <div className={`absolute top-[-20%] right-[-10%] w-64 h-64 rounded-full blur-3xl pointer-events-none ${
-                a.risk === 'Critical' ? 'bg-red-500/5' : 'bg-amber-500/5'
-              }`} />
             </div>
-          ))}
+          ) : (
+            anomalies.map((a) => {
+              const sevColor = severityColors[a.severity] || severityColors.Low;
+              const statColor = statusColors[a.status] || statusColors.Unreviewed;
+              return (
+                <div key={a.id} className="bg-white/[0.02] border border-white/[0.05] rounded-[3rem] p-8 backdrop-blur-md hover:bg-white/[0.03] transition-all group relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${sevColor}`}>
+                        <BrainCircuit size={24} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-white">{a.title}</h2>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Severity: {a.severity}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</div>
+                      <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${statColor}`}>
+                        {a.status}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-slate-400 leading-relaxed mb-8 pr-12">
+                    {a.description}
+                  </p>
+
+                  <div className="flex items-center justify-between border-t border-white/[0.05] pt-6">
+                    <div className="flex items-center gap-4">
+                      <button className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-xl text-white font-bold text-[10px] transition-all shadow-lg">Investigate Trace</button>
+                      <button className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-300 font-bold text-[10px] transition-all">Dismiss False Positive</button>
+                    </div>
+                    <button className="p-2.5 rounded-xl bg-white/5 text-slate-500 hover:text-white transition-all">
+                      <ArrowRight size={18} />
+                    </button>
+                  </div>
+
+                  {/* Background Glow */}
+                  <div className={`absolute top-[-20%] right-[-10%] w-64 h-64 rounded-full blur-3xl pointer-events-none ${
+                    a.severity === 'Critical' ? 'bg-red-500/5' : 'bg-amber-500/5'
+                  }`} />
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Global Stats Sidebar */}

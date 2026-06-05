@@ -48,23 +48,25 @@ import {
   ClipboardList,
   Bell,
   Moon,
+  PiggyBank,
+  Repeat,
   Sun,
 } from "lucide-react";
 import { useTheme } from "./theme-provider";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useWorkspace } from "@/context/workspace-context";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useHealthCheck } from "@/hooks/use-health-check";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Expenses", href: "/expenses", icon: Receipt },
-  { name: "Subscriptions", href: "/subscriptions", icon: CreditCard },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, shortcut: "⌘D" },
+  { name: "Expenses", href: "/expenses", icon: DollarSign, shortcut: "⌘E" },
+  { name: "Subscriptions", href: "/subscriptions", icon: Repeat, shortcut: "⌘S" },
   { name: "API Usage", href: "/api-usage", icon: TrendingUp },
   { name: "Trials", href: "/trials", icon: CalendarCheck },
   { name: "Vendors", href: "/vendors", icon: Building },
-  { name: "Budgets", href: "/budgets", icon: Wallet },
+  { name: "Budgets", href: "/budgets", icon: PiggyBank, shortcut: "⌘B" },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "ROI Tracking", href: "/roi", icon: BarChart4 },
   { name: "Approvals", href: "/approvals", icon: CheckSquare },
@@ -107,12 +109,26 @@ const navigation = [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { theme, setTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const { isHealthy, isLoading } = useHealthCheck();
+  const lastSyncRef = useRef(Date.now());
+  const [, forceSyncRender] = useState(0);
+
+  useEffect(() => {
+    if (!isLoading) {
+      lastSyncRef.current = Date.now();
+      forceSyncRender(n => n + 1);
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    const interval = setInterval(() => forceSyncRender(n => n + 1), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -154,13 +170,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-bold text-white tracking-tight">CostPilot</span>
           </div>
-          <button 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 text-slate-400 hover:text-white"
-            aria-label="Toggle Menu"
-          >
-            <Menu size={24} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => navigate("/search")}
+              className="p-2 text-slate-400 hover:text-white"
+              aria-label="Search"
+            >
+              <Search size={20} />
+            </button>
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 text-slate-400 hover:text-white"
+              aria-label="Toggle Menu"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
         </div>
 
         {/* --- MOBILE OVERLAY --- */}
@@ -198,8 +223,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {/* Workspace Switcher */}
             <WorkspaceSwitcher isCollapsed={isCollapsed} />
 
+            {/* Quick Search */}
+            {!isCollapsed && (
+              <div className="relative mb-2 mt-2">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Quick search... (⌘K)"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-8 pr-3 text-xs text-white/80 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.04] transition-all"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      navigate(`/search?q=${encodeURIComponent(e.currentTarget.value)}`);
+                      e.currentTarget.blur();
+                    }
+                  }}
+                />
+              </div>
+            )}
+
             {/* Navigation */}
-            <nav className="space-y-1 w-full mt-6 lg:mt-0">
+            <nav className="space-y-1 w-full mt-2 lg:mt-0">
               {navigation.map((item) => {
                 const isActive = location === item.href;
                 
@@ -207,7 +250,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    className={`flex items-center gap-3 group px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       isActive 
                         ? 'bg-white/[0.06] text-white shadow-inner border-t border-white/[0.05] relative before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-r-full before:bg-indigo-400 before:shadow-[0_0_8px_rgba(99,102,241,0.6)]' 
                         : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] hover:translate-x-0.5'
@@ -215,6 +258,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <item.icon size={18} className={isActive ? 'text-indigo-400' : ''} />
                     {(isMobileMenuOpen || !isCollapsed) && <span>{item.name}</span>}
+                    {(isMobileMenuOpen || !isCollapsed) && (item as any).shortcut && (
+                      <span className="ml-auto text-xs text-slate-500/40 hidden group-hover:inline">
+                        {(item as any).shortcut}
+                      </span>
+                    )}
                   </Link>
                 );
 
@@ -243,6 +291,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span>
                 {isLoading ? 'Checking...' : isHealthy ? 'All Systems Operational' : 'Degraded Performance'}
               </span>
+            </div>
+          )}
+          {!isCollapsed && (
+            <div className="px-4 py-1 mb-2 text-xs text-slate-600">
+              Last synced: {Math.floor((Date.now() - lastSyncRef.current) / 60000) < 1 ? "just now" : `${Math.floor((Date.now() - lastSyncRef.current) / 60000)}m ago`}
             </div>
           )}
 

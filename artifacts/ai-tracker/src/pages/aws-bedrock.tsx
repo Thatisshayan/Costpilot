@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Cloud, 
   Database, 
@@ -11,8 +11,39 @@ import {
   Terminal,
   Info
 } from 'lucide-react';
+import { useCreatePlatform } from '@workspace/api-client-react';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { getListPlatformsQueryKey } from '@workspace/api-client-react';
 
 export default function BedrockConnector() {
+  const qc = useQueryClient();
+  const createPlatformMutation = useCreatePlatform();
+  const [showForm, setShowForm] = useState(false);
+  const [formName, setFormName] = useState('AWS Bedrock');
+  const [formNotes, setFormNotes] = useState('Connected via AWS Bedrock Connector guide.');
+
+  const handleConnect = async () => {
+    if (!formName.trim()) {
+      toast.error('Platform name is required.');
+      return;
+    }
+    try {
+      await createPlatformMutation.mutateAsync({
+        data: {
+          name: formName.trim(),
+          category: 'Cloud Infrastructure',
+          notes: formNotes.trim() || undefined,
+        },
+      });
+      qc.invalidateQueries({ queryKey: getListPlatformsQueryKey() });
+      toast.success('AWS Bedrock connected successfully!');
+      setShowForm(false);
+    } catch {
+      toast.error('Failed to connect AWS Bedrock.');
+    }
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-5xl mx-auto">
       {/* Header */}
@@ -86,6 +117,58 @@ export default function BedrockConnector() {
             <button className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-white font-bold text-xs hover:bg-white/10 transition-all">Enable Real-time Sync</button>
           </div>
         </div>
+      </div>
+
+      {/* Connect AWS Button */}
+      <div className="mb-8">
+        {showForm ? (
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] p-8 backdrop-blur-md space-y-4">
+            <h3 className="text-lg font-bold text-white">Connect AWS Bedrock</h3>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Platform Name</label>
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#FF9900]/50"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Notes</label>
+                <textarea
+                  rows={2}
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#FF9900]/50"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handleConnect}
+                disabled={createPlatformMutation.isPending}
+                className="px-6 py-3 bg-[#FF9900] hover:bg-[#FF9900]/90 rounded-xl text-white font-bold text-sm transition-all shadow-lg disabled:opacity-50"
+              >
+                {createPlatformMutation.isPending ? 'Connecting...' : 'Confirm Connection'}
+              </button>
+              <button
+                onClick={() => setShowForm(false)}
+                className="px-4 py-3 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full py-4 bg-[#FF9900]/10 border border-[#FF9900]/20 rounded-[2.5rem] text-[#FF9900] font-bold text-sm hover:bg-[#FF9900]/20 transition-all shadow-lg flex items-center justify-center gap-2"
+          >
+            <Cloud size={20} />
+            Connect AWS Bedrock
+          </button>
+        )}
       </div>
 
       {/* Security Disclaimer */}

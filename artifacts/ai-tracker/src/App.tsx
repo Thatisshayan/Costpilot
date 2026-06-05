@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { WorkspaceProvider } from "@/context/workspace-context";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
@@ -141,6 +142,7 @@ function Router() {
 }
 
 function App() {
+  useKeyboardShortcuts();
   return (
     <ThemeProvider defaultTheme="dark" storageKey="ai-tracker-theme">
       <QueryClientProvider client={queryClient}>
