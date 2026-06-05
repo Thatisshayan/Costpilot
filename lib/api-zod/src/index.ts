@@ -7,7 +7,8 @@ import {
   PostTelemetryLlmRouteBody as _PostTelemetryLlmRouteBodyVal,
   UpdateWorkspaceBody as _UpdateWorkspaceBodyVal,
   UploadReceiptBody as _UploadReceiptBodyVal,
-  ValidateDeploymentBody as _ValidateDeploymentBodyVal
+  ValidateDeploymentBody as _ValidateDeploymentBodyVal,
+  AcceptInviteBody as _AcceptInviteBodyVal
 } from "./generated/api";
 
 import type { CreateWebhookBody as _CreateWebhookBodyType } from "./generated/types/createWebhookBody";
@@ -49,3 +50,5 @@ export type UploadReceiptBody = _UploadReceiptBodyType;
 
 export const ValidateDeploymentBody = _ValidateDeploymentBodyVal;
 export type ValidateDeploymentBody = _ValidateDeploymentBodyType;
+
+export const AcceptInviteBody = _AcceptInviteBodyVal;

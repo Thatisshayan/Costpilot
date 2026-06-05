@@ -1,53 +1,34 @@
-/**
- * Multi-Currency Utility for CostPilot
- * Handles conversion and formatting for global AI spend.
- */
+export const CURRENCIES = {
+  USD: { symbol: "$", name: "US Dollar", locale: "en-US" },
+  EUR: { symbol: "€", name: "Euro", locale: "de-DE" },
+  GBP: { symbol: "£", name: "British Pound", locale: "en-GB" },
+  JPY: { symbol: "¥", name: "Japanese Yen", locale: "ja-JP" },
+  CAD: { symbol: "C$", name: "Canadian Dollar", locale: "en-CA" },
+  AUD: { symbol: "A$", name: "Australian Dollar", locale: "en-AU" },
+  INR: { symbol: "₹", name: "Indian Rupee", locale: "en-IN" },
+  BRL: { symbol: "R$", name: "Brazilian Real", locale: "pt-BR" },
+  MXN: { symbol: "MX$", name: "Mexican Peso", locale: "es-MX" },
+  SGD: { symbol: "S$", name: "Singapore Dollar", locale: "en-SG" },
+  CHF: { symbol: "Fr", name: "Swiss Franc", locale: "de-CH" },
+  NZD: { symbol: "NZ$", name: "New Zealand Dollar", locale: "en-NZ" },
+  KRW: { symbol: "₩", name: "South Korean Won", locale: "ko-KR" },
+  SEK: { symbol: "kr", name: "Swedish Krona", locale: "sv-SE" },
+  NOK: { symbol: "kr", name: "Norwegian Krone", locale: "nb-NO" },
+} as const;
 
-export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD';
+export type CurrencyCode = keyof typeof CURRENCIES;
 
-export const EXCHANGE_RATES: Record<CurrencyCode, number> = {
-  USD: 1.0,
-  EUR: 0.92,
-  GBP: 0.79,
-  JPY: 156.42,
-  CAD: 1.36
-};
-
-export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  CAD: 'C$'
-};
-
-/**
- * Converts an amount from a source currency to a target currency.
- */
-export function convertCurrency(amount: number, from: CurrencyCode, to: CurrencyCode = 'USD'): number {
-  if (from === to) return amount;
-  
-  // Normalize to USD first
-  const amountInUsd = amount / EXCHANGE_RATES[from];
-  
-  // Convert from USD to target
-  return amountInUsd * EXCHANGE_RATES[to];
-}
-
-/**
- * Formats a currency value with its appropriate symbol and precision.
- */
-export function formatCurrencyGlobal(amount: number, code: CurrencyCode = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: code,
-  }).format(amount);
-}
-
-/**
- * Returns the formatted trend text with currency awareness.
- */
-export function getCurrencyContext(code: CurrencyCode): string {
-  if (code === 'USD') return 'Base Currency';
-  return `Converted from ${code} (Rate: 1 USD = ${EXCHANGE_RATES[code]} ${code})`;
+export function formatCurrency(amount: number, currency: CurrencyCode = "USD"): string {
+  const config = CURRENCIES[currency];
+  if (!config) return `$${amount.toFixed(2)}`;  
+  try {
+    return new Intl.NumberFormat(config.locale, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${config.symbol}${amount.toFixed(2)}`;
+  }
 }

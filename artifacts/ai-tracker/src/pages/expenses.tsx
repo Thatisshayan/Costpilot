@@ -13,6 +13,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ArrowUpRight, Plus, Pencil, Trash2, Calendar, Folder, Scan, Loader2, FileSpreadsheet } from "lucide-react";
+import { formatCurrency } from "../lib/currency";
+import CurrencySelector, { useCurrency } from "../components/currency-selector";
 import { Link } from "wouter";
 import {
   Dialog,
@@ -63,6 +65,7 @@ export default function Expenses() {
   const { data: platforms = [] } = useListPlatforms();
   const { data: projects = [] } = useListProjects();
   const createMutation = useCreateExpense();
+  const [currency] = useCurrency();
   const updateMutation = useUpdateExpense();
   const deleteMutation = useDeleteExpense();
   const { mutateAsync: uploadReceipt, isPending: isUploading } = useUploadReceipt();
@@ -183,6 +186,7 @@ export default function Expenses() {
           <p className="text-sm text-slate-400 mt-1">Track your granular API costs and tool purchases.</p>
         </div>
         <div className="flex items-center gap-3">
+          <CurrencySelector />
           <Link href="/import" className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] text-slate-300 text-sm font-semibold rounded-xl transition-all shadow-lg">
             <FileSpreadsheet size={16} />
             Import CSV
@@ -255,7 +259,7 @@ export default function Expenses() {
                       {format(new Date(expense.date + "T12:00:00"), "MMM d, yyyy")}
                     </td>
                     <td className="py-4 text-right pr-2 font-mono font-semibold text-white text-base">
-                      ${expense.amount.toFixed(2)}
+                      {formatCurrency(expense.amount, currency)}
                     </td>
                     <td className="py-4 pr-2">
                       <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">

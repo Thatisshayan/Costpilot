@@ -12,6 +12,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Plus, Pencil, Trash2, Coins, Calendar, Folder, ArrowUpRight, CreditCard } from "lucide-react";
+import { formatCurrency } from "../lib/currency";
+import CurrencySelector, { useCurrency } from "../components/currency-selector";
 import EmptyState from "@/components/ui/empty-state";
 import {
   Dialog,
@@ -62,6 +64,7 @@ export default function Credits() {
   const { data: platforms = [] } = useListPlatforms();
   const { data: projects = [] } = useListProjects();
   const createMutation = useCreateCreditPurchase();
+  const [currency] = useCurrency();
   const updateMutation = useUpdateCreditPurchase();
   const deleteMutation = useDeleteCreditPurchase();
 
@@ -146,6 +149,7 @@ export default function Credits() {
           <h1 className="text-3xl font-bold tracking-tight text-white">Credit Top-ups</h1>
           <p className="text-sm text-slate-400 mt-1">Track balance additions and token balance reserves for LLM platforms.</p>
         </div>
+        <CurrencySelector />
         <button
           onClick={openAdd}
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
@@ -162,7 +166,7 @@ export default function Credits() {
             <span className="text-sm font-medium text-slate-400">Total Credit Costs</span>
             <Coins size={16} className="text-slate-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-white">${totalCredits.toFixed(2)}</div>
+          <div className="text-2xl font-bold font-mono text-white">{formatCurrency(totalCredits, currency)}</div>
         </div>
 
         <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-md">
@@ -236,7 +240,7 @@ export default function Credits() {
                       {format(new Date(c.purchaseDate + "T12:00:00"), "MMM d, yyyy")}
                     </td>
                     <td className="py-4 text-right font-mono font-semibold text-white text-base">
-                      ${c.amount.toFixed(2)}
+                      {formatCurrency(c.amount, currency)}
                     </td>
                     <td className="py-4 pr-2">
                       <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">

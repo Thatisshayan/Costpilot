@@ -1,9 +1,12 @@
 import { useListSubscriptions } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { AlertTriangle, Calendar, Folder, CreditCard } from "lucide-react";
+import { formatCurrency } from "../lib/currency";
+import CurrencySelector, { useCurrency } from "../components/currency-selector";
 
 export default function Subscriptions() {
   const { data: subscriptions, isLoading } = useListSubscriptions();
+  const [currency] = useCurrency();
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
@@ -13,6 +16,7 @@ export default function Subscriptions() {
           <h1 className="text-3xl font-bold tracking-tight text-white">Subscriptions & Trials</h1>
           <p className="text-sm text-slate-400 mt-1">Manage active free trials and recurring SaaS billing cycles.</p>
         </div>
+        <CurrencySelector />
       </header>
 
       {isLoading ? (
@@ -58,7 +62,7 @@ export default function Subscriptions() {
 
                   <div className="flex justify-between items-center mt-6">
                     <div className="text-2xl font-bold font-mono text-white tracking-tight">
-                      {sub.monthlyCost ? `$${Number(sub.monthlyCost).toFixed(2)}` : "Free"}
+                      {sub.monthlyCost ? formatCurrency(Number(sub.monthlyCost), currency) : "Free"}
                       {sub.monthlyCost && <span className="text-xs text-slate-500 font-normal font-sans ml-1">/mo</span>}
                     </div>
 

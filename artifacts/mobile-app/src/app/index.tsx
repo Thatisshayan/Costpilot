@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -13,15 +14,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState('Never');
   const [syncDetails, setSyncDetails] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Live dynamic database states
   const [isLiveMode, setIsLiveMode] = useState(false);
+  const [totalSpend, setTotalSpend] = useState('$0');
   const [monthSpend, setMonthSpend] = useState('$3,240');
   const [aiTokens, setAiTokens] = useState('14.8M');
   const [trendText, setTrendText] = useState('+12.4% vs last mo');
+  const [activeTools, setActiveTools] = useState('0');
   const [riskCount, setRiskCount] = useState(3);
   const [providerSpend, setProviderSpend] = useState({
     AWS: 110,
@@ -32,7 +38,7 @@ export default function HomeScreen() {
 
   // Dynamic Host IP finder to connect the physical iOS phone directly to their running local Express backend.
   const getBackendUrl = () => {
-    const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.1.100:8081"
+    const hostUri = Constants.expoConfig?.hostUri;
     if (!hostUri) return 'http://localhost:3000';
     const ip = hostUri.split(':')[0];
     return `http://${ip}:3000`;
@@ -40,6 +46,8 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const fetchLiveData = async () => {
+      setIsLoading(true);
+      setError(null);
       const backendUrl = getBackendUrl();
       try {
         // 1. Fetch KPI Summary from local server
@@ -48,11 +56,14 @@ export default function HomeScreen() {
             'x-simulated-user-id': 'dev-user-1',
           }
         });
-        
+
         if (kpiRes.ok) {
           const kpiData = await kpiRes.json();
-          setMonthSpend(`$${Number(kpiData.monthToDateSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
-          
+          const mtd = Number(kpiData.monthToDateSpend || 0);
+          setMonthSpend(`$${mtd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+          setTotalSpend(`$${Number(kpiData.totalSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+          setActiveTools(String(kpiData.activeTools || kpiData.activeSubscriptions || '0'));
+
           // Format tokens nicely
           const tokens = Number(kpiData.totalAiSpend || 0);
           if (tokens >= 1000000) {
@@ -77,7 +88,7 @@ export default function HomeScreen() {
         if (platformRes.ok) {
           const platformData = await platformRes.json();
           const newSpend = { AWS: 0, Azure: 0, GCP: 0, OpenAI: 0 };
-          
+
           platformData.forEach((p: any) => {
             const name = p.platformName?.toUpperCase() || '';
             if (name.includes('AWS')) newSpend.AWS += p.total;
@@ -109,11 +120,45 @@ export default function HomeScreen() {
       } catch (err) {
         // Fall back silently to mock data if backend server is unreachable
         console.log('Backend server unreachable; running in offline mock sandbox.');
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchLiveData();
   }, []);
+
+  const handleRetry = () => {
+    setError(null);
+    setIsLoading(true);
+    const fetchLiveData = async () => {
+      const backendUrl = getBackendUrl();
+      try {
+        const kpiRes = await fetch(`${backendUrl}/api/dashboard/kpi-summary`, {
+          headers: { 'x-simulated-user-id': 'dev-user-1' }
+        });
+        if (kpiRes.ok) {
+          const kpiData = await kpiRes.json();
+          const mtd = Number(kpiData.monthToDateSpend || 0);
+          setMonthSpend(`$${mtd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+          setTotalSpend(`$${Number(kpiData.totalSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
+          setActiveTools(String(kpiData.activeTools || kpiData.activeSubscriptions || '0'));
+          const tokens = Number(kpiData.totalAiSpend || 0);
+          if (tokens >= 1000000) setAiTokens(`${(tokens / 1000000).toFixed(1)}M`);
+          else if (tokens >= 1000) setAiTokens(`${(tokens / 1000).toFixed(0)}k`);
+          else setAiTokens(tokens.toString());
+          const change = kpiData.monthToDateChangePercent || 0;
+          setTrendText(`${change >= 0 ? '+' : ''}${change}% vs last mo`);
+          setIsLiveMode(true);
+        }
+      } catch (err) {
+        console.log('Retry failed; using offline data.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLiveData();
+  };
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -121,12 +166,11 @@ export default function HomeScreen() {
     const backendUrl = getBackendUrl();
 
     try {
-      // Execute live incremental mobile sync POST handshake
       const response = await fetch(`${backendUrl}/api/sync/mobile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-simulated-user-id': 'dev-user-1', // Default sandbox simulated user
+          'x-simulated-user-id': 'dev-user-1',
         },
         body: JSON.stringify({
           created: [
@@ -156,7 +200,6 @@ export default function HomeScreen() {
         throw new Error('Server returned error status');
       }
     } catch (error) {
-      // Safe development fallback if server is not active during scanning
       const dateStr = new Date().toLocaleTimeString();
       setLastSynced(dateStr);
       setSyncDetails('Local Simulation Mode (Backend Offline)');
@@ -169,11 +212,46 @@ export default function HomeScreen() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color="#66FCF1" />
+            <Text style={styles.loadingText}>Loading your dashboard...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.centered}>
+            <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={handleRetry}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
       <SafeAreaView style={styles.safeArea}>
-        
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.titleContainer}>
@@ -189,7 +267,7 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
+
           {/* Main KPI Row */}
           <View style={styles.kpiRow}>
             <View style={[styles.glassCard, styles.kpiCard]}>
@@ -204,6 +282,18 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          {/* Secondary KPI Row */}
+          <View style={styles.kpiRow}>
+            <View style={[styles.glassCard, styles.kpiCardSmall]}>
+              <Text style={styles.kpiLabel}>Total Spend</Text>
+              <Text style={styles.kpiValue}>{totalSpend}</Text>
+            </View>
+            <View style={[styles.glassCard, styles.kpiCardSmall]}>
+              <Text style={styles.kpiLabel}>Active Tools</Text>
+              <Text style={styles.kpiValue}>{activeTools}</Text>
+            </View>
+          </View>
+
           {/* Anomaly Glowing Banner */}
           <View style={[styles.glassCard, styles.anomalyBanner]}>
             <View style={styles.anomalyHeader}>
@@ -211,13 +301,44 @@ export default function HomeScreen() {
               <Text style={styles.anomalyTitle}>Real-Time Spend Audits</Text>
             </View>
             <Text style={styles.anomalyText}>
-              {riskCount > 0 
-                ? `${riskCount} active spending spikes flagged on your production workspaces.` 
+              {riskCount > 0
+                ? `${riskCount} active spending spikes flagged on your production workspaces.`
                 : 'No severe cloud billing anomalies detected on your workspaces.'}
             </Text>
             <TouchableOpacity style={styles.remediateButton} activeOpacity={0.8}>
               <Text style={styles.remediateButtonText}>Review Spikes</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Quick Actions */}
+          <View style={[styles.glassCard, styles.quickActionsCard]}>
+            <Text style={styles.cardTitle}>Quick Actions</Text>
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                activeOpacity={0.8}
+                onPress={() => router.push('/add-expense')}
+              >
+                <Text style={styles.actionIcon}>➕</Text>
+                <Text style={styles.actionLabel}>Add Expense</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                activeOpacity={0.8}
+                onPress={() => router.push('/expenses')}
+              >
+                <Text style={styles.actionIcon}>📊</Text>
+                <Text style={styles.actionLabel}>View Reports</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                activeOpacity={0.8}
+                onPress={() => Alert.alert('Budget', 'Budget tracking coming soon.')}
+              >
+                <Text style={styles.actionIcon}>💰</Text>
+                <Text style={styles.actionLabel}>Check Budget</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Multi-Cloud Visual Histogram */}
@@ -249,7 +370,7 @@ export default function HomeScreen() {
             <Text style={styles.syncDescription}>
               CostPilot replicates delta changes locally. Pushing changes automatically maps client IDs to secure multi-tenant server IDs.
             </Text>
-            
+
             <View style={styles.syncStatusBlock}>
               <View style={styles.statusRow}>
                 <Text style={styles.statusLabel}>Last Synced:</Text>
@@ -262,8 +383,8 @@ export default function HomeScreen() {
               )}
             </View>
 
-            <TouchableOpacity 
-              style={styles.syncButton} 
+            <TouchableOpacity
+              style={styles.syncButton}
               onPress={handleSync}
               disabled={isSyncing}
               activeOpacity={0.8}
@@ -290,6 +411,34 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    color: '#9499C3',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#66FCF1',
+    borderRadius: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+  },
+  retryButtonText: {
+    color: '#0B0C10',
+    fontWeight: '700',
   },
   header: {
     paddingHorizontal: 20,
@@ -379,6 +528,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     height: 105,
   },
+  kpiCardSmall: {
+    flex: 1,
+    justifyContent: 'space-between',
+    height: 80,
+  },
   kpiLabel: {
     color: '#9499C3',
     fontSize: 12,
@@ -436,6 +590,31 @@ const styles = StyleSheet.create({
   },
   remediateButtonText: {
     color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  quickActionsCard: {
+    gap: 12,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#1A1C26',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#222530',
+  },
+  actionIcon: {
+    fontSize: 22,
+  },
+  actionLabel: {
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
   },

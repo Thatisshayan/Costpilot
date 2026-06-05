@@ -27,6 +27,8 @@ import {
 import type { Webhook } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { costpilotMockData } from '../data/costpilotMockData';
+import { formatCurrency } from '../lib/currency';
+import CurrencySelector, { useCurrency } from '../components/currency-selector';
 
 interface Budget {
   id: number;
@@ -64,6 +66,7 @@ const MOCK_WEBHOOKS: Webhook[] = [
 
 export default function Budgets() {
   const qc = useQueryClient();
+  const [currency] = useCurrency();
 
   const [budgets, setBudgets] = useState<Budget[]>([
     {
@@ -212,13 +215,16 @@ export default function Budgets() {
             Proactively allocate expenditures, establish warning alerts, and configure hard limits to automatically pause downstream API keys.
           </p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 rounded-xl text-white font-bold text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-indigo-500/20 shrink-0"
-        >
-          <Plus size={18} />
-          Create Budget Limit
-        </button>
+        <div className="flex items-center gap-3">
+          <CurrencySelector />
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 rounded-xl text-white font-bold text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-indigo-500/20 shrink-0"
+          >
+            <Plus size={18} />
+            Create Budget Limit
+          </button>
+        </div>
       </header>
 
       {/* Top Level Cards */}
@@ -233,7 +239,7 @@ export default function Budgets() {
           {isLoading ? (
             <div className="h-8 w-28 bg-white/10 rounded animate-pulse" />
           ) : (
-            <div className="text-2xl font-black text-white">${budgetTotal.toLocaleString()}</div>
+            <div className="text-2xl font-black text-white">{formatCurrency(budgetTotal, currency)}</div>
           )}
           <div className="text-[10px] text-slate-500 mt-2 font-medium">Monthly Reset cycle</div>
         </div>
@@ -248,7 +254,7 @@ export default function Budgets() {
           {isLoading ? (
             <div className="h-8 w-28 bg-white/10 rounded animate-pulse" />
           ) : (
-            <div className="text-2xl font-black text-white">${budgetSpent.toLocaleString()}</div>
+            <div className="text-2xl font-black text-white">{formatCurrency(budgetSpent, currency)}</div>
           )}
           <div className="text-[10px] text-emerald-400 mt-2 font-bold flex items-center gap-1">
             <RefreshCcw size={12} />
@@ -266,7 +272,7 @@ export default function Budgets() {
           {isLoading ? (
             <div className="h-8 w-28 bg-white/10 rounded animate-pulse" />
           ) : (
-            <div className="text-2xl font-black text-white">${budgetRemaining.toLocaleString()}</div>
+            <div className="text-2xl font-black text-white">{formatCurrency(budgetRemaining, currency)}</div>
           )}
           <div className="text-[10px] text-slate-500 mt-2 font-medium">Safe to burn</div>
         </div>
@@ -312,7 +318,7 @@ export default function Budgets() {
                     <span className="px-2 py-0.5 bg-white/5 border border-white/10 text-slate-400 rounded-md text-[10px] uppercase font-black tracking-wider">{b.category}</span>
                   </div>
                   <div className="text-xs text-slate-400 mb-4">
-                    ${b.spent.toLocaleString()} spent out of <span className="text-white font-bold">${b.limit.toLocaleString()} limit</span>
+                    {formatCurrency(b.spent, currency)} spent out of <span className="text-white font-bold">{formatCurrency(b.limit, currency)} limit</span>
                   </div>
 
                   <div className="w-full bg-black/40 h-2.5 rounded-full overflow-hidden relative">

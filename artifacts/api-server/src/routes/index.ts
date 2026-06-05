@@ -22,6 +22,7 @@ import provisioningRouter from "./provisioning";
 import syncMobileRouter from "./sync-mobile";
 import reportsRouter from "./reports";
 import notificationsRouter from "./notifications";
+import currencyRouter from "./currency";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use("/provisioning", provisioningRouter);
 router.use("/sync/mobile", syncMobileRouter);
 router.use("/reports", reportsRouter);
 router.use("/notifications", notificationsRouter);
+router.use("/currency", currencyRouter);
 
 export default router;

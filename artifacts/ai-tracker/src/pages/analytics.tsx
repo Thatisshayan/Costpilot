@@ -22,9 +22,12 @@ import {
   Cell
 } from "recharts";
 import { toast } from "sonner";
+import { formatCurrency } from "../lib/currency";
+import CurrencySelector, { useCurrency } from "../components/currency-selector";
 
 export default function Analytics() {
   const { data: suggestions, isLoading: suggestionsLoading } = useGetSmartSuggestions();
+  const [currency] = useCurrency();
   const { data: forecast, isLoading: forecastLoading } = useGetForecast();
 
   const handleExport = async (type: "csv" | "pdf") => {
@@ -59,6 +62,7 @@ export default function Analytics() {
           <h1 className="text-3xl font-bold tracking-tight text-white">CostPilot Usage Intelligence</h1>
           <p className="text-slate-400 text-sm mt-1">Deep dive into token usage, model costs, and infrastructure spending.</p>
         </div>
+        <CurrencySelector />
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -93,7 +97,7 @@ export default function Analytics() {
                           <h3 className="font-semibold text-white">{s.title}</h3>
                           {s.potentialSavings > 0 && (
                             <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">
-                              Save ${s.potentialSavings.toFixed(0)}/mo
+                              Save {formatCurrency(s.potentialSavings, currency)}/mo
                             </span>
                           )}
                         </div>
@@ -181,7 +185,7 @@ export default function Analytics() {
                     fontSize={12} 
                     tickLine={false} 
                     axisLine={false} 
-                    tickFormatter={(value) => `$${value}`}
+                    tickFormatter={(value) => formatCurrency(value, currency)}
                   />
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: "#09090b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }}
@@ -200,11 +204,11 @@ export default function Analytics() {
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/[0.05]">
               <div>
                 <div className="text-xs text-slate-500 font-medium mb-1">DAILY BURN</div>
-                <div className="text-xl font-bold text-white font-mono">${forecast?.dailySpendVelocity?.toFixed(2) || "0.00"}</div>
+                <div className="text-xl font-bold text-white font-mono">{formatCurrency(forecast?.dailySpendVelocity ?? 0, currency)}</div>
               </div>
               <div>
                 <div className="text-xs text-slate-500 font-medium mb-1">MONTHLY EST.</div>
-                <div className="text-xl font-bold text-indigo-400 font-mono">${forecast?.predictedMonthlyTotal?.toFixed(2) || "0.00"}</div>
+                <div className="text-xl font-bold text-indigo-400 font-mono">{formatCurrency(forecast?.predictedMonthlyTotal ?? 0, currency)}</div>
               </div>
             </div>
           </section>

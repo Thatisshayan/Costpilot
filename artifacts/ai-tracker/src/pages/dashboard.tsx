@@ -27,7 +27,9 @@ import { BottomMetricsBar } from '../components/dashboard/BottomMetricsBar';
 import OnboardingWizard from '../components/onboarding-wizard';
 
 // Mock Data & Utils
-import { costpilotMockData, formatCurrency } from '../data/costpilotMockData';
+import { costpilotMockData } from '../data/costpilotMockData';
+import { formatCurrency } from '../lib/currency';
+import CurrencySelector, { useCurrency } from '../components/currency-selector';
 import { 
   useGetKpiSummary, 
   useGetMonthlySpending, 
@@ -49,6 +51,7 @@ export default function Dashboard() {
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const updateWorkspaceMutation = useUpdateWorkspace();
   const createPlatformMutation = useCreatePlatform();
+  const [currency] = useCurrency();
 
   useEffect(() => {
     if (!activeWorkspaceId) return;
@@ -192,6 +195,7 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <CurrencySelector />
           <button 
             onClick={handleRunAudit}
             disabled={isAuditing}
@@ -207,20 +211,20 @@ export default function Dashboard() {
       {/* High Priority Alerts */}
       <HeaderAlert 
         renewalsCount={summary.renewalsThisWeek} 
-        totalAmount={formatCurrency(summary.upcomingRenewalAmount)} 
+        totalAmount={formatCurrency(summary.upcomingRenewalAmount, currency)} 
       />
 
       {/* KPI Section */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <KpiCard 
           label="Total AI Spend" 
-          value={formatCurrency(summary.totalAiSpend)} 
+          value={formatCurrency(summary.totalAiSpend, currency)} 
           subtext={`Across ${summary.activeAiTools} active tools`}
           icon={<CreditCard className="text-indigo-400" size={18} />}
         />
         <KpiCard 
           label="Month-to-Date" 
-          value={formatCurrency(summary.monthToDateSpend)} 
+          value={formatCurrency(summary.monthToDateSpend, currency)} 
           subtext={`+${summary.monthToDateChangePercent}% vs last month`}
           icon={<TrendingUp className="text-emerald-400" size={18} />}
           trend="up"
@@ -235,7 +239,7 @@ export default function Dashboard() {
         />
         <KpiCard 
           label="Savings Found" 
-          value={formatCurrency(summary.totalSavingsFound ?? 0)} 
+          value={formatCurrency(summary.totalSavingsFound ?? 0, currency)} 
           subtext="Potential monthly reduction"
           icon={<Zap className="text-amber-400" size={18} />}
           highlight
@@ -304,10 +308,10 @@ export default function Dashboard() {
 
       {/* Global Status Footer */}
       <BottomMetricsBar 
-        apiSpend={formatCurrency(summary.apiSpendToday ?? 0)}
+        apiSpend={formatCurrency(summary.apiSpendToday ?? 0, currency)}
         budgetUsed={`${summary.budgetUsedPercent ?? 0}%`}
-        forecast={formatCurrency(summary.forecastTotal ?? 0)}
-        savings={`${formatCurrency(summary.totalSavingsFound ?? 0)}/mo`}
+        forecast={formatCurrency(summary.forecastTotal ?? 0, currency)}
+        savings={`${formatCurrency(summary.totalSavingsFound ?? 0, currency)}/mo`}
         isOverBudget={(summary.budgetUsedPercent ?? 0) > 100}
       />
     </div>

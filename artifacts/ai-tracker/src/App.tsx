@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
+import AcceptInvite from "@/pages/accept-invite";
 import Analytics from "@/pages/analytics";
 import Dashboard from "@/pages/dashboard";
 import Expenses from "@/pages/expenses";
@@ -74,63 +75,68 @@ const queryClient = new QueryClient();
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/expenses" component={Expenses} />
-        <Route path="/subscriptions" component={Subscriptions} />
-        <Route path="/api-usage" component={ApiUsage} />
-        <Route path="/trials" component={Trials} />
-        <Route path="/vendors" component={Vendors} />
-        <Route path="/budgets" component={Budgets} />
-        <Route path="/reports" component={ReportsPage} />
-        <Route path="/import" component={ImportPortal} />
-        <Route path="/integrations" component={IntegrationsHub} />
-        <Route path="/comparison" component={ComparisonPage} />
-        <Route path="/sso" component={SSOPage} />
-        <Route path="/status" component={StatusPage} />
-        <Route path="/audit" component={AuditLogs} />
-        <Route path="/cost-centers" component={CostCenters} />
-        <Route path="/approvals" component={ApprovalWorkflows} />
-        <Route path="/roi" component={TokenRoi} />
-        <Route path="/switcher" component={LlmSwitcher} />
-        <Route path="/api-docs" component={ApiDocs} />
-        <Route path="/entities" component={MultiEntity} />
-        <Route path="/report-builder" component={ReportBuilder} />
-        <Route path="/digest" component={WeeklyDigest} />
-        <Route path="/anomalies" component={AnomalyDetection} />
-        <Route path="/bot-settings" component={BotSettings} />
-        <Route path="/tax" component={TaxOptimization} />
-        <Route path="/benchmarks" component={Benchmarking} />
-        <Route path="/aws-bedrock" component={BedrockConnector} />
-        <Route path="/azure-ai" component={AzureAiConnector} />
-        <Route path="/gcp-vertex" component={VertexAiConnector} />
-        <Route path="/fine-tuning" component={FineTuningRoi} />
-        <Route path="/gpu-calculator" component={GpuCalculator} />
-        <Route path="/compliance" component={ComplianceCenter} />
-        <Route path="/privacy" component={PrivacyHub} />
-        <Route path="/search" component={SearchHub} />
-        <Route path="/founder" component={FounderDashboard} />
-        <Route path="/auto-pilot" component={AutoPilot} />
-        <Route path="/tagging-rules" component={TaggingRules} />
-        <Route path="/credit-burn" component={CreditBurn} />
-        <Route path="/contracts" component={VendorContracts} />
-        <Route path="/advanced-settings" component={AdvancedSettings} />
-        <Route path="/heatmap" component={UsageHeatmap} />
-        <Route path="/intelligence" component={CostPilotIntelligence} />
-        <Route path="/unit-economics" component={UnitEconomics} />
-        <Route path="/gpu-waste" component={GpuWasteDetector} />
-        <Route path="/market-intelligence" component={MarketBenchmarks} />
-        <Route path="/llm-router" component={LlmRouter} />
-        <Route path="/cicd" component={CicdIntegration} />
-        <Route path="/remediation" component={RemediationCenter} />
-        <Route path="/terms" component={Terms} />
-        <Route path="/privacy" component={PrivacyPolicy} />
-        <Route path="/collaboration" component={Collaboration} />
-        <Route path="/settings" component={Settings} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route path="/accept-invite" component={AcceptInvite} />
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/expenses" component={Expenses} />
+            <Route path="/subscriptions" component={Subscriptions} />
+            <Route path="/api-usage" component={ApiUsage} />
+            <Route path="/trials" component={Trials} />
+            <Route path="/vendors" component={Vendors} />
+            <Route path="/budgets" component={Budgets} />
+            <Route path="/reports" component={ReportsPage} />
+            <Route path="/import" component={ImportPortal} />
+            <Route path="/integrations" component={IntegrationsHub} />
+            <Route path="/comparison" component={ComparisonPage} />
+            <Route path="/sso" component={SSOPage} />
+            <Route path="/status" component={StatusPage} />
+            <Route path="/audit" component={AuditLogs} />
+            <Route path="/cost-centers" component={CostCenters} />
+            <Route path="/approvals" component={ApprovalWorkflows} />
+            <Route path="/roi" component={TokenRoi} />
+            <Route path="/switcher" component={LlmSwitcher} />
+            <Route path="/api-docs" component={ApiDocs} />
+            <Route path="/entities" component={MultiEntity} />
+            <Route path="/report-builder" component={ReportBuilder} />
+            <Route path="/digest" component={WeeklyDigest} />
+            <Route path="/anomalies" component={AnomalyDetection} />
+            <Route path="/bot-settings" component={BotSettings} />
+            <Route path="/tax" component={TaxOptimization} />
+            <Route path="/benchmarks" component={Benchmarking} />
+            <Route path="/aws-bedrock" component={BedrockConnector} />
+            <Route path="/azure-ai" component={AzureAiConnector} />
+            <Route path="/gcp-vertex" component={VertexAiConnector} />
+            <Route path="/fine-tuning" component={FineTuningRoi} />
+            <Route path="/gpu-calculator" component={GpuCalculator} />
+            <Route path="/compliance" component={ComplianceCenter} />
+            <Route path="/privacy" component={PrivacyHub} />
+            <Route path="/search" component={SearchHub} />
+            <Route path="/founder" component={FounderDashboard} />
+            <Route path="/auto-pilot" component={AutoPilot} />
+            <Route path="/tagging-rules" component={TaggingRules} />
+            <Route path="/credit-burn" component={CreditBurn} />
+            <Route path="/contracts" component={VendorContracts} />
+            <Route path="/advanced-settings" component={AdvancedSettings} />
+            <Route path="/heatmap" component={UsageHeatmap} />
+            <Route path="/intelligence" component={CostPilotIntelligence} />
+            <Route path="/unit-economics" component={UnitEconomics} />
+            <Route path="/gpu-waste" component={GpuWasteDetector} />
+            <Route path="/market-intelligence" component={MarketBenchmarks} />
+            <Route path="/llm-router" component={LlmRouter} />
+            <Route path="/cicd" component={CicdIntegration} />
+            <Route path="/remediation" component={RemediationCenter} />
+            <Route path="/terms" component={Terms} />
+            <Route path="/privacy" component={PrivacyPolicy} />
+            <Route path="/collaboration" component={Collaboration} />
+            <Route path="/settings" component={Settings} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
