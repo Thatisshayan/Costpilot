@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { 
   Download, 
   FileText, 
@@ -26,15 +26,68 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// Components
 import { BottomMetricsBar } from '../components/dashboard/BottomMetricsBar';
 
-// Data
 import { costpilotMockData, formatCurrency } from '../data/costpilotMockData';
+import { 
+  useGetKpiSummary,
+  useListExpenses,
+} from '@workspace/api-client-react';
+
+const PIE_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#0ea5e9", "#f59e0b", "#10b981", "#ef4444"];
 
 export default function Reports() {
   const reportRef = useRef<HTMLDivElement>(null);
-  const { summary, spendingTrend } = costpilotMockData;
+
+  const { data: liveSummary, isLoading: kpiLoading } = useGetKpiSummary();
+  const { data: liveExpenses = [], isLoading: expensesLoading } = useListExpenses();
+
+  const summary = liveSummary || costpilotMockData.summary;
+  const isLoading = kpiLoading || expensesLoading;
+
+  const pieData = useMemo(() => {
+    if (liveExpenses && liveExpenses.length > 0) {
+      const groups: Record<string, number> = {};
+      liveExpenses.forEach(e => {
+        const cat = e.category || 'Other';
+        groups[cat] = (groups[cat] || 0) + e.amount;
+      });
+      const entries = Object.entries(groups).sort((a, b) => b[1] - a[1]);
+      return entries.map(([name, value], i) => ({
+        name,
+        value: Math.round(value),
+        color: PIE_COLORS[i % PIE_COLORS.length],
+      }));
+    }
+    return [
+      { name: "Subscriptions", value: 460, color: "#6366f1" },
+      { name: "API Usage", value: 520, color: "#8b5cf6" },
+      { name: "Infrastructure", value: 140, color: "#ec4899" },
+      { name: "Credits", value: 160, color: "#0ea5e9" },
+    ];
+  }, [liveExpenses]);
+
+  const topItems = useMemo(() => {
+    if (liveExpenses && liveExpenses.length > 0) {
+      return [...liveExpenses]
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 4)
+        .map(e => ({
+          vendor: e.platformName || 'Unknown',
+          type: e.category || 'Expense',
+          amount: e.amount.toFixed(2),
+          status: e.description || 'Logged',
+        }));
+    }
+    return [
+      { vendor: "OpenAI Platform", type: "API Usage", amount: "482.12", status: "Billed Monthly" },
+      { vendor: "Anthropic Claude", type: "API Usage", amount: "312.45", status: "Billed Monthly" },
+      { vendor: "Midjourney", type: "Subscription", amount: "120.00", status: "Pro Plan" },
+      { vendor: "Vercel Enterprise", type: "Infrastructure", amount: "89.00", status: "Active" },
+    ];
+  }, [liveExpenses]);
+
+  const spendingTrend = costpilotMockData.spendingTrend;
 
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
@@ -116,9 +169,19 @@ export default function Reports() {
 
         {/* Executive Highlights */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <ReportMetric label="Total Monthly Investment" value={formatCurrency(summary.totalAiSpend)} sub="Across 38 providers" />
-          <ReportMetric label="Operational Savings" value={formatCurrency(summary.totalSavingsFound)} sub="Detected waste reduction" positive />
-          <ReportMetric label="Budget Variance" value={`${summary.budgetUsedPercent}%`} sub={`$290 over threshold`} urgent={summary.budgetUsedPercent > 100} />
+          {isLoading ? (
+            <>
+              <SkeletonMetric />
+              <SkeletonMetric />
+              <SkeletonMetric />
+            </>
+          ) : (
+            <>
+              <ReportMetric label="Total Monthly Investment" value={formatCurrency(summary.totalAiSpend)} sub="Across 38 providers" />
+              <ReportMetric label="Operational Savings" value={formatCurrency(summary.totalSavingsFound ?? 0)} sub="Detected waste reduction" positive />
+              <ReportMetric label="Budget Variance" value={`${summary.budgetUsedPercent ?? 0}%`} sub={`$290 over threshold`} urgent={(summary.budgetUsedPercent ?? 0) > 100} />
+            </>
+          )}
         </div>
 
         {/* Visual Analytics */}
@@ -241,11 +304,11 @@ export default function Reports() {
       </div>
 
       <BottomMetricsBar 
-        apiSpend={formatCurrency(summary.apiSpendToday)}
-        budgetUsed={`${summary.budgetUsedPercent}%`}
-        forecast={formatCurrency(summary.forecastTotal)}
-        savings={`${formatCurrency(summary.totalSavingsFound)}/mo`}
-        isOverBudget={summary.budgetUsedPercent > 100}
+        apiSpend={formatCurrency(summary.apiSpendToday ?? 0)}
+        budgetUsed={`${summary.budgetUsedPercent ?? 0}%`}
+        forecast={formatCurrency(summary.forecastTotal ?? 0)}
+        savings={`${formatCurrency(summary.totalSavingsFound ?? 0)}/mo`}
+        isOverBudget={(summary.budgetUsedPercent ?? 0) > 100}
       />
     </div>
   );
@@ -263,16 +326,12 @@ function ReportMetric({ label, value, sub, positive = false, urgent = false }: a
   );
 }
 
-const pieData = [
-  { name: "Subscriptions", value: 460, color: "#6366f1" },
-  { name: "API Usage", value: 520, color: "#8b5cf6" },
-  { name: "Infrastructure", value: 140, color: "#ec4899" },
-  { name: "Credits", value: 160, color: "#0ea5e9" },
-];
-
-const topItems = [
-  { vendor: "OpenAI Platform", type: "API Usage", amount: "482.12", status: "Billed Monthly" },
-  { vendor: "Anthropic Claude", type: "API Usage", amount: "312.45", status: "Billed Monthly" },
-  { vendor: "Midjourney", type: "Subscription", amount: "120.00", status: "Pro Plan" },
-  { vendor: "Vercel Enterprise", type: "Infrastructure", amount: "89.00", status: "Active" },
-];
+function SkeletonMetric() {
+  return (
+    <div className="bg-white/[0.01] border border-white/[0.04] rounded-[2rem] p-8 space-y-3 animate-pulse">
+      <div className="h-3 w-24 bg-white/10 rounded" />
+      <div className="h-8 w-36 bg-white/10 rounded" />
+      <div className="h-3 w-28 bg-white/10 rounded" />
+    </div>
+  );
+}

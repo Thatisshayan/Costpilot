@@ -12,13 +12,41 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useListWebhooks } from '@workspace/api-client-react';
+import type { Webhook } from '@workspace/api-client-react';
+
+const MOCK_WEBHOOKS: Webhook[] = [
+  {
+    id: 1,
+    workspaceId: 0,
+    type: 'slack',
+    url: 'https://hooks.slack.com/services/T00/B00/xxx',
+    name: '#ai-alerts-channel',
+    isActive: true,
+    events: 'budget_alert',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    workspaceId: 0,
+    type: 'discord',
+    url: 'https://discord.com/api/webhooks/xxx',
+    name: 'devops-infra@costpilot.ai',
+    isActive: true,
+    events: 'budget_alert',
+    createdAt: new Date().toISOString(),
+  },
+];
 
 export default function AutoPilot() {
-  const [rules, setRules] = useState([
+  const [rules] = useState([
     { id: 1, name: 'Critical Burn Stop', trigger: 'Spend > 120% Budget', action: 'Kill Keys', status: 'Armed' },
     { id: 2, name: 'Soft Throttling', trigger: 'Spend > 80% Budget', action: 'Rate Limit 50%', status: 'Active' },
     { id: 3, name: 'Non-Production Freeze', trigger: 'After 8 PM PST', action: 'Disable Staging Keys', status: 'Paused' },
   ]);
+
+  const { data: liveWebhooks, isLoading: whLoading } = useListWebhooks();
+  const webhooks = (liveWebhooks && liveWebhooks.length > 0) ? liveWebhooks : MOCK_WEBHOOKS;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-5xl mx-auto">
@@ -96,6 +124,47 @@ export default function AutoPilot() {
               <SafetyMetric label="Latent Risk" value="Low" status="good" />
               <SafetyMetric label="Manual Override" value="Off" status="good" />
             </div>
+          </div>
+
+          {/* Notification Channels */}
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] p-8 backdrop-blur-md">
+            <div className="flex items-center gap-3 mb-6">
+              <ShieldCheck className="text-indigo-400" size={20} />
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest">Notification Channels</h3>
+            </div>
+            
+            {whLoading ? (
+              Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-black/40 border border-white/5 rounded-2xl animate-pulse mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/10" />
+                    <div className="h-4 w-28 bg-white/10 rounded" />
+                  </div>
+                  <div className="h-4 w-12 bg-white/10 rounded" />
+                </div>
+              ))
+            ) : (
+              webhooks.map((wh) => {
+                const isSlack = wh.type === 'slack';
+                const badge = isSlack ? 'Slack' : 'Discord';
+                const initials = isSlack ? 'SL' : '@';
+                const badgeColor = isSlack
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : 'bg-indigo-500/10 text-indigo-400';
+
+                return (
+                  <div key={wh.id} className="flex items-center justify-between p-3 bg-black/40 border border-white/5 rounded-2xl mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg ${badgeColor} flex items-center justify-center font-bold text-xs`}>
+                        {initials}
+                      </div>
+                      <div className="text-xs font-bold text-white">{wh.name}</div>
+                    </div>
+                    <span className={`text-[9px] px-2 py-1 ${badgeColor} rounded-md font-bold uppercase`}>{badge}</span>
+                  </div>
+                );
+              })
+            )}
           </div>
 
           <div className="bg-gradient-to-br from-red-600/20 to-orange-700/20 border border-red-500/20 rounded-[2.5rem] p-8">

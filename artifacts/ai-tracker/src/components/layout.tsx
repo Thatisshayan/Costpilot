@@ -173,7 +173,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           flex flex-col transition-all duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           ${isCollapsed ? 'lg:w-[80px] items-center' : 'w-64 lg:w-64'} 
-          p-6
+          p-6 sidebar-gradient
         `}>
           <div className="flex-1 w-full">
             {/* Logo (Desktop) */}
@@ -202,10 +202,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition duration-200 ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       isActive 
-                        ? 'bg-white/[0.06] text-white shadow-inner border-t border-white/[0.05]' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.02]'
+                        ? 'bg-white/[0.06] text-white shadow-inner border-t border-white/[0.05] relative before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-r-full before:bg-indigo-400 before:shadow-[0_0_8px_rgba(99,102,241,0.6)]' 
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] hover:translate-x-0.5'
                     } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
                   >
                     <item.icon size={18} className={isActive ? 'text-indigo-400' : ''} />
@@ -235,7 +235,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="w-full space-y-2 mt-auto">
              <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className={`hidden lg:flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition duration-200 ${isCollapsed ? 'justify-center px-0' : ''}`}
+                className={`hidden lg:flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition-all duration-200 hover:translate-x-0.5 ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title={isCollapsed ? "Expand" : "Collapse"}
               >
                 {isCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
@@ -245,7 +245,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {installPrompt && (
               <button
                 onClick={handleInstallClick}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition duration-200 ${isCollapsed && !isMobileMenuOpen ? 'lg:justify-center lg:px-0' : ''}`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition-all duration-200 hover:translate-x-0.5 ${isCollapsed && !isMobileMenuOpen ? 'lg:justify-center lg:px-0' : ''}`}
                 title={isCollapsed ? "Install App" : undefined}
               >
                 <Download size={18} />
@@ -255,7 +255,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition duration-200 ${isCollapsed && !isMobileMenuOpen ? 'lg:justify-center lg:px-0' : ''}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition-all duration-200 hover:translate-x-0.5 ${isCollapsed && !isMobileMenuOpen ? 'lg:justify-center lg:px-0' : ''}`}
               title={isCollapsed ? "Toggle Theme" : undefined}
             >
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}

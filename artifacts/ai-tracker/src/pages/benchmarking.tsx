@@ -18,6 +18,10 @@ export default function Benchmarking() {
     { name: 'Anthropic (Claude 3.5)', cost: 0.15, success: '99.7%', latency: '215ms', efficiency: 'High' },
     { name: 'Google (Gemini 1.5)', cost: 0.08, success: '94.2%', latency: '850ms', efficiency: 'Medium' },
     { name: 'Groq (Llama 3)', cost: 0.02, success: '99.9%', latency: '40ms', efficiency: 'Ultra' },
+    { name: 'Together AI (Mixtral)', cost: 0.04, success: '99.5%', latency: '180ms', efficiency: 'High' },
+    { name: 'DeepSeek (DeepSeek V2)', cost: 0.03, success: '97.8%', latency: '320ms', efficiency: 'High' },
+    { name: 'Mistral (Mistral Large)', cost: 0.07, success: '99.1%', latency: '190ms', efficiency: 'High' },
+    { name: 'Replicate (Llama 3)', cost: 0.05, success: '98.5%', latency: '250ms', efficiency: 'Medium' },
   ];
 
   return (

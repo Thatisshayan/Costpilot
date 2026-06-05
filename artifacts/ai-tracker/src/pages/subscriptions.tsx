@@ -115,6 +115,14 @@ function getHashColor(str: string) {
     "bg-[#8b5cf6]", // Purple
     "bg-[#f59e0b]", // Amber
     "bg-[#0ea5e9]", // Sky
+    "bg-[#4f6ef7]", // DeepSeek blue
+    "bg-[#ff6b4a]", // Mistral orange
+    "bg-[#ff4405]", // Groq orange-red
+    "bg-[#8b5cf6]", // Together AI purple
+    "bg-[#ffd700]", // Replicate gold
+    "bg-[#1a1b2f]", // Stability AI dark
+    "bg-[#4285f4]", // Google blue
+    "bg-[#39594d]", // Cohere green
   ];
   let hash = 0;
   for (let i = 0; i < str.length; i++) {

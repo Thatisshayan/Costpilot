@@ -26,6 +26,10 @@ export default function VendorComparison() {
     { name: 'Claude 3.5 Sonnet', provider: 'Anthropic', inputCost: 3.00, outputCost: 15.00, contextWindow: '200k', strength: 'Coding/Nuance', bestFor: 'Development' },
     { name: 'GPT-4o-mini', provider: 'OpenAI', inputCost: 0.15, outputCost: 0.60, contextWindow: '128k', strength: 'Speed/Cost', bestFor: 'Simple automation' },
     { name: 'Gemini 1.5 Pro', provider: 'Google', inputCost: 3.50, outputCost: 10.50, contextWindow: '2M', strength: 'Context Window', bestFor: 'Large documents' },
+    { name: 'Mistral Large', provider: 'Mistral', inputCost: 2.00, outputCost: 6.00, contextWindow: '128k', strength: 'Multilingual', bestFor: 'Translation/NLP' },
+    { name: 'DeepSeek Chat', provider: 'DeepSeek', inputCost: 1.00, outputCost: 4.00, contextWindow: '128k', strength: 'Reasoning', bestFor: 'Complex analysis' },
+    { name: 'Llama 3 70B', provider: 'Groq', inputCost: 0.59, outputCost: 0.79, contextWindow: '8k', strength: 'Speed', bestFor: 'Real-time inference' },
+    { name: 'Gemini 1.5 Flash', provider: 'Google', inputCost: 0.15, outputCost: 0.60, contextWindow: '1M', strength: 'Speed/Cost', bestFor: 'High-volume tasks' },
   ];
 
   return (

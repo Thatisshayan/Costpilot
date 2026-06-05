@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
+import { customFetch } from '@workspace/api-client-react';
 
 interface ColumnMapping {
   vendor: string;
@@ -73,14 +74,37 @@ export default function ImportPortal() {
     });
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
+    if (!mapping.vendor || !mapping.amount || !mapping.date) {
+      toast.error('Please map Vendor, Amount, and Date columns before importing.');
+      return;
+    }
+
     setIsProcessing(true);
-    // Simulate API Batch Insertion
-    setTimeout(() => {
+    const loadingToast = toast.loading('Importing data to CostPilot Ledger...');
+
+    try {
+      const batch = data.map((row) => ({
+        platformName: row[mapping.vendor] || 'Unknown',
+        amount: parseFloat(row[mapping.amount]) || 0,
+        date: row[mapping.date] || new Date().toISOString().slice(0, 10),
+        description: mapping.description ? (row[mapping.description] || undefined) : undefined,
+      }));
+
+      await customFetch('/api/expenses/import-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expenses: batch }),
+      });
+
       setIsProcessing(false);
       setStep('complete');
-      toast.success('Successfully imported data to CostPilot Ledger');
-    }, 2000);
+      toast.success('Successfully imported data to CostPilot Ledger', { id: loadingToast });
+    } catch (err) {
+      setIsProcessing(false);
+      toast.error('Failed to import data. Please try again.', { id: loadingToast });
+      console.error(err);
+    }
   };
 
   return (

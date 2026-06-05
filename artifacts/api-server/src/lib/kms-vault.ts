@@ -1,14 +1,19 @@
 import crypto from "node:crypto";
+import { logger } from "./logger";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 
+if (!process.env.KMS_MASTER_KEY && !process.env.ENCRYPTION_KEY) {
+  logger.warn("KMS_MASTER_KEY not set — encryption will be insecure");
+}
+
 // Master Key derivation
-const KEY = process.env.KMS_MASTER_KEY || process.env.ENCRYPTION_KEY || "default-secret-key-must-be-32-bytes!!";
+const KEY = process.env.KMS_MASTER_KEY || process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString("hex");
 const MASTER_KEY = crypto.scryptSync(KEY, "kms-salt", 32);
 
 // Old key derivation for backward compatibility fallback
-const OLD_KEY = process.env.ENCRYPTION_KEY || "default-secret-key-must-be-32-bytes!!";
+const OLD_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString("hex");
 const OLD_ENCRYPTION_KEY = crypto.scryptSync(OLD_KEY, "salt", 32);
 
 interface KMSPayload {

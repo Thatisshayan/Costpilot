@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   ClipboardList, 
   User, 
@@ -10,22 +10,52 @@ import {
   Filter,
   ArrowRight
 } from 'lucide-react';
+import { useListAudits } from '@workspace/api-client-react';
+import type { AiAudit } from '@workspace/api-client-react';
+
+function relativeTime(dateStr?: string): string {
+  if (!dateStr) return 'Unknown';
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  if (isNaN(then)) return dateStr;
+  const diffSec = Math.floor((now - then) / 1000);
+  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  const days = Math.floor(diffSec / 86400);
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
+}
+
+const severityMap: Record<string, string> = {
+  low: 'text-emerald-400 bg-emerald-500/10',
+  medium: 'text-amber-400 bg-amber-500/10',
+  high: 'text-red-400 bg-red-500/10',
+};
 
 export default function AuditLogs() {
-  const logs = [
-    { id: 1, action: 'Budget Threshold Updated', actor: 'Alex Rivera (Admin)', target: 'Monthly Limit: $1,250 → $1,500', time: '10m ago', severity: 'low' },
-    { id: 2, action: 'New Integration Added', actor: 'Jordan Chen', target: 'Stripe Webhook (PROD)', time: '2h ago', severity: 'low' },
-    { id: 3, action: 'Unusual Spending Alert', actor: 'CostPilot Bot', target: 'OpenAI Spike detected (+$412)', time: '4h ago', severity: 'high' },
-    { id: 4, action: 'User Permissions Changed', actor: 'Alex Rivera (Admin)', target: 'Sarah Miller: Viewer → Billing', time: 'Yesterday', severity: 'medium' },
-    { id: 5, action: 'Webhook Deleted', actor: 'Alex Rivera (Admin)', target: 'Anthropic Usage (STAGING)', time: '2 days ago', severity: 'medium' },
-    { id: 6, action: 'Export Generated', actor: 'Sarah Miller', target: 'Xero Reconcile Q2', time: '3 days ago', severity: 'low' },
-  ];
+  const { data: liveLogs, isLoading, isError } = useListAudits();
 
-  const severityMap = {
-    low: 'text-emerald-400 bg-emerald-500/10',
-    medium: 'text-amber-400 bg-amber-500/10',
-    high: 'text-red-400 bg-red-500/10',
-  };
+  const logs = useMemo(() => {
+    if (!liveLogs || liveLogs.length === 0) {
+      return [
+        { id: 1, action: 'Budget Threshold Updated', actor: 'Alex Rivera (Admin)', target: 'Monthly Limit: $1,250 → $1,500', time: '10m ago', severity: 'low' },
+        { id: 2, action: 'New Integration Added', actor: 'Jordan Chen', target: 'Stripe Webhook (PROD)', time: '2h ago', severity: 'low' },
+        { id: 3, action: 'Unusual Spending Alert', actor: 'CostPilot Bot', target: 'OpenAI Spike detected (+$412)', time: '4h ago', severity: 'high' },
+        { id: 4, action: 'User Permissions Changed', actor: 'Alex Rivera (Admin)', target: 'Sarah Miller: Viewer → Billing', time: 'Yesterday', severity: 'medium' },
+        { id: 5, action: 'Webhook Deleted', actor: 'Alex Rivera (Admin)', target: 'Anthropic Usage (STAGING)', time: '2 days ago', severity: 'medium' },
+        { id: 6, action: 'Export Generated', actor: 'Sarah Miller', target: 'Xero Reconcile Q2', time: '3 days ago', severity: 'low' },
+      ];
+    }
+    return liveLogs.map((log: AiAudit) => ({
+      id: log.id ?? 0,
+      action: log.title ?? 'Unknown Action',
+      actor: log.status ?? 'System',
+      target: log.description ?? 'No details',
+      time: relativeTime(log.createdAt),
+      severity: log.severity ?? 'low',
+    }));
+  }, [liveLogs]);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-6xl mx-auto">
@@ -65,47 +95,72 @@ export default function AuditLogs() {
         </div>
         
         <div className="divide-y divide-white/[0.04]">
-          {logs.map((log) => (
-            <div key={log.id} className="p-6 flex items-center justify-between group hover:bg-white/[0.01] transition-colors">
-              <div className="flex items-center gap-6">
-                <div className={`w-2 h-10 rounded-full ${severityMap[log.severity as keyof typeof severityMap].split(' ')[1]}`} />
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="text-sm font-bold text-white">{log.action}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${severityMap[log.severity as keyof typeof severityMap]}`}>
-                      {log.severity}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-slate-500">
-                    <div className="flex items-center gap-1">
-                      <User size={12} />
-                      {log.actor}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Database size={12} />
-                      {log.target}
-                    </div>
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-6 flex items-center justify-between animate-pulse">
+                <div className="flex items-center gap-6">
+                  <div className="w-2 h-10 rounded-full bg-white/5" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-48 bg-white/10 rounded" />
+                    <div className="h-3 w-64 bg-white/5 rounded" />
                   </div>
                 </div>
+                <div className="h-3 w-16 bg-white/5 rounded" />
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <Clock size={12} />
-                  {log.time}
-                </div>
-                <button className="p-2 rounded-lg bg-white/5 text-slate-500 hover:text-white transition-all opacity-0 group-hover:opacity-100">
-                  <ArrowRight size={14} />
-                </button>
-              </div>
+            ))
+          ) : isError ? (
+            <div className="p-12 text-center">
+              <p className="text-sm text-red-400 font-medium">Failed to load audit logs. Please try again later.</p>
             </div>
-          ))}
+          ) : logs.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-sm text-slate-500 font-medium">No audit logs available yet.</p>
+            </div>
+          ) : (
+            logs.map((log) => (
+              <div key={log.id} className="p-6 flex items-center justify-between group hover:bg-white/[0.01] transition-colors">
+                <div className="flex items-center gap-6">
+                  <div className={`w-2 h-10 rounded-full ${(severityMap[log.severity] || severityMap.low).split(' ')[1]}`} />
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="text-sm font-bold text-white">{log.action}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${severityMap[log.severity] || severityMap.low}`}>
+                        {log.severity}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <div className="flex items-center gap-1">
+                        <User size={12} />
+                        {log.actor}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Database size={12} />
+                        {log.target}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <Clock size={12} />
+                    {log.time}
+                  </div>
+                  <button className="p-2 rounded-lg bg-white/5 text-slate-500 hover:text-white transition-all opacity-0 group-hover:opacity-100">
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
         
-        <div className="p-6 bg-white/[0.01] text-center">
-          <button className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-[0.2em] transition-colors">
-            Load More Archive Data
-          </button>
-        </div>
+        {!isLoading && !isError && logs.length > 0 && (
+          <div className="p-6 bg-white/[0.01] text-center">
+            <button className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-[0.2em] transition-colors">
+              Load More Archive Data
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Compliance Note */}

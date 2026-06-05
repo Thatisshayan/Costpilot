@@ -11,7 +11,11 @@ import {
   ExternalLink,
   Bot,
   CreditCard,
-  Code
+  Code,
+  Cloud,
+  Database,
+  Sparkles,
+  Cpu
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -58,6 +62,78 @@ export default function IntegrationsHub() {
       icon: <Code className="text-amber-400" />,
       setup: [
         { label: 'Endpoint', value: 'https://api.costpilot.ai/api/webhooks/incoming/custom' },
+      ],
+      docUrl: '#'
+    },
+    {
+      id: 'deepseek',
+      name: 'DeepSeek Cost Tracker',
+      description: 'Monitor DeepSeek API spend and usage patterns in real time.',
+      status: 'Ready',
+      icon: <Cloud className="text-blue-400" />,
+      setup: [
+        { label: 'Endpoint', value: 'https://api.costpilot.ai/api/webhooks/incoming/deepseek' },
+        { label: 'API Key', value: 'ds_cp_••••••••••••••••' },
+      ],
+      docUrl: '#'
+    },
+    {
+      id: 'mistral',
+      name: 'Mistral AI Billing Sync',
+      description: 'Sync Mistral API consumption data for unified cost reporting.',
+      status: 'Active',
+      icon: <Sparkles className="text-orange-400" />,
+      setup: [
+        { label: 'Endpoint', value: 'https://api.costpilot.ai/api/webhooks/incoming/mistral' },
+        { label: 'Webhook Secret', value: 'ms_cp_••••••••••••••••' },
+      ],
+      docUrl: '#'
+    },
+    {
+      id: 'groq',
+      name: 'Groq Cloud Monitor',
+      description: 'Track ultra-low latency inference costs from Groq hardware.',
+      status: 'Active',
+      icon: <Zap className="text-emerald-400" />,
+      setup: [
+        { label: 'Endpoint', value: 'https://api.costpilot.ai/api/webhooks/incoming/groq' },
+        { label: 'Groq API Key', value: 'gsk_cp_••••••••••••••••' },
+      ],
+      docUrl: '#'
+    },
+    {
+      id: 'togetherai',
+      name: 'Together AI Usage Relay',
+      description: 'Aggregate Together AI model usage and spending data.',
+      status: 'Ready',
+      icon: <Cpu className="text-purple-400" />,
+      setup: [
+        { label: 'Endpoint', value: 'https://api.costpilot.ai/api/webhooks/incoming/togetherai' },
+        { label: 'Together Key', value: 'tog_cp_••••••••••••••••' },
+      ],
+      docUrl: '#'
+    },
+    {
+      id: 'replicate',
+      name: 'Replicate Run Costing',
+      description: 'Track Replicate prediction costs and usage across all models.',
+      status: 'Inactive',
+      icon: <Database className="text-cyan-400" />,
+      setup: [
+        { label: 'Endpoint', value: 'https://api.costpilot.ai/api/webhooks/incoming/replicate' },
+        { label: 'Replicate Key', value: 'rpl_cp_••••••••••••••••' },
+      ],
+      docUrl: '#'
+    },
+    {
+      id: 'stability',
+      name: 'Stability AI Spend Hub',
+      description: 'Monitor Stability AI image generation costs and API volume.',
+      status: 'Ready',
+      icon: <RefreshCw className="text-yellow-400" />,
+      setup: [
+        { label: 'Endpoint', value: 'https://api.costpilot.ai/api/webhooks/incoming/stability' },
+        { label: 'Stability Key', value: 'stb_cp_••••••••••••••••' },
       ],
       docUrl: '#'
     }

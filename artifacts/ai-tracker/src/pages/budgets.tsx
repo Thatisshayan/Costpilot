@@ -1,19 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Wallet, 
   DollarSign, 
-  AlertTriangle, 
   Bell, 
   Percent, 
   Sliders, 
   Plus, 
   Trash2,
   CheckCircle2,
-  Clock,
   Shield,
   Send,
-  Zap
+  Zap,
+  Loader2,
+  RefreshCcw,
+  X
 } from 'lucide-react';
+import { toast } from 'sonner';
+
+import {
+  useGetKpiSummary,
+  useListWebhooks,
+  useCreateWebhook,
+  getGetKpiSummaryQueryKey,
+  getListWebhooksQueryKey
+} from '@workspace/api-client-react';
+import type { Webhook } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { costpilotMockData } from '../data/costpilotMockData';
 
 interface Budget {
   id: number;
@@ -26,7 +39,32 @@ interface Budget {
   active: boolean;
 }
 
+const MOCK_WEBHOOKS: Webhook[] = [
+  {
+    id: 1,
+    workspaceId: 0,
+    type: 'slack' as const,
+    url: 'https://hooks.slack.com/services/T00/B00/xxx',
+    name: '#ai-alerts-channel',
+    isActive: true,
+    events: 'budget_alert',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    workspaceId: 0,
+    type: 'discord' as const,
+    url: 'https://discord.com/api/webhooks/xxx',
+    name: 'devops-infra@costpilot.ai',
+    isActive: true,
+    events: 'budget_alert',
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export default function Budgets() {
+  const qc = useQueryClient();
+
   const [budgets, setBudgets] = useState<Budget[]>([
     {
       id: 1,
@@ -76,10 +114,39 @@ export default function Budgets() {
   const [newCategory, setNewCategory] = useState("LLM Tokens");
   const [newHardStop, setNewHardStop] = useState(true);
 
+  // Webhook state
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
+  const [whName, setWhName] = useState("");
+  const [whUrl, setWhUrl] = useState("");
+  const [whType, setWhType] = useState<"slack" | "discord">("slack");
+  const [whEvents, setWhEvents] = useState("budget_alert");
+
+  // KPI Summary for budget overview
+  const { data: liveSummary, isLoading: kpiLoading } = useGetKpiSummary();
+  const summary = liveSummary || costpilotMockData.summary;
+
+  // Webhooks for notification channels
+  const { data: liveWebhooks, isLoading: whLoading } = useListWebhooks();
+  const webhooks = (liveWebhooks && liveWebhooks.length > 0) ? liveWebhooks : MOCK_WEBHOOKS;
+
+  const createWebhook = useCreateWebhook();
+
   const totalLimit = budgets.reduce((sum, b) => sum + b.limit, 0);
   const totalSpent = budgets.reduce((sum, b) => sum + b.spent, 0);
   const totalRemaining = totalLimit - totalSpent;
   const overallUsagePercent = Math.round((totalSpent / totalLimit) * 100);
+
+  const budgetTotal = summary.budgetTotal ?? totalLimit;
+  const budgetSpent = summary.monthToDateSpend ?? totalSpent;
+  const budgetRemaining = budgetTotal - budgetSpent;
+  const budgetUsagePct = summary.budgetUsedPercent ?? Math.round((budgetSpent / budgetTotal) * 100);
+  const isLoading = kpiLoading;
+
+  const lastUpdated = useMemo(() => {
+    const now = new Date();
+    const mins = now.getMinutes();
+    return `${mins}m ago`;
+  }, [liveSummary]);
 
   const handleAddBudget = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +177,31 @@ export default function Budgets() {
     setBudgets(budgets.map(b => b.id === id ? { ...b, hardStop: !b.hardStop } : b));
   };
 
+  const handleAddWebhook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!whName || !whUrl) return;
+
+    try {
+      await createWebhook.mutateAsync({
+        data: {
+          workspaceId: 0,
+          name: whName,
+          url: whUrl,
+          type: whType,
+          events: whEvents || undefined,
+        }
+      });
+      qc.invalidateQueries({ queryKey: getListWebhooksQueryKey() });
+      toast.success(`Webhook "${whName}" created`);
+      setWhName("");
+      setWhUrl("");
+      setWhEvents("budget_alert");
+      setShowWebhookModal(false);
+    } catch (err) {
+      toast.error("Failed to create webhook");
+    }
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-6xl mx-auto">
       {/* Header */}
@@ -138,21 +230,29 @@ export default function Budgets() {
               <Wallet size={16} />
             </div>
           </div>
-          <div className="text-2xl font-black text-white">${totalLimit.toLocaleString()}</div>
+          {isLoading ? (
+            <div className="h-8 w-28 bg-white/10 rounded animate-pulse" />
+          ) : (
+            <div className="text-2xl font-black text-white">${budgetTotal.toLocaleString()}</div>
+          )}
           <div className="text-[10px] text-slate-500 mt-2 font-medium">Monthly Reset cycle</div>
         </div>
 
         <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 backdrop-blur-md">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Spent</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Month-to-Date Spend</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
               <DollarSign size={16} />
             </div>
           </div>
-          <div className="text-2xl font-black text-white">${totalSpent.toLocaleString()}</div>
+          {isLoading ? (
+            <div className="h-8 w-28 bg-white/10 rounded animate-pulse" />
+          ) : (
+            <div className="text-2xl font-black text-white">${budgetSpent.toLocaleString()}</div>
+          )}
           <div className="text-[10px] text-emerald-400 mt-2 font-bold flex items-center gap-1">
-            <Clock size={12} />
-            Updated 5m ago
+            <RefreshCcw size={12} />
+            Updated {lastUpdated}
           </div>
         </div>
 
@@ -163,7 +263,11 @@ export default function Budgets() {
               <Zap size={16} />
             </div>
           </div>
-          <div className="text-2xl font-black text-white">${totalRemaining.toLocaleString()}</div>
+          {isLoading ? (
+            <div className="h-8 w-28 bg-white/10 rounded animate-pulse" />
+          ) : (
+            <div className="text-2xl font-black text-white">${budgetRemaining.toLocaleString()}</div>
+          )}
           <div className="text-[10px] text-slate-500 mt-2 font-medium">Safe to burn</div>
         </div>
 
@@ -174,11 +278,15 @@ export default function Budgets() {
               <Percent size={16} />
             </div>
           </div>
-          <div className="text-2xl font-black text-white">{overallUsagePercent}%</div>
+          {isLoading ? (
+            <div className="h-8 w-16 bg-white/10 rounded animate-pulse" />
+          ) : (
+            <div className="text-2xl font-black text-white">{budgetUsagePct}%</div>
+          )}
           <div className="w-full bg-white/10 h-1.5 rounded-full mt-2 overflow-hidden">
             <div 
-              className={`h-full rounded-full transition-all ${overallUsagePercent > 80 ? 'bg-red-500' : 'bg-amber-500'}`}
-              style={{ width: `${overallUsagePercent}%` }}
+              className={`h-full rounded-full transition-all ${budgetUsagePct > 80 ? 'bg-red-500' : 'bg-amber-500'}`}
+              style={{ width: `${Math.min(budgetUsagePct, 100)}%` }}
             />
           </div>
         </div>
@@ -251,32 +359,58 @@ export default function Budgets() {
       {/* Alert Policy & Integrations */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] p-10 backdrop-blur-md">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-              <Bell size={24} />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                <Bell size={24} />
+              </div>
+              <h2 className="text-xl font-bold text-white">Incident Channels</h2>
             </div>
-            <h2 className="text-xl font-bold text-white">Incident Channels</h2>
+            <button
+              onClick={() => setShowWebhookModal(true)}
+              className="p-2 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white text-indigo-400 rounded-xl transition-all"
+              title="Add webhook"
+            >
+              <Plus size={18} />
+            </button>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed mb-8">
             Connect alert endpoints to feed cost notifications and automated threshold warnings directly to your dev tools.
           </p>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-xs">SL</div>
-                <div className="text-xs font-bold text-white">#ai-alerts-channel</div>
-              </div>
-              <span className="text-[9px] px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-md font-bold uppercase">Slack</span>
-            </div>
+            {whLoading ? (
+              Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/10" />
+                    <div className="h-4 w-32 bg-white/10 rounded" />
+                  </div>
+                  <div className="h-4 w-14 bg-white/10 rounded" />
+                </div>
+              ))
+            ) : (
+              webhooks.map((wh) => {
+                const isSlack = wh.type === 'slack';
+                const badge = isSlack ? 'Slack' : 'Discord';
+                const initials = isSlack ? 'SL' : '@';
+                const badgeColor = isSlack
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : 'bg-indigo-500/10 text-indigo-400';
 
-            <div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-xs">@</div>
-                <div className="text-xs font-bold text-white">devops-infra@costpilot.ai</div>
-              </div>
-              <span className="text-[9px] px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded-md font-bold uppercase">Email</span>
-            </div>
+                return (
+                  <div key={wh.id} className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg ${badgeColor} flex items-center justify-center font-bold text-xs`}>
+                        {initials}
+                      </div>
+                      <div className="text-xs font-bold text-white">{wh.name}</div>
+                    </div>
+                    <span className={`text-[9px] px-2 py-1 ${badgeColor} rounded-md font-bold uppercase`}>{badge}</span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -362,6 +496,91 @@ export default function Budgets() {
                   className="flex-1 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold text-xs transition-all shadow-lg"
                 >
                   Confirm Limit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Webhook Modal */}
+      {showWebhookModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-300">
+          <div className="bg-zinc-950 border border-white/10 rounded-[2rem] p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">New Webhook</h3>
+              <button onClick={() => setShowWebhookModal(false)} className="p-1 text-slate-500 hover:text-white transition-all">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddWebhook} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Channel Name</label>
+                <input
+                  type="text"
+                  value={whName}
+                  onChange={(e) => setWhName(e.target.value)}
+                  placeholder="e.g. #ai-alerts-channel"
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Type</label>
+                <select
+                  value={whType}
+                  onChange={(e) => setWhType(e.target.value as "slack" | "discord")}
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
+                >
+                  <option value="slack">Slack</option>
+                  <option value="discord">Discord</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Webhook URL</label>
+                <input
+                  type="url"
+                  value={whUrl}
+                  onChange={(e) => setWhUrl(e.target.value)}
+                  placeholder="https://hooks.slack.com/services/..."
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Events (optional)</label>
+                <input
+                  type="text"
+                  value={whEvents}
+                  onChange={(e) => setWhEvents(e.target.value)}
+                  placeholder="e.g. budget_alert, hard_stop"
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                />
+              </div>
+
+              <div className="flex items-center gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowWebhookModal(false)}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-xs border border-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createWebhook.isPending}
+                  className="flex-1 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold text-xs transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {createWebhook.isPending ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Send size={14} />
+                  )}
+                  Add Channel
                 </button>
               </div>
             </form>

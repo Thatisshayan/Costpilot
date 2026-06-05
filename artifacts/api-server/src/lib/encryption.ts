@@ -1,9 +1,15 @@
 import crypto from "node:crypto";
+import { logger } from "./logger";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
-const KEY = process.env.ENCRYPTION_KEY || "default-secret-key-must-be-32-bytes!!"; // 32 bytes fallback
+
+if (!process.env.ENCRYPTION_KEY) {
+  logger.warn("ENCRYPTION_KEY not set — encryption will be insecure");
+}
+
+const KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString("hex");
 
 // Ensure key is 32 bytes
 const ENCRYPTION_KEY = crypto.scryptSync(KEY, "salt", 32);

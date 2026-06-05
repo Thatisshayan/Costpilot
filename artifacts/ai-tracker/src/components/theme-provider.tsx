@@ -46,6 +46,10 @@ export function ThemeProvider({
     root.classList.add(theme);
   }, [theme]);
 
+  useEffect(() => {
+    document.documentElement.style.transition = 'background-color 0.3s ease, color 0.3s ease';
+  }, []);
+
   const value = {
     theme,
     setTheme: (theme: Theme) => {

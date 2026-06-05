@@ -46,6 +46,53 @@ function estimateRequestCost(model: string, provider: string, inputTokens: numbe
       outputRate = 0.00125;
     }
   }
+  // Mistral
+  else if (providerLower.includes("mistral") || modelLower.includes("mistral")) {
+    if (modelLower.includes("mistral-large")) {
+      inputRate = 0.004;
+      outputRate = 0.012;
+    } else if (modelLower.includes("mistral-small")) {
+      inputRate = 0.001;
+      outputRate = 0.003;
+    }
+  }
+  // DeepSeek
+  else if (providerLower.includes("deepseek") || modelLower.includes("deepseek")) {
+    if (modelLower.includes("deepseek-chat")) {
+      inputRate = 0.00014;
+      outputRate = 0.00028;
+    } else if (modelLower.includes("deepseek-reasoner")) {
+      inputRate = 0.00055;
+      outputRate = 0.00219;
+    }
+  }
+  // Groq
+  else if (providerLower.includes("groq") || modelLower.includes("groq")) {
+    inputRate = 0.00001;
+    outputRate = 0.00001;
+  }
+  // Together AI
+  else if (providerLower.includes("together") || modelLower.includes("together")) {
+    inputRate = 0.002;
+    outputRate = 0.002;
+  }
+  // Cohere
+  else if (providerLower.includes("cohere") || modelLower.includes("cohere")) {
+    if (modelLower.includes("command-r")) {
+      inputRate = 0.0005;
+      outputRate = 0.0015;
+    }
+  }
+  // Google / Gemini
+  else if (providerLower.includes("google") || modelLower.includes("gemini")) {
+    if (modelLower.includes("gemini-1.5-pro")) {
+      inputRate = 0.0035;
+      outputRate = 0.0105;
+    } else if (modelLower.includes("gemini-1.5-flash")) {
+      inputRate = 0.00015;
+      outputRate = 0.0006;
+    }
+  }
 
   return (inputTokens / 1000) * inputRate + (outputTokens / 1000) * outputRate;
 }

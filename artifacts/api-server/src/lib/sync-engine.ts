@@ -427,7 +427,124 @@ export async function syncPlatform(platformId: number, userId: string): Promise<
       return { success: true, message: `Synced Cohere: $${amountStr}`, expensesImported: 1, amount: amountStr };
     }
 
-    // 4. Fallback
+    // 4. DeepSeek
+    if (nameLower.includes("deepseek")) {
+      const mockInputTokens = Math.floor(Math.random() * 400000) + 100000;
+      const mockOutputTokens = Math.floor(Math.random() * 200000) + 50000;
+      const calculatedCost = ((mockInputTokens * 0.14) / 1000000) + ((mockOutputTokens * 0.28) / 1000000);
+      const amountStr = calculatedCost.toFixed(2);
+
+      await db.insert(expensesTable).values({
+        platformId: platformId,
+        userId: userId,
+        amount: amountStr,
+        currency: "USD",
+        description: `Auto-synced DeepSeek: ${mockInputTokens.toLocaleString()} input / ${mockOutputTokens.toLocaleString()} output tokens`,
+        category: "API Usage",
+        date: today,
+      });
+
+      return { success: true, message: `Synced DeepSeek: $${amountStr}`, expensesImported: 1, amount: amountStr };
+    }
+
+    // 5. Mistral
+    if (nameLower.includes("mistral")) {
+      const mockCalls = Math.floor(Math.random() * 1500) + 500;
+      const calculatedCost = (mockCalls * 0.15) / 1000;
+      const amountStr = calculatedCost.toFixed(2);
+
+      await db.insert(expensesTable).values({
+        platformId: platformId,
+        userId: userId,
+        amount: amountStr,
+        currency: "USD",
+        description: `Auto-synced Mistral: ${mockCalls.toLocaleString()} API calls (Mistral Small)`,
+        category: "API Usage",
+        date: today,
+      });
+
+      return { success: true, message: `Synced Mistral: $${amountStr}`, expensesImported: 1, amount: amountStr };
+    }
+
+    // 6. Groq
+    if (nameLower.includes("groq")) {
+      const mockRequests = Math.floor(Math.random() * 9000) + 1000;
+      const calculatedCost = mockRequests * 0.0001;
+      const amountStr = calculatedCost.toFixed(2);
+
+      await db.insert(expensesTable).values({
+        platformId: platformId,
+        userId: userId,
+        amount: amountStr,
+        currency: "USD",
+        description: `Auto-synced Groq: ${mockRequests.toLocaleString()} requests (Llama 3 8B)`,
+        category: "API Usage",
+        date: today,
+      });
+
+      return { success: true, message: `Synced Groq: $${amountStr}`, expensesImported: 1, amount: amountStr };
+    }
+
+    // 7. Together AI
+    if (nameLower.includes("together")) {
+      const mockInputTokens = Math.floor(Math.random() * 400000) + 100000;
+      const mockOutputTokens = Math.floor(Math.random() * 200000) + 50000;
+      const totalTokens = mockInputTokens + mockOutputTokens;
+      const calculatedCost = (totalTokens * 0.10) / 1000000;
+      const amountStr = calculatedCost.toFixed(2);
+
+      await db.insert(expensesTable).values({
+        platformId: platformId,
+        userId: userId,
+        amount: amountStr,
+        currency: "USD",
+        description: `Auto-synced Together AI: ${mockInputTokens.toLocaleString()} input / ${mockOutputTokens.toLocaleString()} output tokens`,
+        category: "API Usage",
+        date: today,
+      });
+
+      return { success: true, message: `Synced Together AI: $${amountStr}`, expensesImported: 1, amount: amountStr };
+    }
+
+    // 8. Replicate
+    if (nameLower.includes("replicate")) {
+      const mockRuns = Math.floor(Math.random() * 400) + 100;
+      const calculatedCost = mockRuns * 0.05;
+      const amountStr = calculatedCost.toFixed(2);
+
+      await db.insert(expensesTable).values({
+        platformId: platformId,
+        userId: userId,
+        amount: amountStr,
+        currency: "USD",
+        description: `Auto-synced Replicate: ${mockRuns.toLocaleString()} prediction runs`,
+        category: "API Usage",
+        date: today,
+      });
+
+      return { success: true, message: `Synced Replicate: $${amountStr}`, expensesImported: 1, amount: amountStr };
+    }
+
+    // 9. Stability AI
+    if (nameLower.includes("stability")) {
+      const mockGenerations = Math.floor(Math.random() * 150) + 50;
+      const calculatedCost = mockGenerations * 0.01;
+      const amountStr = calculatedCost.toFixed(2);
+
+      await db.insert(expensesTable).values({
+        platformId: platformId,
+        userId: userId,
+        amount: amountStr,
+        currency: "USD",
+        description: `Auto-synced Stability AI: ${mockGenerations.toLocaleString()} image generations`,
+        category: "Image Generation",
+        date: today,
+      });
+
+      return { success: true, message: `Synced Stability AI: $${amountStr}`, expensesImported: 1, amount: amountStr };
+    }
+
+    // 10. Fallback
     const baselineCost = (Math.random() * 8.5) + 1.5;
     const amountStr = baselineCost.toFixed(2);
     await db.insert(expensesTable).values({
