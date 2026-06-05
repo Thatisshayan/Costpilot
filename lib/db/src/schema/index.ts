@@ -10,3 +10,4 @@ export * from "./webhooks";
 export * from "./cicd";
 export * from "./remediation";
 export * from "./audits";
+export * from "./budgets";

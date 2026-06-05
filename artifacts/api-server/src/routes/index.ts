@@ -16,9 +16,12 @@ import remediationRouter from "./remediation";
 import intelligenceRouter from "./intelligence";
 import telemetryRouter from "./telemetry";
 import auditsRouter from "./audits";
+import budgetsRouter from "./budgets";
 import exportsRouter from "./exports";
 import provisioningRouter from "./provisioning";
 import syncMobileRouter from "./sync-mobile";
+import reportsRouter from "./reports";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -39,8 +42,11 @@ router.use("/remediation", remediationRouter);
 router.use("/intelligence", intelligenceRouter);
 router.use("/telemetry", telemetryRouter);
 router.use("/audits", auditsRouter);
+router.use("/budgets", budgetsRouter);
 router.use("/exports", exportsRouter);
 router.use("/provisioning", provisioningRouter);
 router.use("/sync/mobile", syncMobileRouter);
+router.use("/reports", reportsRouter);
+router.use("/notifications", notificationsRouter);
 
 export default router;

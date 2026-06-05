@@ -46,6 +46,7 @@ import {
   BarChart2,
   Layers,
   ClipboardList,
+  Bell,
   Moon,
   Sun,
 } from "lucide-react";
@@ -96,6 +97,7 @@ const navigation = [
   { name: "Cost Centers", href: "/cost-centers", icon: Layers },
   { name: "Model Comparison", href: "/comparison", icon: Cpu },
   { name: "Public Status", href: "/status", icon: Activity },
+  { name: "Notifications", href: "/bot-settings", icon: Bell },
   { name: "Integrations", href: "/integrations", icon: Link2 },
   { name: "Audit Logs", href: "/audit", icon: ClipboardList },
   { name: "SSO Config", href: "/sso", icon: Shield },
