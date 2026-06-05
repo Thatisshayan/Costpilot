@@ -10,7 +10,7 @@ export interface SyncResult {
   amount?: string;
 }
 
-function parseCSV(csvText: string): string[][] {
+export function parseCSV(csvText: string): string[][] {
   const result: string[][] = [];
   let row: string[] = [];
   let currentVal = "";

@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { WorkspaceProvider } from "@/context/workspace-context";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
 
@@ -23,6 +24,8 @@ import IntegrationsHub from "@/pages/integrations";
 import ComparisonPage from "@/pages/comparison";
 import SSOPage from "@/pages/sso";
 import StatusPage from "@/pages/status";
+import Terms from "@/pages/terms";
+import PrivacyPolicy from "@/pages/privacy-policy";
 import AuditLogs from "@/pages/audit";
 import CostCenters from "@/pages/cost-centers";
 import ApprovalWorkflows from "@/pages/approvals";
@@ -121,6 +124,8 @@ function Router() {
         <Route path="/llm-router" component={LlmRouter} />
         <Route path="/cicd" component={CicdIntegration} />
         <Route path="/remediation" component={RemediationCenter} />
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/collaboration" component={Collaboration} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
@@ -135,9 +140,11 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WorkspaceProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-            </WouterRouter>
+            <ErrorBoundary>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+              </WouterRouter>
+            </ErrorBoundary>
           </WorkspaceProvider>
           <Toaster />
         </TooltipProvider>

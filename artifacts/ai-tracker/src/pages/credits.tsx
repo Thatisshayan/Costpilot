@@ -11,7 +11,8 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, Coins, Calendar, Folder, ArrowUpRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Coins, Calendar, Folder, ArrowUpRight, CreditCard } from "lucide-react";
+import EmptyState from "@/components/ui/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -188,7 +189,12 @@ export default function Credits() {
         {isLoading ? (
           <div className="text-center py-12 text-slate-500 font-medium">Loading history...</div>
         ) : credits.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 font-medium">No top-ups recorded.</div>
+          <EmptyState
+            icon={<CreditCard size={28} />}
+            title="No top-ups recorded"
+            description="Log your first credit purchase to start tracking prepaid balances across AI platforms."
+            action={{ label: "Log Top-up", onClick: openAdd }}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">

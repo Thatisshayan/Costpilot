@@ -10,10 +10,60 @@ import {
   Clock,
   ArrowRight,
   ShieldCheck,
-  ZapOff
+  ZapOff,
+  Loader2
 } from 'lucide-react';
+import { useGetKpiSummary } from '@workspace/api-client-react';
+import type { DashboardSummary } from '@workspace/api-client-react';
+
+const MOCK_KPI = {
+  totalAiSpend: 87450,
+  monthToDateSpend: 12450,
+  activeAiTools: 23,
+  monthToDateChangePercent: 12.4,
+  renewalsThisWeek: 4,
+  upcomingRenewalAmount: 2480,
+  apiSpendToday: 420,
+  budgetUsedPercent: 78,
+  budgetTotal: 15000,
+  forecastTotal: 16200,
+  totalSavingsFound: 3400,
+};
 
 export default function FounderDashboard() {
+  const { data: liveSummary, isLoading } = useGetKpiSummary();
+  const summary: DashboardSummary = liveSummary ?? MOCK_KPI;
+
+  if (isLoading) {
+    return (
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-7xl mx-auto">
+        <header className="mb-12">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-lg border border-indigo-500/20">
+              <Target size={24} />
+            </div>
+            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Executive View</span>
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-white mb-2">Founder Mode Dashboard</h1>
+          <p className="text-slate-500 text-sm max-w-xl">High-level visibility into AI ROI, runway impact, and strategic efficiency.</p>
+        </header>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] p-8 backdrop-blur-md animate-pulse">
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-10 h-10 rounded-xl bg-white/5" />
+                <div className="h-3 w-12 bg-white/5 rounded" />
+              </div>
+              <div className="h-3 w-20 bg-white/5 rounded mb-2" />
+              <div className="h-8 w-24 bg-white/5 rounded mb-1" />
+              <div className="h-3 w-16 bg-white/5 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-7xl mx-auto">
       {/* Header */}
@@ -32,8 +82,8 @@ export default function FounderDashboard() {
 
       {/* Strategic KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-        <FounderKpi label="Total AI ROI" value="+312%" trend="+42%" icon={<TrendingUp size={20} />} />
-        <FounderKpi label="Est. Runway Impact" value="-2.1 Days" sub="Monthly Burn" icon={<Clock size={20} />} />
+        <FounderKpi label="Total AI Spend" value={`$${(summary.totalAiSpend / 1000).toFixed(1)}K`} trend={`+${summary.monthToDateChangePercent}%`} icon={<TrendingUp size={20} />} />
+        <FounderKpi label="Est. Runway Impact" value={`-${Math.round((summary.forecastTotal ?? summary.budgetTotal) / summary.budgetTotal * 30)} Days`} sub="Monthly Burn" icon={<Clock size={20} />} />
         <FounderKpi label="Efficiency Peak" value="9.8/10" sub="Model Mix" icon={<Zap size={20} />} />
         <FounderKpi label="Trust Score" value="A+" sub="Compliance" icon={<ShieldCheck size={20} />} />
       </div>
@@ -44,7 +94,7 @@ export default function FounderDashboard() {
           <div className="flex items-center justify-between mb-10">
             <div>
               <h2 className="text-xl font-bold text-white mb-1">Burn Velocity vs. Growth</h2>
-              <p className="text-xs text-slate-500">Correlating AI spend with user acquisition.</p>
+              <p className="text-xs text-slate-500">Correlating AI spend with user acquisition. <span className="text-indigo-400">${summary.apiSpendToday ?? 0} spent today.</span></p>
             </div>
             <button className="text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300">View Attribution</button>
           </div>

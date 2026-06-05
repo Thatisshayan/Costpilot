@@ -1,5 +1,6 @@
 import { useListProjects } from "@workspace/api-client-react";
-import { Folder } from "lucide-react";
+import { Folder, FolderOpen } from "lucide-react";
+import EmptyState from "@/components/ui/empty-state";
 
 export default function Projects() {
   const { data: projects, isLoading } = useListProjects();
@@ -52,9 +53,12 @@ export default function Projects() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 text-slate-500 font-medium bg-white/[0.01] border border-white/[0.05] rounded-2xl">
-          No projects found.
-        </div>
+        <EmptyState
+          icon={<FolderOpen size={28} />}
+          title="No projects yet"
+          description="Create your first project to start tracking AI spend by product or team."
+          action={{ label: "Create Project", onClick: () => {} }}
+        />
       )}
     </div>
   );

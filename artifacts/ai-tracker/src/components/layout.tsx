@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Receipt,
@@ -53,6 +54,7 @@ import { useState, useEffect } from "react";
 import { useWorkspace } from "@/context/workspace-context";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useHealthCheck } from "@/hooks/use-health-check";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -108,6 +110,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const { isHealthy, isLoading } = useHealthCheck();
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -231,6 +234,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
+          {/* System Status */}
+          {!isCollapsed && (
+            <div className="px-4 py-2 mb-2 flex items-center gap-2 text-xs text-slate-500 border-t border-white/[0.06] pt-4">
+              <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-yellow-400' : isHealthy ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span>
+                {isLoading ? 'Checking...' : isHealthy ? 'All Systems Operational' : 'Degraded Performance'}
+              </span>
+            </div>
+          )}
+
           {/* Bottom Actions */}
           <div className="w-full space-y-2 mt-auto">
              <button
@@ -268,7 +281,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 flex flex-col overflow-hidden w-full">
           <div className="flex-1 overflow-y-auto p-6 lg:p-12 pt-24 lg:pt-12">
             <div className="max-w-6xl mx-auto h-full">
-              {children}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </main>

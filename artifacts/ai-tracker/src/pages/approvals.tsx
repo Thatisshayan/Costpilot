@@ -9,20 +9,55 @@ import {
   Plus,
   AlertCircle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useListWorkspaceMembers } from '@workspace/api-client-react';
+import { useWorkspace } from '../context/workspace-context';
+
+type ApprovalRequest = {
+  id: number;
+  requester: string;
+  requesterEmail?: string;
+  tool: string;
+  amount: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  time: string;
+};
+
+const MOCK_REQUESTS: ApprovalRequest[] = [
+  { id: 1, requester: 'Jordan Chen', requesterEmail: 'jordan@startup.ai', tool: 'OpenAI API', amount: 500, reason: 'Scaling staging environment for RAG benchmarks.', status: 'pending', time: '2h ago' },
+  { id: 2, requester: 'Sarah Miller', requesterEmail: 'sarah@startup.ai', tool: 'Claude Pro (2 Seats)', amount: 40, reason: 'New hires joining the creative team.', status: 'approved', time: '5h ago' },
+  { id: 3, requester: 'Alex Rivera', requesterEmail: 'alex@startup.ai', tool: 'Runway Gen-3', amount: 95, reason: 'Video generation for marketing campaign.', status: 'pending', time: 'Yesterday' },
+];
 
 export default function ApprovalWorkflows() {
-  const [requests, setRequests] = useState([
-    { id: 1, requester: 'Jordan Chen', tool: 'OpenAI API', amount: 500, reason: 'Scaling staging environment for RAG benchmarks.', status: 'pending', time: '2h ago' },
-    { id: 2, requester: 'Sarah Miller', tool: 'Claude Pro (2 Seats)', amount: 40, reason: 'New hires joining the creative team.', status: 'approved', time: '5h ago' },
-    { id: 3, requester: 'Alex Rivera', tool: 'Runway Gen-3', amount: 95, reason: 'Video generation for marketing campaign.', status: 'pending', time: 'Yesterday' },
-  ]);
+  const [requests, setRequests] = useState<ApprovalRequest[]>(MOCK_REQUESTS);
+  const { activeWorkspaceId } = useWorkspace();
+  const { data: approvers } = useListWorkspaceMembers(activeWorkspaceId ?? 0);
+
+  const approverNames = (approvers && approvers.length > 0)
+    ? approvers.map(a => a.email.split('@')[0])
+    : ['Alex Rivera', 'Jordan Chen', 'Sarah Miller'];
 
   const handleAction = (id: number, status: 'approved' | 'rejected') => {
     setRequests(requests.map(r => r.id === id ? { ...r, status } : r));
-    toast.success(`Request #${id} has been ${status}`);
+    const request = requests.find(r => r.id === id);
+    const label = status === 'approved' ? 'approved' : 'rejected';
+    toast.success(
+      <div className="flex items-center gap-3">
+        <div className={`w-8 h-8 rounded-lg ${status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'} flex items-center justify-center`}>
+          {status === 'approved' ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+        </div>
+        <div>
+          <div className="font-bold text-sm">Request {label}</div>
+          <div className="text-xs text-slate-400">${request?.amount} for {request?.tool} — {label} by {approverNames[0]}</div>
+        </div>
+      </div>,
+      { duration: 4000 }
+    );
   };
 
   return (
@@ -40,6 +75,16 @@ export default function ApprovalWorkflows() {
           New Policy
         </button>
       </header>
+
+      {/* Approver Bar */}
+      <div className="mb-8 p-4 bg-white/[0.02] border border-white/[0.05] rounded-2xl backdrop-blur-md flex items-center gap-3 flex-wrap">
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Approvers:</span>
+        {approverNames.map((name, i) => (
+          <span key={i} className="px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-[10px] font-bold uppercase tracking-wider border border-indigo-500/10">
+            {name}
+          </span>
+        ))}
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -96,6 +141,7 @@ export default function ApprovalWorkflows() {
                   <button 
                     onClick={() => handleAction(request.id, 'rejected')}
                     className="p-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all"
+                    title="Reject request"
                   >
                     <XCircle size={20} />
                   </button>

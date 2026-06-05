@@ -1,5 +1,6 @@
 import { useListTools } from "@workspace/api-client-react";
-import { ExternalLink, Pin, Folder, Blocks } from "lucide-react";
+import { ExternalLink, Pin, Folder, Blocks, Globe } from "lucide-react";
+import EmptyState from "@/components/ui/empty-state";
 
 export default function Tools() {
   const { data: tools, isLoading } = useListTools();
@@ -81,9 +82,12 @@ export default function Tools() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 text-slate-500 font-medium bg-white/[0.01] border border-white/[0.05] rounded-2xl">
-          No tools bookmarked yet.
-        </div>
+        <EmptyState
+          icon={<Globe size={28} />}
+          title="No tools bookmarked yet"
+          description="Bookmark your AI tools and dashboards to access them quickly from one place."
+          action={{ label: "Browse Integrations", onClick: () => {} }}
+        />
       )}
     </div>
   );

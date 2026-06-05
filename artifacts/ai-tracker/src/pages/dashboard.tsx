@@ -24,7 +24,7 @@ import { BudgetForecastCard } from '../components/dashboard/BudgetForecastCard';
 import { ConnectedSourcesCard } from '../components/dashboard/ConnectedSourcesCard';
 import { UpcomingRenewalsCard } from '../components/dashboard/UpcomingRenewalsCard';
 import { BottomMetricsBar } from '../components/dashboard/BottomMetricsBar';
-import OnboardingWizard from '../components/onboarding/OnboardingWizard';
+import OnboardingWizard from '../components/onboarding-wizard';
 
 // Mock Data & Utils
 import { costpilotMockData, formatCurrency } from '../data/costpilotMockData';
