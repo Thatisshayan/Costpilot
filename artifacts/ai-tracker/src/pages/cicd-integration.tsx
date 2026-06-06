@@ -15,14 +15,14 @@ import {
 } from 'lucide-react';
 
 import { useListCicdRuns } from '@workspace/api-client-react';
-import { formatCurrencyGlobal } from '../lib/currency';
+import { formatCurrency } from '../lib/currency';
 
 export default function CicdIntegration() {
   const { data: serverRuns, isLoading } = useListCicdRuns();
 
   const fallbackPipelines = [
-    { id: 1, name: 'Production-Deploy', repo: 'costpilot-core', status: 'Blocked', reason: `Budget Overrun (+${formatCurrencyGlobal(420)})`, type: 'GitHub Actions' },
-    { id: 2, name: 'Staging-Inference-Test', repo: 'llm-router-proxy', status: 'Healthy', reason: `Within ${formatCurrencyGlobal(50)} Limit`, type: 'GitLab CI' },
+    { id: 1, name: 'Production-Deploy', repo: 'costpilot-core', status: 'Blocked', reason: `Budget Overrun (+${formatCurrency(420)})`, type: 'GitHub Actions' },
+    { id: 2, name: 'Staging-Inference-Test', repo: 'llm-router-proxy', status: 'Healthy', reason: `Within ${formatCurrency(50)} Limit`, type: 'GitLab CI' },
     { id: 3, name: 'H100-Fine-Tuning', repo: 'training-scripts', status: 'Healthy', reason: 'Pre-approved', type: 'GitHub Actions' },
   ];
 
@@ -110,7 +110,7 @@ export default function CicdIntegration() {
             <div className="space-y-6">
               <PolicyItem label="Block > 110% Budget" active />
               <PolicyItem label="Warn on H100 usage" active />
-              <PolicyItem label={`Require PR Approval > ${formatCurrencyGlobal(50)}`} active />
+              <PolicyItem label={`Require PR Approval > ${formatCurrency(50)}`} active />
               <PolicyItem label="Sync Project Tags" />
             </div>
           </div>

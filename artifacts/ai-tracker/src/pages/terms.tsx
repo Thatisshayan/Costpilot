@@ -4,7 +4,7 @@ const sections = [
   {
     title: "1. Acceptance of Terms",
     content:
-      "By accessing or using CostPilot ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, you may not use the Service. These terms apply to all users, including administrators, contributors, and viewers.",
+      'By accessing or using CostPilot ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, you may not use the Service. These terms apply to all users, including administrators, contributors, and viewers.',
   },
   {
     title: "2. Description of Service",

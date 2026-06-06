@@ -142,7 +142,7 @@ export const getGetInviteByTokenQueryKey = (token: string) => [`/api/workspaces/
 
 export const getGetInviteByTokenQueryOptions = <TData = Awaited<ReturnType<typeof getInviteByToken>>, TError = ErrorType<unknown>>(
   token: string,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getInviteByToken>>, TError, TData>; request?: RequestInit }
+  options?: { query?: Omit<UseQueryOptions<Awaited<ReturnType<typeof getInviteByToken>>, TError, TData>, 'queryKey'> & { queryKey?: QueryKey }; request?: RequestInit }
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
   const queryKey = queryOptions?.queryKey ?? getGetInviteByTokenQueryKey(token);
@@ -162,7 +162,7 @@ export type GetInviteByTokenQueryError = ErrorType<unknown>;
 
 export function useGetInviteByToken<TData = GetInviteByTokenQueryResult, TError = ErrorType<unknown>>(
   token: string,
-  options?: { query?: UseQueryOptions<GetInviteByTokenQueryResult, TError, TData>; request?: RequestInit }
+  options?: { query?: Omit<UseQueryOptions<GetInviteByTokenQueryResult, TError, TData>, 'queryKey'> & { queryKey?: QueryKey }; request?: RequestInit }
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetInviteByTokenQueryOptions(token, options);
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };

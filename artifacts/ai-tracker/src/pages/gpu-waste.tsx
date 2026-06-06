@@ -17,15 +17,15 @@ import {
 } from 'lucide-react';
 import { useGetTelemetryGpu } from '@workspace/api-client-react';
 
-import { formatCurrencyGlobal } from '../lib/currency';
+import { formatCurrency } from '../lib/currency';
 
 export default function GpuWasteDetector() {
   const { data: telemetry, isLoading } = useGetTelemetryGpu();
 
   const fallbackClusters = [
-    { name: 'Training Cluster A', gpu: '8x H100 (80GB)', util: '42%', waste: formatCurrencyGlobal(1420), status: 'Warning' },
-    { name: 'Inference Edge V1', gpu: '4x A100 (40GB)', util: '88%', waste: formatCurrencyGlobal(120), status: 'Healthy' },
-    { name: 'Research Sandbox', gpu: '2x L40S', util: '12%', waste: formatCurrencyGlobal(450), status: 'Critical' },
+    { name: 'Training Cluster A', gpu: '8x H100 (80GB)', util: '42%', waste: formatCurrency(1420), status: 'Warning' },
+    { name: 'Inference Edge V1', gpu: '4x A100 (40GB)', util: '88%', waste: formatCurrency(120), status: 'Healthy' },
+    { name: 'Research Sandbox', gpu: '2x L40S', util: '12%', waste: formatCurrency(450), status: 'Critical' },
   ];
 
   const clusters = telemetry?.clusters?.map((c: any) => {
@@ -34,7 +34,7 @@ export default function GpuWasteDetector() {
       name: c.name,
       gpu: c.id.includes('h100') ? '8x H100 (80GB)' : '4x A100 (40GB)',
       util: `${c.utilization}%`,
-      waste: formatCurrencyGlobal(dailyWaste),
+      waste: formatCurrency(dailyWaste),
       status: c.utilization < 20 ? 'Critical' : c.utilization < 50 ? 'Warning' : 'Healthy'
     };
   }) || fallbackClusters;
@@ -58,7 +58,7 @@ export default function GpuWasteDetector() {
         <div className="flex items-center gap-3">
           <div className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
             <AlertTriangle size={16} className="text-red-400" />
-            <span className="text-xs font-bold text-red-400 uppercase tracking-widest">{formatCurrencyGlobal(1990)} Potential Daily Saving</span>
+            <span className="text-xs font-bold text-red-400 uppercase tracking-widest">{formatCurrency(1990)} Potential Daily Saving</span>
           </div>
         </div>
       </header>

@@ -24,6 +24,7 @@ const MOCK_KPI = {
   renewalsThisWeek: 4,
   upcomingRenewalAmount: 2480,
   apiSpendToday: 420,
+  activeToolsUnusedCount: 3,
   budgetUsedPercent: 78,
   budgetTotal: 15000,
   forecastTotal: 16200,

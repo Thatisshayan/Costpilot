@@ -85,13 +85,13 @@ router.get("/evaluate", requireAuth, async (req, res) => {
       .where(eq(expensesTable.userId, req.userId!));
 
     const currentSpend = Number(totalRow.total);
-    const triggered: Array<{ policy: typeof activePolicies[number] & { thresholdAmount: number }; currentSpend: number; exceededBy: number }> = [];
+    const triggered: Array<{ policy: typeof activePolicies[number]; currentSpend: number; exceededBy: number }> = [];
 
     for (const policy of activePolicies) {
       const threshold = Number(policy.thresholdAmount);
       if (currentSpend > threshold) {
         triggered.push({
-          policy: { ...policy, thresholdAmount: threshold },
+          policy: { ...policy, thresholdAmount: threshold as any },
           currentSpend,
           exceededBy: currentSpend - threshold,
         });

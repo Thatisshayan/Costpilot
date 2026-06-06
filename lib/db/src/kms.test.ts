@@ -1,5 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import crypto from "node:crypto";
+
+vi.hoisted(() => {
+  process.env.ENCRYPTION_KEY = "default-secret-key-must-be-32-bytes!!";
+});
+
 import { encrypt, decrypt } from "../../../artifacts/api-server/src/lib/kms-vault";
 
 describe("KMS Simulated Envelope Encryption (AES-256-GCM)", () => {

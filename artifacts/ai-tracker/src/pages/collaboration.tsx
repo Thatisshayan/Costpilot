@@ -307,7 +307,7 @@ export default function Collaboration() {
                       <RoleBadge role={member.role} />
                     </td>
                     <td className="py-5 px-4">
-                      <StatusBadge status={member.status || 'active'} />
+                      <StatusBadge status={(member as any).status || 'active'} />
                     </td>
                     <td className="py-5 px-4 text-xs text-slate-500 font-medium">
                       {member.createdAt ? new Date(member.createdAt).toLocaleDateString() : '-'}

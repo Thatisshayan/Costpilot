@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useListRemediationActions, useExecuteRemediation } from '@workspace/api-client-react';
 import { toast } from 'sonner';
-import { formatCurrencyGlobal } from '../lib/currency';
+import { formatCurrency } from '../lib/currency';
 
 export default function RemediationCenter() {
   const { data: serverActions, isLoading } = useListRemediationActions();
@@ -25,17 +25,17 @@ export default function RemediationCenter() {
 
   // Merge static UI data with live backend data if available, or fallback to static for demo
   const fallbackActions = [
-    { id: 1, title: 'Right-size Inference Endpoint', desc: 'Downscale GPT-4 cluster to Llama 3 for non-premium users.', savings: `+${formatCurrencyGlobal(4200)}/mo`, risk: 'Low', category: 'Efficiency', icon: <Shuffle size={24} /> },
-    { id: 2, title: 'Kill Idle H100 Cluster', desc: 'No activity detected in Research Sandbox for 14 hours.', savings: `+${formatCurrencyGlobal(18.75)}/hr`, risk: 'None', category: 'Waste', icon: <HardDrive size={24} /> },
+    { id: 1, title: 'Right-size Inference Endpoint', desc: 'Downscale GPT-4 cluster to Llama 3 for non-premium users.', savings: `+${formatCurrency(4200)}/mo`, risk: 'Low', category: 'Efficiency', icon: <Shuffle size={24} /> },
+    { id: 2, title: 'Kill Idle H100 Cluster', desc: 'No activity detected in Research Sandbox for 14 hours.', savings: `+${formatCurrency(18.75)}/hr`, risk: 'None', category: 'Waste', icon: <HardDrive size={24} /> },
     { id: 3, title: 'Rotate Leaked API Key', desc: 'Potential key exposure detected in public GitHub repo.', savings: 'Risk Mitigation', risk: 'Critical', category: 'Security', icon: <ShieldAlert size={24} /> },
-    { id: 4, title: 'Enable Spot Instances', desc: 'Move background training to spot instances for 80% discount.', savings: `+${formatCurrencyGlobal(12000)}/yr`, risk: 'Medium', category: 'Efficiency', icon: <Zap size={24} /> },
+    { id: 4, title: 'Enable Spot Instances', desc: 'Move background training to spot instances for 80% discount.', savings: `+${formatCurrency(12000)}/yr`, risk: 'Medium', category: 'Efficiency', icon: <Zap size={24} /> },
   ];
 
   const actions = serverActions?.length ? serverActions.map((a: any, i: number) => ({
     ...a,
     icon: i % 2 === 0 ? <Shuffle size={24} /> : <HardDrive size={24} />,
     risk: a.impact || 'Medium',
-    savings: a.savingsPotential.includes('$') ? formatCurrencyGlobal(parseFloat(a.savingsPotential.replace(/[^0-9.]/g, ''))) : a.savingsPotential,
+    savings: a.savingsPotential.includes('$') ? formatCurrency(parseFloat(a.savingsPotential.replace(/[^0-9.]/g, ''))) : a.savingsPotential,
     category: 'Optimization',
     desc: a.description
   })) : fallbackActions;
@@ -76,7 +76,7 @@ export default function RemediationCenter() {
         <div className="flex items-center gap-3">
           <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2">
             <Zap size={16} className="text-emerald-400" />
-            <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">{formatCurrencyGlobal(18500)} Identified Savings</span>
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">{formatCurrency(18500)} Identified Savings</span>
           </div>
         </div>
       </header>
@@ -145,7 +145,7 @@ export default function RemediationCenter() {
       <div className="p-10 bg-white/[0.01] border border-white/[0.05] rounded-[3rem] flex flex-col md:flex-row items-center justify-between gap-10">
         <div className="flex items-center gap-8">
           <StatBox label="Actions Executed" value="142" />
-          <StatBox label="Total Reclaimed" value={formatCurrencyGlobal(42850)} />
+          <StatBox label="Total Reclaimed" value={formatCurrency(42850)} />
           <StatBox label="Success Rate" value="99.2%" />
         </div>
         <button className="px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-400 font-bold text-xs hover:text-white hover:bg-white/10 transition-all flex items-center gap-2">

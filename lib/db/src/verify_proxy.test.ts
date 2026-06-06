@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 process.env.DATABASE_URL = "postgresql://mock_user:mock_password@localhost:5432/mock_db";
 
 import { db, expensesTable, deploymentPoliciesTable } from "./index";
-import telemetryRouter from "c:/Users/Shaya/AIExpenseTracker/AIexpenseTracker/artifacts/api-server/src/routes/telemetry";
+import telemetryRouter from "../../../artifacts/api-server/src/routes/telemetry";
 
 // Introspect the Express router to find our handlers
 const llmRouteLayer = telemetryRouter.stack.find(
@@ -23,6 +23,7 @@ const completionsHandler = completionsLayer?.route.stack[0].handle;
 const makeMockRequest = (body: any, headers: Record<string, string> = {}) => ({
   userId: "user_test_123",
   body,
+  query: {},
   headers: {
     "x-user-id": "user_test_123",
     ...headers

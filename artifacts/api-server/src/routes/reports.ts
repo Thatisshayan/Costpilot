@@ -121,6 +121,7 @@ router.post("/generate", requireAuth, async (req, res) => {
   });
 
   doc.end();
+  return;
 });
 
 router.post("/schedule", requireAuth, async (req, res) => {
@@ -154,12 +155,12 @@ router.get("/scheduled", requireAuth, async (req, res) => {
 });
 
 router.delete("/scheduled/:id", requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   if (scheduledReports.has(id)) {
     scheduledReports.delete(id);
     return res.status(204).send();
   }
-  res.status(404).json({ error: "Scheduled report not found" });
+  return res.status(404).json({ error: "Scheduled report not found" });
 });
 
 export default router;

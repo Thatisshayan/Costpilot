@@ -30,7 +30,7 @@ router.get("/", requireAuth, requireWorkspaceMember(), async (req, res) => {
 
   const webhooks = await db.select().from(webhooksTable)
     .where(eq(webhooksTable.workspaceId, workspaceId));
-  res.json(webhooks);
+  return res.json(webhooks);
 });
 
 // POST /api/notifications — Create webhook
@@ -40,7 +40,7 @@ router.post("/", requireAuth, requireWorkspaceMember(["owner", "admin"]), async 
     ...body,
     isActive: true,
   }).returning();
-  res.status(201).json(webhook);
+  return res.status(201).json(webhook);
 });
 
 // PATCH /api/notifications/:id — Update webhook
@@ -55,7 +55,7 @@ router.patch("/:id", requireAuth, requireWorkspaceMember(["owner", "admin"]), as
     .set(body)
     .where(eq(webhooksTable.id, id))
     .returning();
-  res.json(webhook);
+  return res.json(webhook);
 });
 
 // DELETE /api/notifications/:id — Delete webhook
@@ -67,7 +67,7 @@ router.delete("/:id", requireAuth, requireWorkspaceMember(["owner", "admin"]), a
 
   await db.delete(webhooksTable)
     .where(eq(webhooksTable.id, id));
-  res.status(204).send();
+  return res.status(204).send();
 });
 
 // POST /api/notifications/test — Send test notification
@@ -88,9 +88,9 @@ router.post("/test", requireAuth, requireWorkspaceMember(), async (req, res) => 
       body: JSON.stringify(payload),
     });
     if (!resp.ok) throw new Error(`Webhook responded with ${resp.status}`);
-    res.json({ success: true, message: "Test notification sent successfully!" });
+    return res.json({ success: true, message: "Test notification sent successfully!" });
   } catch (err) {
-    res.status(502).json({ success: false, message: "Failed to send test notification. Check your webhook URL." });
+    return res.status(502).json({ success: false, message: "Failed to send test notification. Check your webhook URL." });
   }
 });
 

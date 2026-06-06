@@ -95,17 +95,18 @@ const makeMockResponse = () => {
   return res;
 };
 
-function getHandler(path: string, method: string) {
+function getHandler(path: string, method: string): Function {
   for (const layer of expensesRouter.stack) {
     if (layer.route) {
-      const routeMethods: any = layer.route.methods || {};
+      const route = layer.route as any;
+      const routeMethods = route.methods || {};
       const methods = Array.isArray(routeMethods) ? routeMethods : Object.keys(routeMethods).filter((k) => routeMethods[k]);
-      if (layer.route.path === path && methods.some((m: string) => m.toLowerCase() === method.toLowerCase())) {
-        return layer.route.stack[0].handle;
+      if (route.path === path && methods.some((m: string) => m.toLowerCase() === method.toLowerCase())) {
+        return route.stack[0].handle as Function;
       }
     }
   }
-  return null;
+  throw new Error(`Handler not found for ${method} ${path}`);
 }
 
 describe("Expenses API", () => {

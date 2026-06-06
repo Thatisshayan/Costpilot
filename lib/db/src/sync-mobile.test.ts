@@ -12,7 +12,7 @@ import {
   platformsTable,
 } from "./index";
 
-import syncMobileRouter from "c:/Users/Shaya/AIExpenseTracker/AIexpenseTracker/artifacts/api-server/src/routes/sync-mobile";
+import syncMobileRouter from "../../../artifacts/api-server/src/routes/sync-mobile";
 
 // Extract handlers safely from the router
 let pullHandler: any;

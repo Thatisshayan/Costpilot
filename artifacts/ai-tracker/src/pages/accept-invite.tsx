@@ -10,7 +10,7 @@ export default function AcceptInvite() {
   const token = params.get('token') || '';
 
   const { data: invite, isLoading: inviteLoading, isError: inviteError } = useGetInviteByToken(token, {
-    query: { enabled: !!token, retry: false },
+    query: { enabled: !!token, retry: false } as any,
   });
 
   const acceptInviteMutation = useAcceptInvite();

@@ -9,6 +9,7 @@ const makeMockRequest = (headers: Record<string, string> = {}, originalUrl = "/a
   return {
     headers,
     originalUrl,
+    query: {},
     userId: undefined,
     auth: undefined,
   } as any;

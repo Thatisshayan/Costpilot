@@ -62,7 +62,7 @@ export default function Settings() {
 
   // Team members
   const { data: members = [], isLoading: membersLoading } = useListWorkspaceMembers(activeWorkspaceId ?? 0, {
-    query: { enabled: !!activeWorkspaceId },
+    query: { enabled: !!activeWorkspaceId } as any,
   });
   const inviteMutation = useInviteToWorkspace();
   const [newEmail, setNewEmail] = useState("");

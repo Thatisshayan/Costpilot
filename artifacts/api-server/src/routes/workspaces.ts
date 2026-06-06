@@ -5,7 +5,7 @@ import {
   workspaceMembersTable,
   workspaceInvitesTable,
 } from "@workspace/db";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, count } from "drizzle-orm";
 import crypto from "crypto";
 import { requireWorkspaceMember } from "../middlewares/authz";
 import { CreateWorkspaceBody, UpdateWorkspaceBody, InviteToWorkspaceBody } from "@workspace/api-zod";
@@ -145,7 +145,7 @@ router.post("/:id/leave", requireWorkspaceMember(["owner", "admin", "viewer"]), 
 
   if (member.role === "owner") {
     const ownerCount = await db
-      .select({ count: db.fn.count(workspaceMembersTable.id) })
+      .select({ count: count(workspaceMembersTable.id) })
       .from(workspaceMembersTable)
       .where(
         and(

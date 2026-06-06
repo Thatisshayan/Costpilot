@@ -30,7 +30,7 @@ router.get("/convert", requireAuth, (req, res) => {
   const rate = EXCHANGE_RATES[from][to];
   const converted = amount * rate;
 
-  res.json({ from, to, amount, rate, converted: Math.round(converted * 100) / 100 });
+  return res.json({ from, to, amount, rate, converted: Math.round(converted * 100) / 100 });
 });
 
 router.get("/supported", requireAuth, (req, res) => {
