@@ -12,14 +12,15 @@ export * from './analyticsForecastCreditExhaustionDatesItem';
 export * from './calendarEvent';
 export * from './cicdRun';
 export * from './cicdValidationResult';
+export * from './createWebhookBody';
 export * from './createWebhookBodyType';
-
+export * from './createWorkspaceBody';
 export * from './creditPurchase';
 export * from './creditPurchaseInput';
 export * from './creditPurchaseUpdate';
 export * from './dashboardSummary';
 export * from './executeRemediation200';
-
+export * from './executeRemediationBody';
 export * from './expense';
 export * from './expenseInput';
 export * from './expenseUpdate';
@@ -27,7 +28,7 @@ export * from './getIntelligenceActivity200Item';
 export * from './gpuTelemetry';
 export * from './gpuTelemetryClustersItem';
 export * from './healthStatus';
-
+export * from './inviteToWorkspaceBody';
 export * from './inviteToWorkspaceBodyRole';
 export * from './listConnectedSources200Item';
 export * from './monthlySpending';
@@ -37,8 +38,9 @@ export * from './platformInput';
 export * from './platformUpdate';
 export * from './postIntelligenceQuery200';
 export * from './postIntelligenceQuery200Data';
+export * from './postIntelligenceQueryBody';
 export * from './postTelemetryLlmRoute200';
-
+export * from './postTelemetryLlmRouteBody';
 export * from './project';
 export * from './projectExpenseStat';
 export * from './projectInput';
@@ -56,7 +58,9 @@ export * from './syncResult';
 export * from './tool';
 export * from './toolInput';
 export * from './toolUpdate';
-
+export * from './updateWorkspaceBody';
+export * from './uploadReceiptBody';
+export * from './validateDeploymentBody';
 export * from './webhook';
 export * from './webhookType';
 export * from './workspace';

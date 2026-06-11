@@ -917,35 +917,3 @@ export const StartAuditScanResponse = zod.object({
 })
 
 
-/**
- * @summary Accept a workspace invitation
- */
-export const AcceptInviteBody = zod.object({
-  "token": zod.string()
-})
-
-
-/**
- * @summary Leave a workspace
- */
-export const LeaveWorkspaceResponse = zod.object({
-  "message": zod.string()
-})
-
-
-/**
- * @summary Remove a workspace member
- */
-export const RemoveMemberResponse = zod.object({
-  "message": zod.string()
-})
-
-
-/**
- * @summary Delete a workspace
- */
-export const DeleteWorkspaceResponse = zod.object({
-  "message": zod.string()
-})
-
-

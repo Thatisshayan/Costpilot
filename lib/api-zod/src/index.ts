@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   CreateWebhookBody as _CreateWebhookBodyVal,
   CreateWorkspaceBody as _CreateWorkspaceBodyVal,
@@ -8,7 +9,6 @@ import {
   UpdateWorkspaceBody as _UpdateWorkspaceBodyVal,
   UploadReceiptBody as _UploadReceiptBodyVal,
   ValidateDeploymentBody as _ValidateDeploymentBodyVal,
-  AcceptInviteBody as _AcceptInviteBodyVal
 } from "./generated/api";
 
 import type { CreateWebhookBody as _CreateWebhookBodyType } from "./generated/types/createWebhookBody";
@@ -51,4 +51,7 @@ export type UploadReceiptBody = _UploadReceiptBodyType;
 export const ValidateDeploymentBody = _ValidateDeploymentBodyVal;
 export type ValidateDeploymentBody = _ValidateDeploymentBodyType;
 
-export const AcceptInviteBody = _AcceptInviteBodyVal;
+export const AcceptInviteBody = z.object({
+  token: z.string().min(1, "Invite token is required"),
+});
+export type AcceptInviteBody = z.infer<typeof AcceptInviteBody>;

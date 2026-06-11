@@ -113,10 +113,14 @@ router.get("/summary", async (req, res) => {
   const savingsRows = await db
     .select({ savingsPotential: remediationActionsTable.savingsPotential })
     .from(remediationActionsTable)
-    .where(eq(remediationActionsTable.workspaceId, wsId))
-    .where(eq(remediationActionsTable.status, "Completed"));
+    .where(
+      and(
+        eq(remediationActionsTable.workspaceId, wsId),
+        eq(remediationActionsTable.status, "Completed")
+      )
+    );
 
-  const totalSavingsFound = savingsRows.reduce((acc, r) => {
+  const totalSavingsFound = savingsRows.reduce((acc: number, r: { savingsPotential: string | null }) => {
     const match = r.savingsPotential?.match(/\$?([\d.]+)/);
     return acc + (match ? Number(match[1]) : 0);
   }, 0);
@@ -298,10 +302,14 @@ const [activeToolsRow] = await db
   const savingsRows = await db
     .select({ savingsPotential: remediationActionsTable.savingsPotential })
     .from(remediationActionsTable)
-    .where(eq(remediationActionsTable.workspaceId, wsIdKpi))
-    .where(eq(remediationActionsTable.status, "Completed"));
+    .where(
+      and(
+        eq(remediationActionsTable.workspaceId, wsIdKpi),
+        eq(remediationActionsTable.status, "Completed")
+      )
+    );
 
-  const totalSavingsFound = savingsRows.reduce((acc, r) => {
+  const totalSavingsFound = savingsRows.reduce((acc: number, r: { savingsPotential: string | null }) => {
     const match = r.savingsPotential?.match(/\$?([\d.]+)/);
     return acc + (match ? Number(match[1]) : 0);
   }, 0);
