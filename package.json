@@ -11,6 +11,7 @@
   "devDependencies": {
     "@esbuild/win32-x64": "^0.28.0",
     "@rollup/rollup-win32-x64-msvc": "^4.60.4",
+    "@testing-library/dom": "^10.4.1",
     "esbuild": "0.28.0",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
