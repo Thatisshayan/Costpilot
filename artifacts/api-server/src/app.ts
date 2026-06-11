@@ -3,11 +3,13 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
+import cookieParser from "cookie-parser";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 import { requireAuth } from "./middlewares/auth";
 import { errorHandler } from "./middlewares/errors";
+import { csrfProtection } from "./middlewares/csrf";
 
 const app: Express = express();
 
@@ -81,11 +83,10 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
   : ["http://localhost:3000", "http://localhost:5173"];
 
-const allowedMobileSchemes = [
-  "capacitor://localhost",
-  "ionic://localhost",
-  "http://localhost" // capacitor/cordova Android dev server
-];
+const allowedMobileSchemes =
+  process.env.NODE_ENV !== "production"
+    ? ["capacitor://localhost", "ionic://localhost", "http://localhost"]
+    : [];
 
 app.use(
   cors({
@@ -100,6 +101,10 @@ app.use(
   }),
 );
 
+// 5. Parse cookies for CSRF protection
+app.use(cookieParser());
+
+// 6. Parse request bodies
 app.use(
   express.json({
     limit: "1mb",
@@ -112,6 +117,9 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 
+// 7. CSRF Protection for state-changing endpoints
+app.use("/api", csrfProtection);
+
 // Apply Authentication middleware to all API routes
 app.use("/api", requireAuth, router);
 
@@ -119,4 +127,3 @@ app.use("/api", requireAuth, router);
 app.use(errorHandler);
 
 export default app;
-

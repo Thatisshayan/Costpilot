@@ -54,7 +54,15 @@ router.post("/stripe", async (req, res) => {
 
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (webhookSecret && sig) {
+    if (!webhookSecret) {
+      res.status(401).send("Missing STRIPE_WEBHOOK_SECRET");
+      return;
+    }
+    if (!sig) {
+      res.status(401).send("Missing stripe-signature header");
+      return;
+    }
+    if (true) {
       event = stripe.webhooks.constructEvent(
         (req as any).rawBody || req.body,
         sig as string,
@@ -154,31 +162,30 @@ router.post("/clerk", async (req, res) => {
   const secret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
   const rawBody = (req as any).rawBody;
 
-  // 1. Signature verification if secret is configured
-  if (secret) {
-    if (!rawBody) {
-      logger.error("Clerk Webhook verification failed: req.rawBody is missing");
-      res.status(400).json({ error: "Missing request rawBody" });
-      return;
-    }
-    
-    const bodyString = rawBody instanceof Buffer ? rawBody.toString("utf8") : rawBody;
-    const isValid = verifyClerkSignature(bodyString, req.headers, secret);
-    
-    if (!isValid) {
-      logger.warn("Clerk Webhook received with invalid signature");
-      res.status(400).json({ error: "Invalid webhook signature" });
-      return;
-    }
-  } else {
-    logger.warn("CLERK_WEBHOOK_SIGNING_SECRET is not configured. Signature verification bypassed.");
+  if (!secret) {
+    logger.error("CLERK_WEBHOOK_SIGNING_SECRET is not configured");
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
 
-  // 2. Parse body
+  if (!rawBody) {
+    logger.error("Clerk Webhook verification failed: req.rawBody is missing");
+    res.status(400).json({ error: "Missing request rawBody" });
+    return;
+  }
+
+  const bodyString = rawBody instanceof Buffer ? rawBody.toString("utf8") : rawBody;
+  const isValid = verifyClerkSignature(bodyString, req.headers, secret);
+
+  if (!isValid) {
+    logger.warn("Clerk Webhook received with invalid signature");
+    res.status(400).json({ error: "Invalid webhook signature" });
+    return;
+  }
+
   let body: any;
   try {
-    const bodyString = rawBody instanceof Buffer ? rawBody.toString("utf8") : rawBody;
-    body = bodyString ? JSON.parse(bodyString) : req.body;
+    body = JSON.parse(bodyString);
   } catch (err) {
     logger.error({ err }, "Clerk Webhook failed to parse rawBody as JSON");
     res.status(400).json({ error: "Invalid JSON body" });
@@ -196,7 +203,6 @@ router.post("/clerk", async (req, res) => {
     return;
   }
 
-  // 3. Process user.created event
   if (type === "user.created") {
     const userId = data.id;
     if (!userId) {
@@ -213,7 +219,6 @@ router.post("/clerk", async (req, res) => {
 
     try {
       await db.transaction(async (tx) => {
-        // Create Default Workspace
         const [workspace] = await tx
           .insert(workspacesTable)
           .values({
@@ -223,7 +228,6 @@ router.post("/clerk", async (req, res) => {
           })
           .returning();
 
-        // Assign user as Owner
         await tx.insert(workspaceMembersTable).values({
           workspaceId: workspace.id,
           userId,
@@ -239,7 +243,6 @@ router.post("/clerk", async (req, res) => {
       res.status(500).json({ error: "Failed to provision workspace" });
     }
   } else {
-    // Acknowledge other event types with 200 to satisfy Clerk webhook retries
     res.status(200).json({ message: `Acknowledged event type: ${type}` });
   }
 });

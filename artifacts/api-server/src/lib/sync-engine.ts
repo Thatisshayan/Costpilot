@@ -388,160 +388,357 @@ export async function syncPlatform(platformId: number, userId: string): Promise<
       return { success: true, message: `Synced OpenAI: $${amountStr}`, expensesImported: 1, amount: amountStr };
     }
 
-    // 2. Anthropic
+    // 2. Anthropic (Claude) - TODO: Implement real API integration
+    // Reference: https://docs.anthropic.com/en/api/usage
     if (nameLower.includes("anthropic") || nameLower.includes("claude")) {
-      const mockContextTokens = Math.floor(Math.random() * 800000) + 150000;
-      const mockGeneratedTokens = Math.floor(Math.random() * 200000) + 50000;
-      const calculatedCost = ((mockContextTokens * 3) / 1000000) + ((mockGeneratedTokens * 15) / 1000000);
-      const amountStr = calculatedCost.toFixed(2);
+      // TODO: Replace with actual Anthropic Usage API call
+      // Expected endpoint: GET https://api.anthropic.com/v1/organization/usage
+      // Headers: x-api-key: {apiKey}, anthropic-version: 2023-06-01
+      // Response structure: { object: "list", data: [{ input_tokens, output_tokens, ... }] }
 
-      await db.insert(expensesTable).values({
-        platformId: platformId,
-        userId: userId,
-        amount: amountStr,
-        currency: "USD",
-        description: `Auto-synced Anthropic: ${mockContextTokens.toLocaleString()} input / ${mockGeneratedTokens.toLocaleString()} output tokens (Claude 3.5 Sonnet)`,
-        category: "API Usage",
-        date: today,
-      });
+      logger.warn("Anthropic sync: Using placeholder - real API integration not yet implemented");
 
-      return { success: true, message: `Synced Anthropic: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      // Placeholder response structure for real implementation
+      const resp = await fetch("https://api.anthropic.com/v1/organization/usage", {
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json"
+        }
+      }).catch(() => null);
+
+      if (resp && resp.ok) {
+        const data = await resp.json() as { data?: Array<{ input_tokens: number; output_tokens: number }> };
+        let totalInput = 0, totalOutput = 0;
+        data.data?.forEach(d => {
+          totalInput += d.input_tokens || 0;
+          totalOutput += d.output_tokens || 0;
+        });
+
+        const calculatedCost = ((totalInput * 3) / 1000000) + ((totalOutput * 15) / 1000000);
+        const amountStr = calculatedCost.toFixed(2);
+
+        await db.insert(expensesTable).values({
+          platformId,
+          userId,
+          amount: amountStr,
+          currency: "USD",
+          description: `Auto-synced Anthropic: ${totalInput.toLocaleString()} input / ${totalOutput.toLocaleString()} output tokens (Claude)`,
+          category: "API Usage",
+          date: today,
+        });
+
+        return { success: true, message: `Synced Anthropic: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      } else {
+        throw new Error("Anthropic Usage API integration not yet implemented. Cannot fetch real expense data.");
+      }
     }
 
-    // 3. Cohere
+    // 3. Cohere - TODO: Implement real API integration
+    // Reference: https://docs.cohere.com/reference/generate
     if (nameLower.includes("cohere")) {
-      const mockSearches = Math.floor(Math.random() * 2000) + 500;
-      const calculatedCost = (mockSearches * 1.00) / 1000;
-      const amountStr = calculatedCost.toFixed(2);
+      // TODO: Replace with actual Cohere Usage API call
+      // Expected: Fetch from Cohere dashboard API or parse billing export
+      // Note: Cohere does not have a public usage API - may require dashboard export or webhook parsing
 
-      await db.insert(expensesTable).values({
-        platformId: platformId,
-        userId: userId,
-        amount: amountStr,
-        currency: "USD",
-        description: `Auto-synced Cohere: ${mockSearches.toLocaleString()} API rerank / search requests`,
-        category: "API Usage",
-        date: today,
-      });
+      logger.warn("Cohere sync: Using placeholder - real API integration not yet implemented");
 
-      return { success: true, message: `Synced Cohere: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      const resp = await fetch("https://api.cohere.com/v1/usage", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      }).catch(() => null);
+
+      if (resp && resp.ok) {
+        const data = await resp.json() as { total_tokens?: number; total_requests?: number };
+        const totalTokens = data.total_tokens || 0;
+        const calculatedCost = (totalTokens * 0.0000015);
+
+        const amountStr = calculatedCost.toFixed(2);
+
+        await db.insert(expensesTable).values({
+          platformId,
+          userId,
+          amount: amountStr,
+          currency: "USD",
+          description: `Auto-synced Cohere: ${totalTokens.toLocaleString()} API tokens processed`,
+          category: "API Usage",
+          date: today,
+        });
+
+        return { success: true, message: `Synced Cohere: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      } else {
+        throw new Error("Cohere Usage API integration not yet implemented. Cannot fetch real expense data.");
+      }
     }
 
-    // 4. DeepSeek
+    // 4. DeepSeek - TODO: Implement real API integration
+    // Reference: https://api-docs.deepseek.com/
     if (nameLower.includes("deepseek")) {
-      const mockInputTokens = Math.floor(Math.random() * 400000) + 100000;
-      const mockOutputTokens = Math.floor(Math.random() * 200000) + 50000;
-      const calculatedCost = ((mockInputTokens * 0.14) / 1000000) + ((mockOutputTokens * 0.28) / 1000000);
-      const amountStr = calculatedCost.toFixed(2);
+      // TODO: Replace with actual DeepSeek API call
+      // Expected endpoint: GET https://api.deepseek.com/v1/usage
+      // Headers: Authorization: Bearer {apiKey}
+      // Note: DeepSeek may require contacting support for detailed usage/billing API access
 
-      await db.insert(expensesTable).values({
-        platformId: platformId,
-        userId: userId,
-        amount: amountStr,
-        currency: "USD",
-        description: `Auto-synced DeepSeek: ${mockInputTokens.toLocaleString()} input / ${mockOutputTokens.toLocaleString()} output tokens`,
-        category: "API Usage",
-        date: today,
-      });
+      logger.warn("DeepSeek sync: Using placeholder - real API integration not yet implemented");
 
-      return { success: true, message: `Synced DeepSeek: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      const resp = await fetch("https://api.deepseek.com/v1/usage", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      }).catch(() => null);
+
+      if (resp && resp.ok) {
+        const data = await resp.json() as { data?: Array<{ prompt_tokens: number; completion_tokens: number }> };
+        let totalInput = 0, totalOutput = 0;
+        data.data?.forEach(d => {
+          totalInput += d.prompt_tokens || 0;
+          totalOutput += d.completion_tokens || 0;
+        });
+
+        const calculatedCost = ((totalInput * 0.14) / 1000000) + ((totalOutput * 0.28) / 1000000);
+        const amountStr = calculatedCost.toFixed(2);
+
+        await db.insert(expensesTable).values({
+          platformId,
+          userId,
+          amount: amountStr,
+          currency: "USD",
+          description: `Auto-synced DeepSeek: ${totalInput.toLocaleString()} input / ${totalOutput.toLocaleString()} output tokens`,
+          category: "API Usage",
+          date: today,
+        });
+
+        return { success: true, message: `Synced DeepSeek: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      } else {
+        throw new Error("DeepSeek Usage API integration not yet implemented. Cannot fetch real expense data.");
+      }
     }
 
-    // 5. Mistral
+    // 5. Mistral AI - TODO: Implement real API integration
+    // Reference: https://docs.mistral.ai/
     if (nameLower.includes("mistral")) {
-      const mockCalls = Math.floor(Math.random() * 1500) + 500;
-      const calculatedCost = (mockCalls * 0.15) / 1000;
-      const amountStr = calculatedCost.toFixed(2);
+      // TODO: Replace with actual Mistral API call
+      // Expected: Fetch from Mistral Console API or parse billing export
+      // Note: Mistral may not have a public usage API endpoint
 
-      await db.insert(expensesTable).values({
-        platformId: platformId,
-        userId: userId,
-        amount: amountStr,
-        currency: "USD",
-        description: `Auto-synced Mistral: ${mockCalls.toLocaleString()} API calls (Mistral Small)`,
-        category: "API Usage",
-        date: today,
-      });
+      logger.warn("Mistral sync: Using placeholder - real API integration not yet implemented");
 
-      return { success: true, message: `Synced Mistral: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      const resp = await fetch("https://api.mistral.ai/v1/usage", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      }).catch(() => null);
+
+      if (resp && resp.ok) {
+        const data = await resp.json() as { data?: Array<{ tokens_used: number }> };
+        const totalTokens = data.data?.reduce((sum, d) => sum + (d.tokens_used || 0), 0) || 0;
+        const calculatedCost = (totalTokens * 0.000001);
+
+        const amountStr = calculatedCost.toFixed(2);
+
+        await db.insert(expensesTable).values({
+          platformId,
+          userId,
+          amount: amountStr,
+          currency: "USD",
+          description: `Auto-synced Mistral: ${totalTokens.toLocaleString()} API tokens processed`,
+          category: "API Usage",
+          date: today,
+        });
+
+        return { success: true, message: `Synced Mistral: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      } else {
+        throw new Error("Mistral Usage API integration not yet implemented. Cannot fetch real expense data.");
+      }
     }
 
-    // 6. Groq
+    // 6. Groq - TODO: Implement real API integration
+    // Reference: https://console.groq.com/docs/rate-limits, https://console.groq.com/docs/quickstart
     if (nameLower.includes("groq")) {
-      const mockRequests = Math.floor(Math.random() * 9000) + 1000;
-      const calculatedCost = mockRequests * 0.0001;
-      const amountStr = calculatedCost.toFixed(2);
+      // TODO: Replace with actual Groq API call
+      // Expected: Fetch from Groq Console API or parse billing export
+      // Note: Groq may not have a public usage/billing API endpoint
 
-      await db.insert(expensesTable).values({
-        platformId: platformId,
-        userId: userId,
-        amount: amountStr,
-        currency: "USD",
-        description: `Auto-synced Groq: ${mockRequests.toLocaleString()} requests (Llama 3 8B)`,
-        category: "API Usage",
-        date: today,
-      });
+      logger.warn("Groq sync: Using placeholder - real API integration not yet implemented");
 
-      return { success: true, message: `Synced Groq: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      const resp = await fetch("https://api.groq.com/openai/v1/usage", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      }).catch(() => null);
+
+      if (resp && resp.ok) {
+        const data = await resp.json() as { data?: Array<{ total_tokens: number }> };
+        const totalTokens = data.data?.reduce((sum, d) => sum + (d.total_tokens || 0), 0) || 0;
+        const calculatedCost = (totalTokens * 0.0000005);
+
+        const amountStr = calculatedCost.toFixed(2);
+
+        await db.insert(expensesTable).values({
+          platformId,
+          userId,
+          amount: amountStr,
+          currency: "USD",
+          description: `Auto-synced Groq: ${totalTokens.toLocaleString()} API tokens processed`,
+          category: "API Usage",
+          date: today,
+        });
+
+        return { success: true, message: `Synced Groq: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      } else {
+        throw new Error("Groq Usage API integration not yet implemented. Cannot fetch real expense data.");
+      }
     }
 
-    // 7. Together AI
+    // 7. Together AI - TODO: Implement real API integration
+    // Reference: https://docs.together.ai/docs/quickstart
     if (nameLower.includes("together")) {
-      const mockInputTokens = Math.floor(Math.random() * 400000) + 100000;
-      const mockOutputTokens = Math.floor(Math.random() * 200000) + 50000;
-      const totalTokens = mockInputTokens + mockOutputTokens;
-      const calculatedCost = (totalTokens * 0.10) / 1000000;
-      const amountStr = calculatedCost.toFixed(2);
+      // TODO: Replace with actual Together AI API call
+      // Expected endpoint: GET https://api.together.xyz/v1/organization/usage
+      // Headers: Authorization: Bearer {apiKey}
 
-      await db.insert(expensesTable).values({
-        platformId: platformId,
-        userId: userId,
-        amount: amountStr,
-        currency: "USD",
-        description: `Auto-synced Together AI: ${mockInputTokens.toLocaleString()} input / ${mockOutputTokens.toLocaleString()} output tokens`,
-        category: "API Usage",
-        date: today,
-      });
+      logger.warn("Together AI sync: Using placeholder - real API integration not yet implemented");
 
-      return { success: true, message: `Synced Together AI: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      const resp = await fetch("https://api.together.xyz/v1/organization/usage", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      }).catch(() => null);
+
+      if (resp && resp.ok) {
+        const data = await resp.json() as { data?: Array<{ prompt_tokens: number; completion_tokens: number }> };
+        let totalInput = 0, totalOutput = 0;
+        data.data?.forEach(d => {
+          totalInput += d.prompt_tokens || 0;
+          totalOutput += d.completion_tokens || 0;
+        });
+
+        const totalTokens = totalInput + totalOutput;
+        const calculatedCost = (totalTokens * 0.10) / 1000000;
+        const amountStr = calculatedCost.toFixed(2);
+
+        await db.insert(expensesTable).values({
+          platformId,
+          userId,
+          amount: amountStr,
+          currency: "USD",
+          description: `Auto-synced Together AI: ${totalInput.toLocaleString()} input / ${totalOutput.toLocaleString()} output tokens`,
+          category: "API Usage",
+          date: today,
+        });
+
+        return { success: true, message: `Synced Together AI: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      } else {
+        throw new Error("Together AI Usage API integration not yet implemented. Cannot fetch real expense data.");
+      }
     }
 
-    // 8. Replicate
+    // 8. Replicate - TODO: Implement real API integration
+    // Reference: https://replicate.com/docs/api-reference/predictions
     if (nameLower.includes("replicate")) {
-      const mockRuns = Math.floor(Math.random() * 400) + 100;
-      const calculatedCost = mockRuns * 0.05;
-      const amountStr = calculatedCost.toFixed(2);
+      // TODO: Replace with actual Replicate API call
+      // Expected: Fetch predictions list and calculate cost per run
+      // Endpoint: GET https://api.replicate.com/v1/predictions
+      // Headers: Authorization: Token {apiKey}
+      // Each prediction has a version/cost associated with it
 
-      await db.insert(expensesTable).values({
-        platformId: platformId,
-        userId: userId,
-        amount: amountStr,
-        currency: "USD",
-        description: `Auto-synced Replicate: ${mockRuns.toLocaleString()} prediction runs`,
-        category: "API Usage",
-        date: today,
-      });
+      logger.warn("Replicate sync: Using placeholder - real API integration not yet implemented");
 
-      return { success: true, message: `Synced Replicate: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      const resp = await fetch("https://api.replicate.com/v1/predictions", {
+        method: "GET",
+        headers: {
+          "Authorization": `Token ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      }).catch(() => null);
+
+      if (resp && resp.ok) {
+        const data = await resp.json() as { results?: Array<{ version?: string; cost?: number }> };
+        const predictions = data.results || [];
+        const totalCost = predictions.reduce((sum, p) => sum + (p.cost || 0.05), 0);
+
+        await db.insert(expensesTable).values({
+          platformId,
+          userId,
+          amount: totalCost.toFixed(2),
+          currency: "USD",
+          description: `Auto-synced Replicate: ${predictions.length} prediction runs`,
+          category: "API Usage",
+          date: today,
+        });
+
+        return { success: true, message: `Synced Replicate: $${totalCost.toFixed(2)}`, expensesImported: predictions.length, amount: totalCost.toFixed(2) };
+      } else {
+        throw new Error("Replicate Usage API integration not yet implemented. Cannot fetch real expense data.");
+      }
     }
 
-    // 9. Stability AI
+    // 9. Stability AI - TODO: Implement real API integration
+    // Reference: https://platform.stability.ai/docs/api-reference
     if (nameLower.includes("stability")) {
-      const mockGenerations = Math.floor(Math.random() * 150) + 50;
-      const calculatedCost = mockGenerations * 0.01;
-      const amountStr = calculatedCost.toFixed(2);
+      // TODO: Replace with actual Stability AI API call
+      // Expected: Fetch generation history and calculate costs
+      // Endpoint: GET https://api.stability.ai/v1/engines/{engine_id}/generations
+      // Headers: Authorization: Bearer {apiKey}
+      // Note: User may need to specify engine_id in platform settings
 
-      await db.insert(expensesTable).values({
-        platformId: platformId,
-        userId: userId,
-        amount: amountStr,
-        currency: "USD",
-        description: `Auto-synced Stability AI: ${mockGenerations.toLocaleString()} image generations`,
-        category: "Image Generation",
-        date: today,
-      });
+      logger.warn("Stability AI sync: Using placeholder - real API integration not yet implemented");
 
-      return { success: true, message: `Synced Stability AI: $${amountStr}`, expensesImported: 1, amount: amountStr };
+      const resp = await fetch("https://api.stability.ai/v1/engines/list", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      }).catch(() => null);
+
+      if (resp && resp.ok) {
+        // If engines endpoint succeeds, try to fetch generations
+        const engines = await resp.json() as { engines?: Array<{ id: string }> };
+        const engineId = engines.engines?.[0]?.id || "stable-diffusion-xl-1024-v1-0";
+
+        const genResp = await fetch(`https://api.stability.ai/v1/engines/${engineId}/generations`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          }
+        }).catch(() => null);
+
+        if (genResp && genResp.ok) {
+          const genData = await genResp.json() as { generations?: Array<{ cost?: number }> };
+          const generations = genData.generations || [];
+          const totalCost = generations.reduce((sum, g) => sum + (g.cost || 0.01), 0);
+
+          await db.insert(expensesTable).values({
+            platformId,
+            userId,
+            amount: totalCost.toFixed(2),
+            currency: "USD",
+            description: `Auto-synced Stability AI: ${generations.length} image generations (${engineId})`,
+            category: "Image Generation",
+            date: today,
+          });
+
+          return { success: true, message: `Synced Stability AI: $${totalCost.toFixed(2)}`, expensesImported: generations.length, amount: totalCost.toFixed(2) };
+        }
+
+        throw new Error("Stability AI Usage API integration not yet implemented. Cannot fetch real expense data.");
+      } else {
+        throw new Error("Stability AI Usage API integration not yet implemented. Cannot fetch real expense data.");
+      }
     }
 
     // 10. Fallback

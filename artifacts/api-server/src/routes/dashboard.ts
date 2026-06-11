@@ -7,6 +7,9 @@ import {
   subscriptionsTable,
   toolsTable,
   creditPurchasesTable,
+  budgetPoliciesTable,
+  remediationActionsTable,
+  workspaceMembersTable,
 } from "@workspace/db";
 import { eq, sql, and, isNotNull, desc } from "drizzle-orm";
 
@@ -17,6 +20,15 @@ function calcDaysUntilExpiry(trialEndDate: string | null): number | null {
   const end = new Date(trialEndDate);
   const now = new Date();
   return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+async function getDefaultWorkspaceId(userId: string): Promise<number> {
+  const [member] = await db
+    .select({ workspaceId: workspaceMembersTable.workspaceId })
+    .from(workspaceMembersTable)
+    .where(eq(workspaceMembersTable.userId, userId))
+    .limit(1);
+  return member?.workspaceId || 0;
 }
 
 router.get("/summary", async (req, res) => {
@@ -59,16 +71,55 @@ router.get("/summary", async (req, res) => {
   const renewalsCount = renewals.length;
   const renewalsTotal = renewals.reduce((acc, r) => acc + Number(r.cost || 0), 0);
 
-  // Active Tools (Distinct platforms with expenses)
+// Active Tools (Distinct platforms with expenses)
   const [activeToolsRow] = await db
     .select({ count: sql<string>`COUNT(DISTINCT ${expensesTable.platformId})` })
     .from(expensesTable)
     .where(eq(expensesTable.userId, userId));
 
-  // MTD Change Percent
+  // MTD Change Percent - define before use
   const thisMonthTotal = Number(thisMonthRow.total);
   const lastMonthTotal = Number(lastMonthRow.total);
   const changePercent = lastMonthTotal > 0 ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
+
+  // Active Tools unused count - tools without expenses in last 30 days
+  const [unusedToolsRow] = await db
+    .select({ count: sql<string>`COUNT(*)` })
+    .from(toolsTable)
+    .where(
+      and(
+        eq(toolsTable.userId, userId),
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${expensesTable} e 
+          WHERE e.platform_id = ${toolsTable.platformId} 
+          AND e.date >= ${new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
+        )`
+      )
+    );
+
+  // Budget used percent - calculate from budget policies
+  const [budgetPolicy] = await db
+    .select({ threshold: budgetPoliciesTable.thresholdAmount })
+    .from(budgetPoliciesTable)
+    .where(eq(budgetPoliciesTable.userId, userId))
+    .limit(1);
+
+  const budgetTotal = budgetPolicy ? Number(budgetPolicy.threshold) : 0;
+  const budgetUsedPercent = budgetTotal > 0 ? (thisMonthTotal / budgetTotal) * 100 : 0;
+
+  // Savings found - from completed remediation actions with savings potential
+  // Note: workspaceId may not be available in all contexts, query by workspace if available
+  const wsId = req.workspaceId ?? await getDefaultWorkspaceId(userId);
+  const savingsRows = await db
+    .select({ savingsPotential: remediationActionsTable.savingsPotential })
+    .from(remediationActionsTable)
+    .where(eq(remediationActionsTable.workspaceId, wsId))
+    .where(eq(remediationActionsTable.status, "Completed"));
+
+  const totalSavingsFound = savingsRows.reduce((acc, r) => {
+    const match = r.savingsPotential?.match(/\$?([\d.]+)/);
+    return acc + (match ? Number(match[1]) : 0);
+  }, 0);
 
   res.json({
     totalAiSpend: Number(totalSpendRow.total),
@@ -76,14 +127,14 @@ router.get("/summary", async (req, res) => {
     lastMonthTotalSpend: lastMonthTotal,
     monthToDateChangePercent: Number(changePercent.toFixed(1)),
     activeAiTools: Number(activeToolsRow.count),
-    activeToolsUnusedCount: Math.floor(Number(activeToolsRow.count) * 0.2), // Mock: 20% unused
+    activeToolsUnusedCount: Number(unusedToolsRow.count),
     renewalsThisWeek: renewalsCount,
     upcomingRenewalAmount: renewalsTotal,
-    apiSpendToday: thisMonthTotal / now.getDate(), // Simple daily avg for mock
-    budgetUsedPercent: 72.5,
+    apiSpendToday: thisMonthTotal / now.getDate(),
+    budgetUsedPercent: Number(budgetUsedPercent.toFixed(1)),
     forecastTotal: (thisMonthTotal / now.getDate()) * 30,
-    avgApiCostPerRequest: 0.014,
-    totalSavingsFound: 214.50
+    avgApiCostPerRequest: 0, // TODO: Requires request count tracking in schema
+    totalSavingsFound: totalSavingsFound
   });
 });
 
@@ -208,13 +259,53 @@ router.get("/kpi-summary", async (req, res) => {
       )
     );
 
-  const [activeToolsRow] = await db
+const [activeToolsRow] = await db
     .select({ count: sql<string>`COUNT(DISTINCT ${expensesTable.platformId})` })
     .from(expensesTable)
     .where(eq(expensesTable.userId, userId));
 
+  // MTD Change Percent - define before use
   const thisMonthTotal = Number(thisMonthRow.total);
   const lastMonthTotal = Number(lastMonthRow.total);
+
+  // Active Tools unused count - tools without expenses in last 30 days
+  const [unusedToolsRow] = await db
+    .select({ count: sql<string>`COUNT(*)` })
+    .from(toolsTable)
+    .where(
+      and(
+        eq(toolsTable.userId, userId),
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${expensesTable} e 
+          WHERE e.platform_id = ${toolsTable.platformId} 
+          AND e.date >= ${new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
+        )`
+      )
+    );
+
+  // Budget used percent - calculate from budget policies
+  const [budgetPolicy] = await db
+    .select({ threshold: budgetPoliciesTable.thresholdAmount })
+    .from(budgetPoliciesTable)
+    .where(eq(budgetPoliciesTable.userId, userId))
+    .limit(1);
+
+  const budgetTotal = budgetPolicy ? Number(budgetPolicy.threshold) : 0;
+  const budgetUsedPercent = budgetTotal > 0 ? (thisMonthTotal / budgetTotal) * 100 : 0;
+
+  // Savings found - from completed remediation actions with savings potential
+  const wsIdKpi = req.workspaceId ?? await getDefaultWorkspaceId(userId);
+  const savingsRows = await db
+    .select({ savingsPotential: remediationActionsTable.savingsPotential })
+    .from(remediationActionsTable)
+    .where(eq(remediationActionsTable.workspaceId, wsIdKpi))
+    .where(eq(remediationActionsTable.status, "Completed"));
+
+  const totalSavingsFound = savingsRows.reduce((acc, r) => {
+    const match = r.savingsPotential?.match(/\$?([\d.]+)/);
+    return acc + (match ? Number(match[1]) : 0);
+  }, 0);
+
   const changePercent = lastMonthTotal > 0 ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
 
   res.json({
@@ -223,15 +314,15 @@ router.get("/kpi-summary", async (req, res) => {
     lastMonthTotalSpend: lastMonthTotal,
     monthToDateChangePercent: Number(changePercent.toFixed(1)),
     activeAiTools: Number(activeToolsRow.count),
-    activeToolsUnusedCount: Math.floor(Number(activeToolsRow.count) * 0.2),
+    activeToolsUnusedCount: Number(unusedToolsRow.count),
     renewalsThisWeek: renewals.length,
     upcomingRenewalAmount: renewals.reduce((acc, r) => acc + Number(r.cost || 0), 0),
     apiSpendToday: thisMonthTotal / now.getDate(),
-    budgetUsedPercent: 72.5, // Logic for budget would go here
-    budgetTotal: 1250,
+    budgetUsedPercent: Number(budgetUsedPercent.toFixed(1)),
+    budgetTotal: budgetTotal,
     forecastTotal: (thisMonthTotal / now.getDate()) * 30,
-    avgApiCostPerRequest: 0.014,
-    totalSavingsFound: 214.50
+    avgApiCostPerRequest: 0, // TODO: Requires request count tracking in schema
+    totalSavingsFound: totalSavingsFound
   });
 });
 
@@ -246,16 +337,26 @@ router.get("/monthly-spending", async (req, res) => {
     .groupBy(sql`TO_CHAR(TO_DATE(${expensesTable.date}, 'YYYY-MM-DD'), 'YYYY-MM')`)
     .orderBy(sql`TO_CHAR(TO_DATE(${expensesTable.date}, 'YYYY-MM-DD'), 'YYYY-MM')`);
 
-  res.json(rows.map((r) => {
+  const result = [];
+  for (const r of rows) {
     const total = Number(r.total);
-    return {
+    const [categoryStats] = await db
+      .select({
+        apiUsage: sql<string>`COALESCE(SUM(CASE WHEN ${expensesTable.category} = 'api_usage' THEN ${expensesTable.amount} ELSE 0 END), 0)`,
+        subscription: sql<string>`COALESCE(SUM(CASE WHEN ${expensesTable.category} = 'subscription' THEN ${expensesTable.amount} ELSE 0 END), 0)`,
+        infrastructure: sql<string>`COALESCE(SUM(CASE WHEN ${expensesTable.category} = 'infrastructure' THEN ${expensesTable.amount} ELSE 0 END), 0)`,
+      })
+      .from(expensesTable)
+      .where(and(eq(expensesTable.userId, req.userId!), sql`TO_CHAR(TO_DATE(date, 'YYYY-MM-DD'), 'YYYY-MM') = ${r.month}`));
+    result.push({
       month: r.month,
-      subscriptionSpend: total * 0.4,
-      apiUsageSpend: total * 0.35,
-      infrastructureSpend: total * 0.15,
-      forecastSpend: total * 1.1 // Example forecast
-    };
-  }));
+      subscriptionSpend: Number(categoryStats.subscription),
+      apiUsageSpend: Number(categoryStats.apiUsage),
+      infrastructureSpend: Number(categoryStats.infrastructure),
+      forecastSpend: total * 1.1
+    });
+  }
+  res.json(result);
 });
 
 router.get("/calendar-events", async (req, res) => {
@@ -377,17 +478,58 @@ router.get("/calendar-events", async (req, res) => {
 });
 
 router.get("/intelligence-activity", async (req, res) => {
-  // Enriched activity with intelligence scoring
+  const userId = req.userId!;
+  
+  // Get recent expenses with platform info
+  const expenseActivity = await db
+    .select({
+      id: expensesTable.id,
+      platformName: platformsTable.name,
+      amount: expensesTable.amount,
+      date: expensesTable.date,
+      category: expensesTable.category,
+    })
+    .from(expensesTable)
+    .leftJoin(platformsTable, eq(expensesTable.platformId, platformsTable.id))
+    .where(eq(expensesTable.userId, userId))
+    .orderBy(desc(expensesTable.date))
+    .limit(20);
+
+  // Get recent subscriptions with platform info
+  const subscriptionActivity = await db
+    .select({
+      id: subscriptionsTable.id,
+      platformName: platformsTable.name,
+      monthlyCost: subscriptionsTable.monthlyCost,
+      status: subscriptionsTable.status,
+      planType: subscriptionsTable.planType,
+      createdAt: subscriptionsTable.createdAt,
+    })
+    .from(subscriptionsTable)
+    .leftJoin(platformsTable, eq(subscriptionsTable.platformId, platformsTable.id))
+    .where(eq(subscriptionsTable.userId, userId))
+    .orderBy(desc(subscriptionsTable.createdAt))
+    .limit(10);
+
   const activity = [
-    { vendor: "OpenAI API", type: "API Usage", amount: "$48.76", date: "Today", status: "Active", risk: "Spike" },
-    { vendor: "Claude Pro", type: "Subscription", amount: "$20.00", date: "Jun 13", status: "Active", risk: "Renewal" },
-    { vendor: "Runway", type: "Subscription", amount: "$35.00", date: "Jun 18", status: "Active", risk: "Unused" },
-    { vendor: "Midjourney", type: "Subscription", amount: "$30.00", date: "Jun 14", status: "Active", risk: "Renewal" },
-    { vendor: "Cursor Pro", type: "Subscription", amount: "$20.00", date: "Jun 21", status: "Active", risk: "Renewal" },
-    { vendor: "Perplexity", type: "Subscription", amount: "$20.00", date: "Jun 15", status: "Trial", risk: "Duplicate" },
-    { vendor: "ElevenLabs", type: "API Usage", amount: "$33.00", date: "Jun 16", status: "Active", risk: "Renewal" },
-    { vendor: "Vercel", type: "Infrastructure", amount: "$24.00", date: "Jun 28", status: "Active", risk: "" },
+    ...expenseActivity.map((e) => ({
+      vendor: e.platformName ?? "Unknown",
+      type: e.category === "api_usage" ? "API Usage" : "Expense",
+      amount: `$${Number(e.amount).toFixed(2)}`,
+      date: new Date(e.date).toLocaleDateString(),
+      status: "Active",
+      risk: "Spend detected",
+    })),
+    ...subscriptionActivity.map((s) => ({
+      vendor: s.platformName ?? "Unknown",
+      type: "Subscription",
+      amount: `$${Number(s.monthlyCost || 0).toFixed(2)}`,
+      date: s.createdAt?.toLocaleDateString() ?? "N/A",
+      status: s.status ?? "Active",
+      risk: s.planType === "free_trial" ? "Trial" : "Renewal",
+    }))
   ];
+
   res.json(activity);
 });
 
@@ -410,3 +552,4 @@ router.get("/connected-sources", async (req, res) => {
 });
 
 export default router;
+

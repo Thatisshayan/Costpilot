@@ -16,6 +16,7 @@ declare global {
       userEmail?: string;
       auth?: any;
       workspaceRole?: string;
+      workspaceId?: number;
     }
   }
 }

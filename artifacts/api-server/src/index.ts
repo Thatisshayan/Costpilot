@@ -5,6 +5,29 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { initCronJobs } from "./lib/cron-service";
 
+// Validate required environment variables in production
+const requiredEnvVars = [
+  "ENCRYPTION_KEY",
+  "DATABASE_URL",
+  "CLERK_SECRET_KEY",
+  "STRIKE_SECRET_KEY",
+  "WEBHOOK_SECRET",
+  "JWT_SECRET",
+  "CLERK_WEBHOOK_SIGNING_SECRET",
+] as const;
+
+if (process.env["NODE_ENV"] === "production") {
+  const missingEnvVars = requiredEnvVars.filter(
+    (envVar) => !process.env[envVar],
+  );
+
+  if (missingEnvVars.length > 0) {
+    throw new Error(
+      `Missing required environment variables in production: ${missingEnvVars.join(", ")}`,
+    );
+  }
+}
+
 initSentry();
 
 const rawPort = process.env["PORT"];
@@ -28,7 +51,9 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
-  
+
   // Initialize background automation
   initCronJobs();
 });
+
+
