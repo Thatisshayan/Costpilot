@@ -8,14 +8,12 @@ import {
   ShieldCheck,
   Calendar,
   ChevronRight,
-  ArrowRight,
   BarChart3,
   AlertTriangle,
   DollarSign,
   LayoutDashboard,
   Clock,
   Copy,
-  Plus,
   X,
   Trash2,
   RefreshCw,
@@ -68,46 +66,15 @@ import {
   useListExpenses,
   customFetch,
 } from '@workspace/api-client-react';
-
-const PIE_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#0ea5e9", "#f59e0b", "#10b981", "#ef4444"];
-
-const TEMPLATES = [
-  { id: "monthly-spend", name: "Monthly Spend Report", description: "Complete breakdown of all AI spending by provider, project, and category for the month.", formats: ["csv", "pdf"], icon: BarChart3, color: "from-indigo-500/20 to-purple-600/20" },
-  { id: "provider-comparison", name: "Provider Cost Comparison", description: "Side-by-side cost comparison across all AI providers with usage metrics.", formats: ["csv", "pdf"], icon: Copy, color: "from-blue-500/20 to-cyan-600/20" },
-  { id: "anomaly-summary", name: "Anomaly Detection Summary", description: "All detected cost anomalies, severity levels, and remediation actions taken.", formats: ["pdf"], icon: AlertTriangle, color: "from-red-500/20 to-orange-600/20" },
-  { id: "budget-utilization", name: "Budget Utilization Report", description: "Budget vs. actual spend across all projects and categories.", formats: ["csv", "pdf"], icon: DollarSign, color: "from-emerald-500/20 to-teal-600/20" },
-  { id: "executive-summary", name: "Executive Summary", description: "High-level KPIs, trends, and savings opportunities for leadership.", formats: ["pdf"], icon: LayoutDashboard, color: "from-violet-500/20 to-pink-600/20" },
-];
-
-const DATE_PRESETS = [
-  { label: "Last 7 days", days: 7 },
-  { label: "Last 30 days", days: 30 },
-  { label: "Last 90 days", days: 90 },
-  { label: "This Month", days: 0, type: "this-month" as const },
-  { label: "Last Month", days: 0, type: "last-month" as const },
-  { label: "Custom", days: 0, type: "custom" as const },
-];
-
-function formatDate(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
-
-function getDateRange(preset: typeof DATE_PRESETS[number]): { start: string; end: string } | undefined {
-  const now = new Date();
-  if (preset.type === "this-month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: formatDate(start), end: formatDate(now) };
-  }
-  if (preset.type === "last-month") {
-    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const end = new Date(now.getFullYear(), now.getMonth(), 0);
-    return { start: formatDate(start), end: formatDate(end) };
-  }
-  if (preset.type === "custom") return undefined;
-  const start = new Date(now);
-  start.setDate(start.getDate() - preset.days);
-  return { start: formatDate(start), end: formatDate(now) };
-}
+import {
+  PIE_COLORS,
+  REPORT_TEMPLATES,
+  DATE_PRESETS,
+  formatDate,
+  getDateRange,
+  ReportMetric,
+  SkeletonMetric,
+} from './reports-utils';
 
 interface ScheduledReport {
   id: string;
@@ -281,7 +248,7 @@ export default function Reports() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      const template = TEMPLATES.find(t => t.id === selectedTemplate);
+      const template = REPORT_TEMPLATES.find(t => t.id === selectedTemplate);
       saveRecentReports([
         { id: `recent-${Date.now()}`, templateId: selectedTemplate, format: selectedFormat, name: template?.name || selectedTemplate, date: new Date().toISOString() },
         ...recentReports.slice(0, 19),
@@ -419,7 +386,7 @@ export default function Reports() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-[#0c0c0f] border-white/[0.08] text-white">
-                      {TEMPLATES.map(t => (
+                      {REPORT_TEMPLATES.map(t => (
                         <SelectItem key={t.id} value={t.id} className="text-white hover:bg-white/5">{t.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -475,7 +442,7 @@ export default function Reports() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {TEMPLATES.map((tpl) => {
+          {REPORT_TEMPLATES.map((tpl) => {
             const Icon = tpl.icon;
             return (
               <div
@@ -524,7 +491,7 @@ export default function Reports() {
                   <SelectValue placeholder="Select a template" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#0c0c0f] border-white/[0.08] text-white">
-                  {TEMPLATES.map(t => (
+                  {REPORT_TEMPLATES.map(t => (
                     <SelectItem key={t.id} value={t.id} className="text-white hover:bg-white/5">{t.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -534,7 +501,7 @@ export default function Reports() {
               <Label className="text-xs text-slate-400 font-bold uppercase tracking-widest">Format</Label>
               <div className="flex gap-2">
                 {(["csv", "pdf"] as const).map(f => {
-                  const tpl = TEMPLATES.find(t => t.id === selectedTemplate);
+                  const tpl = REPORT_TEMPLATES.find(t => t.id === selectedTemplate);
                   const disabled = tpl && !tpl.formats.includes(f);
                   return (
                     <button
@@ -601,7 +568,7 @@ export default function Reports() {
         ) : (
           <div className="space-y-3">
             {scheduledList.map(sr => {
-              const tpl = TEMPLATES.find(t => t.id === sr.templateId);
+              const tpl = REPORT_TEMPLATES.find(t => t.id === sr.templateId);
               return (
                 <div key={sr.id} className="flex items-center justify-between bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 hover:bg-white/[0.04] transition-all">
                   <div className="flex items-center gap-4">
@@ -829,24 +796,4 @@ export default function Reports() {
   );
 }
 
-function ReportMetric({ label, value, sub, positive = false, urgent = false }: any) {
-  return (
-    <div className="bg-white/[0.01] border border-white/[0.04] rounded-[2rem] p-8 space-y-2">
-      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</div>
-      <div className={`text-3xl font-black tracking-tighter ${urgent ? 'text-red-400' : positive ? 'text-emerald-400' : 'text-white'}`}>
-        {value}
-      </div>
-      <div className="text-[10px] font-medium text-slate-500 uppercase tracking-tight">{sub}</div>
-    </div>
-  );
-}
 
-function SkeletonMetric() {
-  return (
-    <div className="bg-white/[0.01] border border-white/[0.04] rounded-[2rem] p-8 space-y-3 animate-pulse">
-      <div className="h-3 w-24 bg-white/10 rounded" />
-      <div className="h-8 w-36 bg-white/10 rounded" />
-      <div className="h-3 w-28 bg-white/10 rounded" />
-    </div>
-  );
-}
