@@ -1,0 +1,42 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "services": [
+    {
+      "name": "costpilot-staging-api",
+      "source": {
+        "type": "github",
+        "repo": "Thatisshayan/Costpilot",
+        "branch": "main"
+      },
+      "variables": {
+        "NODE_ENV": "staging",
+        "PORT": "8080"
+      }
+    },
+    {
+      "name": "costpilot-staging-db",
+      "source": {
+        "type": "postgresql",
+        "version": "16"
+      }
+    },
+    {
+      "name": "costpilot-staging-redis",
+      "source": {
+        "type": "redis",
+        "version": "7"
+      }
+    }
+  ],
+  "deployments": {
+    "staging": {
+      "service": "costpilot-staging-api",
+      "healthcheck": {
+        "path": "/api/health",
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3
+      }
+    }
+  }
+}

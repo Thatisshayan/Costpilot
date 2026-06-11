@@ -23,17 +23,25 @@ jobs:
           node-version: 22
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: actions/action-setup@v4
         with:
           version: 9
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
 
+      - name: Run security audit
+        run: pnpm audit --audit-level=moderate || true
+
       - name: Build Libraries & Generate API Client
         run: |
           pnpm --filter "@workspace/api-spec" run codegen
           pnpm -r build
+
+      - name: Run tests
+        run: |
+          pnpm --filter "@workspace/api-server" run test
+          pnpm --filter "@workspace/ai-tracker" run test
 
       - name: Build Frontend
         env:
