@@ -6,7 +6,6 @@ import {
   creditPurchasesTable,
 } from "@workspace/db";
 import { eq, sql, and, desc, gte } from "drizzle-orm";
-import PDFDocument from "pdfkit";
 
 const router = Router();
 
@@ -133,6 +132,8 @@ router.get("/export/csv", async (req, res) => {
 
 // 4. Export PDF
 router.get("/export/pdf", async (req, res) => {
+  // Dynamic import to avoid fontkit compatibility issues at startup
+  const { default: PDFDocument } = await import("pdfkit");
   const userId = req.userId!;
   const expenses = await db
     .select({

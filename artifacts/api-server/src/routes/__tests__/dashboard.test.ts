@@ -12,7 +12,10 @@ describe("Dashboard Security Logic Tests", () => {
   });
 
   it("should handle missing workspaceId gracefully", () => {
-    const workspaceId = undefined ?? 1;
+    // Simulate fallback to default workspace
+    const reqWorkspaceId = undefined as number | undefined;
+    const fallbackWorkspaceId = 1;
+    const workspaceId = reqWorkspaceId ?? fallbackWorkspaceId;
     expect(workspaceId).toBe(1);
   });
 
