@@ -40,6 +40,23 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules")) {
+            if (id.includes("react") || id.includes("react-dom")) return "vendor";
+            if (id.includes("recharts")) return "charts";
+            if (id.includes("@tanstack/react-query")) return "query";
+            if (id.includes("@radix-ui")) return "ui";
+            if (id.includes("lucide-react")) return "icons";
+            if (id.includes("framer-motion") || id.includes("embla-carousel")) return "animations";
+            if (id.includes("date-fns") || id.includes("clsx") || id.includes("tailwind-merge")) return "utils";
+            if (id.includes("html2canvas") || id.includes("jspdf") || id.includes("papaparse")) return "pdf";
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port,
