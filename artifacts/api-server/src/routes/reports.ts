@@ -2,7 +2,6 @@ import { Router } from "express";
 import { db, expensesTable, platformsTable, projectsTable } from "@workspace/db";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { z } from "zod";
-import PDFDocument from "pdfkit";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 
@@ -93,6 +92,7 @@ router.post("/generate", requireAuth, async (req, res) => {
     return res.status(200).send(csv);
   }
 
+  const { default: PDFDocument } = await import("pdfkit");
   const doc = new PDFDocument({ margin: 50 });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${templateId}-${Date.now()}.pdf"`);
