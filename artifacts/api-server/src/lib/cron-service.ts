@@ -271,7 +271,8 @@ export function initCronJobs() {
 
       for (const trial of expiringTrials) {
         if (trial.workspaceId) {
-          const message = `🔔 *Trial Expiry Alert*\nThe ${trial.planName} trial for *${trial.platformName}* expires on *${trial.expiryDate}*.\nManage it here: https://ai-expense-tracker.app/subscriptions`;
+          const appUrl = process.env.APP_URL || "http://localhost:3000";
+          const message = `🔔 *Trial Expiry Alert*\nThe ${trial.planName} trial for *${trial.platformName}* expires on *${trial.expiryDate}*.\nManage it here: ${appUrl}/subscriptions`;
           await sendNotification(trial.workspaceId, "expiring_trials", message);
         }
       }
