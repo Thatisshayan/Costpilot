@@ -27,6 +27,9 @@ node_modules
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# Visual Studio
+.vs/
+
 # misc
 /.sass-cache
 /connect.lock
@@ -60,3 +63,4 @@ Thumbs.db
 /out
 
 artifacts/ai-tracker/.env*
+.vercel

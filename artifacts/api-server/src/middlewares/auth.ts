@@ -24,21 +24,11 @@ declare global {
 /**
  * Clerk Authentication Middleware
  * Populates req.userId from the verified session.
- * Supports a development fallback via 'x-user-id' header.
  */
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
   // Bypass Clerk auth for external webhooks (e.g. Stripe, provider telemetry)
   if (req.originalUrl.includes("/webhooks/stripe") || req.originalUrl.includes("/webhooks/incoming")) {
     return next();
-  }
-
-  // Development-only bypass via header (strictly disabled in production)
-  if (process.env.NODE_ENV !== "production") {
-    const simulatedUserId = (req.headers["x-user-id"] as string) || (req.query.simulatedUserId as string);
-    if (simulatedUserId) {
-      req.userId = simulatedUserId;
-      return next();
-    }
   }
 
   const authHeader = req.headers.authorization;

@@ -6,6 +6,7 @@ const IV_LENGTH = 12;
 
 if (!process.env.KMS_MASTER_KEY && !process.env.ENCRYPTION_KEY) {
   logger.warn("KMS_MASTER_KEY not set — encryption will be insecure");
+  throw new Error("KMS_MASTER_KEY or ENCRYPTION_KEY must be set");
 }
 
 // Master Key derivation

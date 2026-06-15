@@ -14,7 +14,12 @@ import crypto from "crypto";
 import { logger } from "../lib/logger";
 
 const router = Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock");
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("STRIPE_SECRET_KEY environment variable is required");
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // List Webhooks
 router.get("/", requireWorkspaceMember(["owner", "admin", "viewer"]), async (req, res) => {
@@ -84,8 +89,12 @@ router.post("/incoming/:provider", async (req, res) => {
   const { provider } = req.params;
   const secret = req.headers['x-costpilot-secret'];
   
-  // Security check
-  if (secret !== process.env.WEBHOOK_SECRET && process.env.NODE_ENV === 'production') {
+  if (!process.env.WEBHOOK_SECRET) {
+    res.status(500).json({ error: "Server misconfigured: WEBHOOK_SECRET not set" });
+    return;
+  }
+
+  if (secret !== process.env.WEBHOOK_SECRET) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }

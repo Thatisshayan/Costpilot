@@ -50,8 +50,3 @@ export type UploadReceiptBody = _UploadReceiptBodyType;
 
 export const ValidateDeploymentBody = _ValidateDeploymentBodyVal;
 export type ValidateDeploymentBody = _ValidateDeploymentBodyType;
-
-export const AcceptInviteBody = z.object({
-  token: z.string().min(1, "Invite token is required"),
-});
-export type AcceptInviteBody = z.infer<typeof AcceptInviteBody>;
