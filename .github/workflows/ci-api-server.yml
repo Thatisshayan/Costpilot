@@ -62,6 +62,10 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/costpilot
           REDIS_URL: redis://localhost:6379
           NODE_ENV: test
+          JWT_SECRET: stub-jwt-secret-at-least-32-chars-long
+          CLERK_SECRET_KEY: test_key
+          STRIPE_SECRET_KEY: sk_test_stub
+          WEBHOOK_SECRET: stub-secret-at-least-32-chars-long
         run: pnpm --filter @workspace/api-server run test
 
       - name: Run DB Tests

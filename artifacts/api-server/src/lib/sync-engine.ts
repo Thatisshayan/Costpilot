@@ -741,21 +741,12 @@ export async function syncPlatform(platformId: number, userId: string): Promise<
       }
     }
 
-    // 10. Fallback
-    const baselineCost = (Math.random() * 8.5) + 1.5;
-    const amountStr = baselineCost.toFixed(2);
-    await db.insert(expensesTable).values({
-      platformId: platformId,
-      userId: userId,
-      amount: amountStr,
-      currency: "USD",
-      description: `Auto-synced usage log for ${p.name}`,
-      category: "API Usage",
-      date: today,
-    });
-
-    return { success: true, message: `Synced ${p.name}: $${amountStr}`, expensesImported: 1, amount: amountStr };
-
+    // Unrecognized platform — do not insert fake data
+    return {
+      success: false,
+      message: `Unsupported platform: "${p.name}". No sync adapter found.`,
+      expensesImported: 0,
+    };
   } catch (err) {
     logger.error(err, `Sync failed for platform ${platformId}`);
     return { success: false, message: (err as Error).message, expensesImported: 0 };

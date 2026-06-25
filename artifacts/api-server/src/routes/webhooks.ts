@@ -67,16 +67,12 @@ router.post("/stripe", async (req, res) => {
       res.status(401).send("Missing stripe-signature header");
       return;
     }
-    if (true) {
-      event = stripe.webhooks.constructEvent(
-        (req as any).rawBody || req.body,
-        sig as string,
-        webhookSecret
-      );
-    } else {
-      event = req.body;
-    }
-    
+    event = stripe.webhooks.constructEvent(
+      (req as any).rawBody || req.body,
+      sig as string,
+      webhookSecret
+    );
+
     const result = await processStripeWebhook(event);
     res.json(result);
   } catch (err) {

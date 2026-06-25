@@ -2,16 +2,16 @@ import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.string().transform(Number).pipe(z.coerce.number().int().positive()),
+  PORT: z.coerce.number().int().positive().default(8080),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url().optional(),
   SESSION_SECRET: z.string().min(32).optional(),
-  JWT_SECRET: z.string().min(32).optional(),
-  CLERK_SECRET_KEY: z.string().min(1).optional(),
+  JWT_SECRET: z.string().min(32),
+  CLERK_SECRET_KEY: z.string().min(1),
   CLERK_JWT_KEY: z.string().optional(),
-  STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
+  STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
-  WEBHOOK_SECRET: z.string().min(1).optional(),
+  WEBHOOK_SECRET: z.string().min(1),
   KMS_MASTER_KEY: z.string().length(64).optional(),
   ENCRYPTION_KEY: z.string().length(64).optional(),
   SENTRY_DSN: z.string().url().optional(),
@@ -28,7 +28,7 @@ export function validateEnv(): Env {
 
   const raw = {
     NODE_ENV: process.env.NODE_ENV,
-    PORT: process.env.PORT,
+    PORT: process.env.PORT ? Number(process.env.PORT) : undefined,
     DATABASE_URL: process.env.DATABASE_URL,
     REDIS_URL: process.env.REDIS_URL,
     SESSION_SECRET: process.env.SESSION_SECRET,

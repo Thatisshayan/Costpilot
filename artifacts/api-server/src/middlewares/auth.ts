@@ -52,11 +52,10 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
       req.auth = decoded;
       return next();
     }
-  } catch (error: any) {
+  } catch {
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid or expired token",
-      details: error instanceof Error ? error.message : String(error)
     });
   }
 
