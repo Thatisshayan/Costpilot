@@ -9,21 +9,19 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
-import { Fonts, Colors, Spacing } from '@/constants/theme';
 
-const { width } = Dimensions.get('window');
-
-export default function HomeScreenPremium() {
+export default function HomeScreen() {
   const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState('Never');
   const [syncDetails, setSyncDetails] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Live dynamic database states
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [totalSpend, setTotalSpend] = useState('$0');
   const [monthSpend, setMonthSpend] = useState('$3,240');
@@ -38,6 +36,7 @@ export default function HomeScreenPremium() {
     OpenAI: 95
   });
 
+  // Dynamic Host IP finder to connect the physical iOS phone directly to their running local Express backend.
   const getBackendUrl = () => {
     const hostUri = Constants.expoConfig?.hostUri;
     if (!hostUri) return 'http://localhost:3000';
@@ -51,8 +50,11 @@ export default function HomeScreenPremium() {
       setError(null);
       const backendUrl = getBackendUrl();
       try {
+        // 1. Fetch KPI Summary from local server
         const kpiRes = await fetch(`${backendUrl}/api/dashboard/kpi-summary`, {
-          headers: { 'x-simulated-user-id': 'dev-user-1' }
+          headers: {
+            'x-simulated-user-id': 'dev-user-1',
+          }
         });
 
         if (kpiRes.ok) {
@@ -62,6 +64,7 @@ export default function HomeScreenPremium() {
           setTotalSpend(`$${Number(kpiData.totalSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
           setActiveTools(String(kpiData.activeTools || kpiData.activeSubscriptions || '0'));
 
+          // Format tokens nicely
           const tokens = Number(kpiData.totalAiSpend || 0);
           if (tokens >= 1000000) {
             setAiTokens(`${(tokens / 1000000).toFixed(1)}M`);
@@ -76,8 +79,11 @@ export default function HomeScreenPremium() {
           setIsLiveMode(true);
         }
 
+        // 2. Fetch platform distribution
         const platformRes = await fetch(`${backendUrl}/api/dashboard/expenses-by-platform`, {
-          headers: { 'x-simulated-user-id': 'dev-user-1' }
+          headers: {
+            'x-simulated-user-id': 'dev-user-1',
+          }
         });
         if (platformRes.ok) {
           const platformData = await platformRes.json();
@@ -100,6 +106,7 @@ export default function HomeScreenPremium() {
           });
         }
 
+        // 3. Fetch active spending alerts
         const auditRes = await fetch(`${backendUrl}/api/audits?workspaceId=1`, {
           headers: {
             'x-simulated-user-id': 'dev-user-1',
@@ -111,6 +118,7 @@ export default function HomeScreenPremium() {
           setRiskCount(auditData.length || 0);
         }
       } catch (err) {
+        // Fall back silently to mock data if backend server is unreachable
         console.log('Backend server unreachable; running in offline mock sandbox.');
       } finally {
         setIsLoading(false);
@@ -207,10 +215,10 @@ export default function HomeScreenPremium() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+        <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={Colors.dark.accentAction} />
+            <ActivityIndicator size="large" color="#66FCF1" />
             <Text style={styles.loadingText}>Loading your dashboard...</Text>
           </View>
         </SafeAreaView>
@@ -221,7 +229,7 @@ export default function HomeScreenPremium() {
   if (error) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+        <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.centered}>
             <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
@@ -241,17 +249,17 @@ export default function HomeScreenPremium() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+      <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
       <SafeAreaView style={styles.safeArea}>
 
-        {/* Premium Header */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <Text style={styles.logoText}>CostPilot</Text>
             <View style={styles.glowingDot} />
           </View>
           <View style={styles.headerSubRow}>
-            <Text style={styles.subtitle}>Cloud Cost Intelligence</Text>
+            <Text style={styles.subtitle}>Mobile Telemetry & Sync</Text>
             <View style={[styles.statusBadge, isLiveMode ? styles.liveBadge : styles.sandboxBadge]}>
               <Text style={styles.badgeText}>{isLiveMode ? '● LIVE DB' : '● OFFLINE'}</Text>
             </View>
@@ -260,37 +268,37 @@ export default function HomeScreenPremium() {
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-          {/* Premium KPI Row with Enhanced Typography */}
+          {/* Main KPI Row */}
           <View style={styles.kpiRow}>
-            <View style={[styles.premiumCard, styles.kpiCard]}>
+            <View style={[styles.glassCard, styles.kpiCard]}>
               <Text style={styles.kpiLabel}>Month Spend</Text>
-              <Text style={[styles.kpiValue, { fontFamily: Fonts.clashDisplay }]}>{monthSpend}</Text>
+              <Text style={styles.kpiValue}>{monthSpend}</Text>
               <Text style={styles.kpiTrend}>{trendText}</Text>
             </View>
-            <View style={[styles.premiumCard, styles.kpiCard]}>
+            <View style={[styles.glassCard, styles.kpiCard]}>
               <Text style={styles.kpiLabel}>AI Tokens</Text>
-              <Text style={[styles.kpiValue, { fontFamily: Fonts.clashDisplay }]}>{aiTokens}</Text>
+              <Text style={styles.kpiValue}>{aiTokens}</Text>
               <Text style={styles.kpiTrendSecondary}>8.2k avg/req</Text>
             </View>
           </View>
 
           {/* Secondary KPI Row */}
           <View style={styles.kpiRow}>
-            <View style={[styles.premiumCard, styles.kpiCardSmall]}>
+            <View style={[styles.glassCard, styles.kpiCardSmall]}>
               <Text style={styles.kpiLabel}>Total Spend</Text>
-              <Text style={[styles.kpiValue, { fontFamily: Fonts.clashDisplay }]}>{totalSpend}</Text>
+              <Text style={styles.kpiValue}>{totalSpend}</Text>
             </View>
-            <View style={[styles.premiumCard, styles.kpiCardSmall]}>
+            <View style={[styles.glassCard, styles.kpiCardSmall]}>
               <Text style={styles.kpiLabel}>Active Tools</Text>
-              <Text style={[styles.kpiValue, { fontFamily: Fonts.clashDisplay }]}>{activeTools}</Text>
+              <Text style={styles.kpiValue}>{activeTools}</Text>
             </View>
           </View>
 
-          {/* Premium Anomaly Banner */}
-          <View style={[styles.premiumCard, styles.anomalyBanner]}>
+          {/* Anomaly Glowing Banner */}
+          <View style={[styles.glassCard, styles.anomalyBanner]}>
             <View style={styles.anomalyHeader}>
               <Text style={styles.anomalyIcon}>⚠️</Text>
-              <Text style={[styles.anomalyTitle, { fontFamily: Fonts.clashDisplay }]}>Real-Time Spend Audits</Text>
+              <Text style={styles.anomalyTitle}>Real-Time Spend Audits</Text>
             </View>
             <Text style={styles.anomalyText}>
               {riskCount > 0
@@ -302,9 +310,9 @@ export default function HomeScreenPremium() {
             </TouchableOpacity>
           </View>
 
-          {/* Premium Quick Actions */}
-          <View style={[styles.premiumCard, styles.quickActionsCard]}>
-            <Text style={[styles.cardTitle, { fontFamily: Fonts.clashDisplay }]}>Quick Actions</Text>
+          {/* Quick Actions */}
+          <View style={[styles.glassCard, styles.quickActionsCard]}>
+            <Text style={styles.cardTitle}>Quick Actions</Text>
             <View style={styles.actionsRow}>
               <TouchableOpacity
                 style={styles.actionButton}
@@ -333,52 +341,58 @@ export default function HomeScreenPremium() {
             </View>
           </View>
 
-          {/* Premium Multi-Cloud Histogram */}
-          <View style={[styles.premiumCard, styles.graphCard]}>
-            <Text style={[styles.cardTitle, { fontFamily: Fonts.clashDisplay }]}>Spending by Provider</Text>
+          {/* Multi-Cloud Visual Histogram */}
+          <View style={[styles.glassCard, styles.graphCard]}>
+            <Text style={styles.cardTitle}>Spending by Provider</Text>
             <View style={styles.histogramContainer}>
               <View style={styles.histogramColumn}>
-                <View style={[styles.histogramBar, { height: providerSpend.AWS, backgroundColor: Colors.dark.accentAWS }]} />
+                <View style={[styles.histogramBar, { height: providerSpend.AWS, backgroundColor: '#FF9900' }]} />
                 <Text style={styles.histogramLabel}>AWS</Text>
               </View>
               <View style={styles.histogramColumn}>
-                <View style={[styles.histogramBar, { height: providerSpend.Azure, backgroundColor: Colors.dark.accentAzure }]} />
+                <View style={[styles.histogramBar, { height: providerSpend.Azure, backgroundColor: '#007FFF' }]} />
                 <Text style={styles.histogramLabel}>Azure</Text>
               </View>
               <View style={styles.histogramColumn}>
-                <View style={[styles.histogramBar, { height: providerSpend.GCP, backgroundColor: Colors.dark.accentGCP }]} />
+                <View style={[styles.histogramBar, { height: providerSpend.GCP, backgroundColor: '#34A853' }]} />
                 <Text style={styles.histogramLabel}>GCP</Text>
               </View>
               <View style={styles.histogramColumn}>
-                <View style={[styles.histogramBar, { height: providerSpend.OpenAI, backgroundColor: Colors.dark.accentOpenAI }]} />
+                <View style={[styles.histogramBar, { height: providerSpend.OpenAI, backgroundColor: '#8A2BE2' }]} />
                 <Text style={styles.histogramLabel}>OpenAI</Text>
               </View>
             </View>
           </View>
 
-          {/* Premium Sync Card */}
-          <View style={[styles.premiumCard, styles.syncCard]}>
-            <Text style={[styles.cardTitle, { fontFamily: Fonts.clashDisplay }]}>Offline-First Sync Engine</Text>
+          {/* Offline Sync Card */}
+          <View style={[styles.glassCard, styles.syncCard]}>
+            <Text style={styles.cardTitle}>Offline-First Sync Engine</Text>
             <Text style={styles.syncDescription}>
-              Seamlessly sync your cloud expenses across all devices. Real-time reconciliation with your cloud providers.
+              CostPilot replicates delta changes locally. Pushing changes automatically maps client IDs to secure multi-tenant server IDs.
             </Text>
+
             <View style={styles.syncStatusBlock}>
               <View style={styles.statusRow}>
-                <Text style={styles.statusLabel}>Last Synced</Text>
+                <Text style={styles.statusLabel}>Last Synced:</Text>
                 <Text style={styles.statusValue}>{lastSynced}</Text>
               </View>
+              {syncDetails && (
+                <Text style={styles.syncDetailsText}>
+                  {syncDetails}
+                </Text>
+              )}
             </View>
-            {syncDetails && <Text style={styles.syncDetailsText}>{syncDetails}</Text>}
+
             <TouchableOpacity
-              style={[styles.syncButton, isSyncing && styles.syncButtonDisabled]}
+              style={styles.syncButton}
               onPress={handleSync}
               disabled={isSyncing}
               activeOpacity={0.8}
             >
               {isSyncing ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.syncButtonText}>Sync Now</Text>
+                <Text style={styles.syncButtonText}>🔄 Sync Offline Data</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -389,121 +403,121 @@ export default function HomeScreenPremium() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
+    backgroundColor: '#0B0C10',
   },
   safeArea: {
     flex: 1,
   },
   centered: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
   },
   loadingText: {
-    color: Colors.dark.text,
-    fontSize: 16,
-    marginTop: 12,
-    fontFamily: Fonts.plusJakartaSans,
+    color: '#9499C3',
+    fontSize: 14,
+    fontWeight: '500',
   },
   errorText: {
-    color: Colors.dark.accentWarning,
+    color: '#EF4444',
     fontSize: 14,
+    fontWeight: '500',
     textAlign: 'center',
-    fontFamily: Fonts.plusJakartaSans,
   },
   retryButton: {
-    marginTop: 16,
-    backgroundColor: Colors.dark.accentAction,
+    backgroundColor: '#66FCF1',
+    borderRadius: 10,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 8,
   },
   retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: Fonts.plusJakartaSans,
+    color: '#0B0C10',
+    fontWeight: '700',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#222530',
+    borderBottomColor: '#1F2833',
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
   },
   logoText: {
-    fontSize: 28,
+    fontFamily: 'System',
+    fontSize: 26,
     fontWeight: '800',
-    color: Colors.dark.text,
-    fontFamily: Fonts.clashDisplay,
-    letterSpacing: -0.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   glowingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.dark.accentAction,
-    shadowColor: Colors.dark.accentAction,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#8A2BE2',
+    marginLeft: 6,
+    shadowColor: '#8A2BE2',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowRadius: 6,
+  },
+  subtitle: {
+    color: '#66FCF1',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 2,
   },
   headerSubRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  subtitle: {
-    color: Colors.dark.textSecondary,
-    fontSize: 13,
-    fontFamily: Fonts.plusJakartaSans,
-    fontWeight: '500',
+    marginTop: 2,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
     borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderWidth: 1,
   },
   liveBadge: {
-    backgroundColor: 'rgba(102, 252, 241, 0.1)',
-    borderColor: 'rgba(102, 252, 241, 0.3)',
+    backgroundColor: 'rgba(65, 200, 152, 0.1)',
+    borderColor: '#41C898',
   },
   sandboxBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(148, 153, 195, 0.1)',
+    borderColor: '#9499C3',
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
-    color: Colors.dark.accentAction,
-    fontFamily: Fonts.jetBrainsMono,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   scrollContent: {
     paddingHorizontal: 16,
     paddingVertical: 20,
     gap: 16,
   },
-  premiumCard: {
-    backgroundColor: Colors.dark.backgroundElement,
-    borderRadius: 20,
+  glassCard: {
+    backgroundColor: '#15161E',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2E3135',
+    borderColor: '#222530',
     padding: 16,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
   },
   kpiRow: {
     flexDirection: 'row',
@@ -512,84 +526,75 @@ const styles = StyleSheet.create({
   kpiCard: {
     flex: 1,
     justifyContent: 'space-between',
-    height: 120,
+    height: 105,
   },
   kpiCardSmall: {
     flex: 1,
     justifyContent: 'space-between',
-    height: 90,
+    height: 80,
   },
   kpiLabel: {
-    color: Colors.dark.textSecondary,
+    color: '#9499C3',
     fontSize: 12,
     fontWeight: '500',
-    fontFamily: Fonts.plusJakartaSans,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   kpiValue: {
-    color: Colors.dark.text,
-    fontSize: 32,
+    color: '#FFFFFF',
+    fontSize: 28,
     fontWeight: '800',
     marginVertical: 4,
-    letterSpacing: -1,
   },
   kpiTrend: {
-    color: Colors.dark.accentAction,
-    fontSize: 11,
+    color: '#41C898',
+    fontSize: 10,
     fontWeight: '600',
-    fontFamily: Fonts.plusJakartaSans,
   },
   kpiTrendSecondary: {
-    color: Colors.dark.textSecondary,
-    fontSize: 11,
+    color: '#9499C3',
+    fontSize: 10,
     fontWeight: '400',
-    fontFamily: Fonts.plusJakartaSans,
   },
   anomalyBanner: {
+    borderColor: 'rgba(239, 68, 68, 0.25)',
     borderLeftWidth: 4,
-    borderLeftColor: Colors.dark.accentWarning,
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    borderLeftColor: '#EF4444',
   },
   anomalyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   anomalyIcon: {
-    fontSize: 18,
+    fontSize: 16,
   },
   anomalyTitle: {
-    color: Colors.dark.accentWarning,
-    fontSize: 15,
+    color: '#EF4444',
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: -0.3,
   },
   anomalyText: {
-    color: Colors.dark.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
+    color: '#C3C7DB',
+    fontSize: 12,
+    lineHeight: 18,
     marginBottom: 12,
-    fontFamily: Fonts.plusJakartaSans,
   },
   remediateButton: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   remediateButtonText: {
-    color: Colors.dark.accentWarning,
-    fontSize: 12,
+    color: '#EF4444',
+    fontSize: 11,
     fontWeight: '600',
-    fontFamily: Fonts.plusJakartaSans,
   },
   quickActionsCard: {
-    gap: 14,
+    gap: 12,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -597,32 +602,30 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: 'rgba(102, 252, 241, 0.05)',
-    borderRadius: 14,
-    paddingVertical: 16,
+    backgroundColor: '#1A1C26',
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(102, 252, 241, 0.15)',
+    borderColor: '#222530',
   },
   actionIcon: {
-    fontSize: 24,
+    fontSize: 22,
   },
   actionLabel: {
-    color: Colors.dark.text,
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '600',
-    fontFamily: Fonts.plusJakartaSans,
   },
   graphCard: {
-    height: 210,
+    height: 190,
   },
   cardTitle: {
-    color: Colors.dark.text,
-    fontSize: 16,
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '700',
     marginBottom: 16,
-    letterSpacing: -0.3,
   },
   histogramContainer: {
     flexDirection: 'row',
@@ -636,38 +639,30 @@ const styles = StyleSheet.create({
     width: 50,
   },
   histogramBar: {
-    width: 32,
-    borderRadius: 8,
-    marginBottom: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3,
+    width: 28,
+    borderRadius: 6,
+    marginBottom: 8,
   },
   histogramLabel: {
-    color: Colors.dark.textSecondary,
-    fontSize: 11,
+    color: '#9499C3',
+    fontSize: 10,
     fontWeight: '600',
-    fontFamily: Fonts.jetBrainsMono,
   },
   syncCard: {
-    gap: 14,
-    marginBottom: 20,
+    gap: 12,
   },
   syncDescription: {
-    color: Colors.dark.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
-    fontFamily: Fonts.plusJakartaSans,
+    color: '#9499C3',
+    fontSize: 12,
+    lineHeight: 18,
   },
   syncStatusBlock: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 12,
+    backgroundColor: '#0F1015',
+    borderRadius: 10,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#2E3135',
-    marginVertical: 6,
+    borderColor: '#1D1E26',
+    marginVertical: 4,
   },
   statusRow: {
     flexDirection: 'row',
@@ -675,45 +670,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusLabel: {
-    color: Colors.dark.textSecondary,
-    fontSize: 12,
+    color: '#9499C3',
+    fontSize: 11,
     fontWeight: '500',
-    fontFamily: Fonts.plusJakartaSans,
   },
   statusValue: {
-    color: Colors.dark.accentAction,
-    fontSize: 12,
+    color: '#66FCF1',
+    fontSize: 11,
     fontWeight: '700',
-    fontFamily: Fonts.jetBrainsMono,
   },
   syncDetailsText: {
-    color: Colors.dark.accentGCP,
-    fontSize: 11,
+    color: '#34A853',
+    fontSize: 10,
     fontWeight: '500',
     marginTop: 6,
     textAlign: 'center',
-    fontFamily: Fonts.plusJakartaSans,
   },
   syncButton: {
-    backgroundColor: Colors.dark.accentAI,
+    backgroundColor: '#8A2BE2',
     borderRadius: 12,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
-    shadowColor: Colors.dark.accentAI,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  syncButtonDisabled: {
-    opacity: 0.6,
+    marginTop: 4,
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   syncButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    fontFamily: Fonts.plusJakartaSans,
   },
 });
