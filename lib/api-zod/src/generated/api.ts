@@ -15,8 +15,8 @@ export const HealthCheckResponse = zod.object({
   /**
    * Status of the health check
    */
-  "status": zod.string()
-})
+  status: zod.string(),
+});
 
 /**
  * List all AI platforms response item
@@ -25,45 +25,45 @@ export const ListPlatformsResponseItem = zod.object({
   /**
    * Unique identifier of the platform
    */
-  "id": zod.number(),
+  id: zod.number(),
   /**
    * Name of the platform
    */
-  "name": zod.string(),
+  name: zod.string(),
   /**
    * Website of the platform
    */
-  "website": zod.string().nullish(),
+  website: zod.string().nullish(),
   /**
    * Logo URL of the platform
    */
-  "logoUrl": zod.string().nullish(),
+  logoUrl: zod.string().nullish(),
   /**
    * Category of the platform
    */
-  "category": zod.string().nullish(),
+  category: zod.string().nullish(),
   /**
    * Email of the platform
    */
-  "email": zod.string().nullish(),
+  email: zod.string().nullish(),
   /**
    * API key of the platform
    */
-  "apiKey": zod.string().nullish(),
+  apiKey: zod.string().nullish(),
   /**
    * Notes about the platform
    */
-  "notes": zod.string().nullish(),
+  notes: zod.string().nullish(),
   /**
    * Timestamp when the platform was created
    */
-  "createdAt": zod.string()
-})
+  createdAt: zod.string(),
+});
 
 /**
  * List all AI platforms response
  */
-export const ListPlatformsResponse = zod.array(ListPlatformsResponseItem)
+export const ListPlatformsResponse = zod.array(ListPlatformsResponseItem);
 
 /**
  * Create a new platform request body
@@ -72,31 +72,29 @@ export const CreatePlatformBody = zod.object({
   /**
    * Name of the platform
    */
-  "name": zod.string(),
+  name: zod.string(),
   /**
    * Website of the platform
    */
-  "website": zod.string().optional(),
+  website: zod.string().optional(),
   /**
    * Logo URL of the platform
    */
-  "logoUrl": zod.string().optional(),
+  logoUrl: zod.string().optional(),
   /**
    * Category of the platform
    */
-  "category": zod.string().optional(),
+  category: zod.string().optional(),
   /**
    * Email of the platform
    */
-  "email": zod.string().optional(),
+  email: zod.string().optional(),
   /**
    * API key of the platform
    */
-  "apiKey": zod.string().optional(),
+  apiKey: zod.string().optional(),
   /**
    * Notes about the platform
    */
-  "notes": zod.string().optional()
-})
-
-// ... rest of the code remains the same ...
+  notes: zod.string().optional(),
+});
