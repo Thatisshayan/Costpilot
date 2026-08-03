@@ -7,6 +7,15 @@ import { logger } from "../lib/logger";
 
 const router = Router();
 
+export function sanitizeCsvField(val: string | null | undefined): string {
+  if (!val) return "";
+  const trimmed = val.trim();
+  if (trimmed.length > 0 && ["=", "+", "-", "@"].includes(trimmed.charAt(0))) {
+    return `'${trimmed}`;
+  }
+  return trimmed.replace(/"/g, '""'); // Escape double quotes
+}
+
 const scheduledReports: Map<string, { workspaceId: number; userId: string; format: string; frequency: string; recipients: string[] }> = new Map();
 
 router.get("/templates", requireAuth, async (req, res) => {
@@ -84,18 +93,22 @@ router.post("/generate", requireAuth, async (req, res) => {
   if (format === "csv") {
     let csv = "Date,Platform,Project,Description,Category,Amount,Currency\n";
     for (const e of expenses) {
-      const desc = (e.description || "").replace(/"/g, '""');
-      csv += `${e.date},${e.platformName || ""},${e.projectName || ""},"${desc}",${e.category || ""},${e.amount},${e.currency}\n`;
+      const desc = sanitizeCsvField(e.description);
+      const platform = sanitizeCsvField(e.platformName);
+      const project = sanitizeCsvField(e.projectName);
+      const category = sanitizeCsvField(e.category);
+      const currency = sanitizeCsvField(e.currency);
+      csv += `${e.date},${platform},${project},"${desc}",${category},${e.amount},${currency}\n`;
     }
     res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", `attachment; filename="${templateId}-${Date.now()}.csv"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(templateId)}-${Date.now()}.csv"`);
     return res.status(200).send(csv);
   }
 
   const { default: PDFDocument } = await import("pdfkit");
   const doc = new PDFDocument({ margin: 50 });
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="${templateId}-${Date.now()}.pdf"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(templateId)}-${Date.now()}.pdf"`);
   doc.pipe(res);
 
   doc.fontSize(24).font("Helvetica-Bold").text("CostPilot", { align: "center" });
