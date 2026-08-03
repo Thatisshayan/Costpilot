@@ -12,6 +12,7 @@ import { processStripeWebhook, processProviderUsage } from "../services/webhook-
 import Stripe from "stripe";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
+import { getEnv } from "../lib/env";
 
 const router = Router();
 
@@ -104,7 +105,7 @@ router.post("/incoming/:provider", async (req, res) => {
 });
 
 // Helper function to verify Clerk's webhook signature (SVIX specification)
-function verifyClerkSignature(
+export function verifyClerkSignature(
   rawBody: string,
   headers: Record<string, string | string[] | undefined>,
   secret: string
@@ -164,7 +165,8 @@ function verifyClerkSignature(
 
 // Clerk Webhook Endpoint
 router.post("/clerk", async (req, res) => {
-  const secret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+  const env = getEnv();
+  const secret = env.CLERK_WEBHOOK_SIGNING_SECRET;
   const rawBody = (req as any).rawBody;
 
   if (!secret) {

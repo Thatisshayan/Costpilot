@@ -26,8 +26,13 @@ declare global {
  * Populates req.userId from the verified session.
  */
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
-  // Bypass Clerk auth for external webhooks (e.g. Stripe, provider telemetry)
-  if (req.originalUrl.includes("/webhooks/stripe") || req.originalUrl.includes("/webhooks/incoming")) {
+  // Bypass Clerk auth for external webhooks (e.g. Stripe, Clerk, provider telemetry)
+  // These endpoints verify their own HMAC signatures independently of the bearer session.
+  if (
+    req.originalUrl.includes("/webhooks/stripe") ||
+    req.originalUrl.includes("/webhooks/incoming") ||
+    req.originalUrl.includes("/webhooks/clerk")
+  ) {
     return next();
   }
 
