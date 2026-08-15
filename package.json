@@ -9,15 +9,15 @@
   },
   "private": true,
   "devDependencies": {
-    "@esbuild/win32-x64": "^0.29.0",
-    "@rollup/rollup-win32-x64-msvc": "^4.61.0",
-    "@testing-library/dom": "^10.5.0",
-    "esbuild": "0.29.0",
-    "prettier": "^3.9.0",
-    "typescript": "~5.10.0"
+    "@esbuild/win32-x64": "^0.28.0",
+    "@rollup/rollup-win32-x64-msvc": "^4.60.4",
+    "@testing-library/dom": "^10.4.1",
+    "esbuild": "0.28.0",
+    "prettier": "^3.8.3",
+    "typescript": "~5.9.3"
   },
   "dependencies": {
-    "@types/pdfkit": "^0.18.0",
-    "pdfkit": "^0.19.0"
+    "@types/pdfkit": "^0.17.6",
+    "pdfkit": "^0.18.0"
   }
 }
