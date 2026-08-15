@@ -46,13 +46,14 @@ if command -v markdown-link-check >/dev/null 2>&1; then
     | xargs -0 -r -n1 markdown-link-check || error "doc-freshness" "broken doc links"
 fi
 # audit age (≤ 30 days)
-newest=$(find audits -name '*.md' -not -path '*/private/*' -printf '%T@ %p\n' 2>/dev/null \
-  | sort -n | tail -1 | cut -d' ' -f1)
-if [ -z "$newest" ]; then
+newest_file=$(find audits -name '*.md' -not -path '*/private/*' -print 2>/dev/null \
+  | xargs ls -t 2>/dev/null | head -1)
+if [ -z "$newest_file" ]; then
   error "doc-freshness" "no audit found under audits/"
 else
+  newest=$(stat -c '%Y' "$newest_file" 2>/dev/null || stat -f '%m' "$newest_file" 2>/dev/null)
   now=$(date +%s)
-  age=$(( (now - ${newest%.*}) / 86400 ))
+  age=$(( (now - ${newest:-0}) / 86400 ))
   if [ "$age" -gt 30 ]; then error "doc-freshness" "newest audit is $age days old (>30)"; fi
 fi
 # doc baseline
@@ -89,9 +90,17 @@ if [ -n "$PM" ]; then
     yarn) run_with_timeout 300 build yarn install --frozen-lockfile ;;
     npm)  run_with_timeout 300 build npm ci ;;
   esac
-  if [ $FAIL -eq 0 ]; then
-    (npm run build --if-present || pnpm run build --if-present || yarn build) >/dev/null 2>&1 && notice build "build ok" || error build "build failed"
-    (npm test --if-present || pnpm test --if-present || yarn test) >/dev/null 2>&1 && notice test "test ok" || error test "test failed"
+  if [ "$FAIL" -eq 0 ]; then
+    if (npm run build --if-present || pnpm run build --if-present || yarn build) >/dev/null 2>&1; then
+      notice build "build ok"
+    else
+      error build "build failed"
+    fi
+    if (npm test --if-present || pnpm test --if-present || yarn test) >/dev/null 2>&1; then
+      notice test "test ok"
+    else
+      error test "test failed"
+    fi
   fi
 elif [ -f pyproject.toml ] || [ -f requirements.txt ]; then
   pip install -q -r requirements.txt 2>/dev/null || true

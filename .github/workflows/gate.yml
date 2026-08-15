@@ -30,5 +30,8 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install markdown-link-check
+        run: npm install -g markdown-link-check
+
       - name: Run governance verification
         run: bash scripts/verify.sh
