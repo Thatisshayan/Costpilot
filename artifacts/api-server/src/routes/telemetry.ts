@@ -9,8 +9,54 @@ import {
   workspaceMembersTable 
 } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import { getWorkspaceMember } from "../middlewares/authz";
 
 const router = Router();
+
+// Guard: a caller may only attribute spend to a workspace/project they belong to.
+// Returns the normalized workspaceId or responds 401/403 and returns null.
+async function assertWorkspaceContext(
+  userId: string,
+  workspaceId: number | undefined,
+  projectId: number | undefined,
+  res: import("express").Response
+): Promise<number | null> {
+  let wsId = workspaceId;
+
+  // Resolve project -> workspace ownership first so we can authorize via workspace membership.
+  if (projectId && !wsId) {
+    const [proj] = await db
+      .select()
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId));
+    if (proj && proj.workspaceId) {
+      wsId = proj.workspaceId;
+    } else if (proj) {
+      // Project exists but has no workspace; fall through to a per-user attribution check below.
+      wsId = undefined;
+    }
+  }
+
+  if (wsId) {
+    const member = await getWorkspaceMember(wsId, userId);
+    if (!member) {
+      res.status(403).json({
+        error: "Forbidden",
+        message: "You are not a member of the workspace the spend would be attributed to",
+      });
+      return null;
+    }
+    return wsId;
+  }
+
+  // No explicit workspace/project target: attribute to the caller's default workspace.
+  const [member] = await db
+    .select()
+    .from(workspaceMembersTable)
+    .where(eq(workspaceMembersTable.userId, userId))
+    .limit(1);
+  return member?.workspaceId ?? null;
+}
 
 // Helper to estimate request cost
 function estimateRequestCost(model: string, provider: string, inputTokens: number, outputTokens: number = 0): number {
@@ -255,9 +301,19 @@ router.post("/llm-route", async (req, res) => {
 
     const estimatedCost = estimateRequestCost(model, provider, promptTokens, completionTokens);
 
-    const check = await checkBudget(
+    // Validate attribution target BEFORE any budget/spend logic, so a non-member
+    // can never have spend attributed to a workspace they don't belong to.
+    const resolvedWorkspaceId = await assertWorkspaceContext(
       userId,
       workspaceId ? Number(workspaceId) : undefined,
+      projectId ? Number(projectId) : undefined,
+      res
+    );
+    if (resolvedWorkspaceId === null) return;
+
+    const check = await checkBudget(
+      userId,
+      resolvedWorkspaceId ?? undefined,
       projectId ? Number(projectId) : undefined,
       estimatedCost
     );
@@ -274,27 +330,6 @@ router.post("/llm-route", async (req, res) => {
     }
 
     // Capture and Log Telemetry directly into expensesTable
-    let resolvedWorkspaceId = workspaceId ? Number(workspaceId) : undefined;
-    if (projectId && !resolvedWorkspaceId) {
-      const [proj] = await db
-        .select()
-        .from(projectsTable)
-        .where(eq(projectsTable.id, Number(projectId)));
-      if (proj) {
-        resolvedWorkspaceId = proj.workspaceId ?? undefined;
-      }
-    }
-    if (!resolvedWorkspaceId) {
-      const [member] = await db
-        .select()
-        .from(workspaceMembersTable)
-        .where(eq(workspaceMembersTable.userId, userId))
-        .limit(1);
-      if (member) {
-        resolvedWorkspaceId = member.workspaceId;
-      }
-    }
-
     let activePlatformId: number | null = null;
     if (provider) {
       const [p] = await db
@@ -378,9 +413,18 @@ router.post(["/chat/completions", "/v1/chat/completions"], async (req, res) => {
     const reqWorkspaceId = workspaceId || req.headers["x-workspace-id"];
     const reqProjectId = projectId || req.headers["x-project-id"];
 
-    const check = await checkBudget(
+    // Validate attribution target: non-members cannot attribute spend to a workspace/project
+    const resolvedWorkspaceId = await assertWorkspaceContext(
       userId,
       reqWorkspaceId ? Number(reqWorkspaceId) : undefined,
+      reqProjectId ? Number(reqProjectId) : undefined,
+      res
+    );
+    if (resolvedWorkspaceId === null) return;
+
+    const check = await checkBudget(
+      userId,
+      resolvedWorkspaceId ?? undefined,
       reqProjectId ? Number(reqProjectId) : undefined,
       estimatedCost
     );
@@ -394,28 +438,6 @@ router.post(["/chat/completions", "/v1/chat/completions"], async (req, res) => {
         estimatedCost
       });
       return;
-    }
-
-    // Resolve workspace context
-    let resolvedWorkspaceId = reqWorkspaceId ? Number(reqWorkspaceId) : undefined;
-    if (reqProjectId && !resolvedWorkspaceId) {
-      const [proj] = await db
-        .select()
-        .from(projectsTable)
-        .where(eq(projectsTable.id, Number(reqProjectId)));
-      if (proj) {
-        resolvedWorkspaceId = proj.workspaceId ?? undefined;
-      }
-    }
-    if (!resolvedWorkspaceId) {
-      const [member] = await db
-        .select()
-        .from(workspaceMembersTable)
-        .where(eq(workspaceMembersTable.userId, userId))
-        .limit(1);
-      if (member) {
-        resolvedWorkspaceId = member.workspaceId;
-      }
     }
 
     let activePlatformId: number | null = null;

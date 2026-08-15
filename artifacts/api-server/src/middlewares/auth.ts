@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken as clerkVerifyToken } from "@clerk/clerk-sdk-node";
-import { db, workspaceMembersTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { getWorkspaceMember } from "./authz";
 
 // Exported configuration object to facilitate robust unit testing/mocking across package boundaries
 export const authConfig = {
@@ -69,6 +68,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
 /**
  * Verifies if a user is a member of the workspace with optional role restriction.
+ * Delegates to the canonical getWorkspaceMember lookup in authz.ts.
  */
 export async function isWorkspaceMember(
   workspaceId: number,
@@ -76,18 +76,9 @@ export async function isWorkspaceMember(
   roles?: ("owner" | "admin" | "viewer")[]
 ): Promise<boolean> {
   try {
-    const [member] = await db
-      .select()
-      .from(workspaceMembersTable)
-      .where(
-        and(
-          eq(workspaceMembersTable.workspaceId, workspaceId),
-          eq(workspaceMembersTable.userId, userId)
-        )
-      );
-
+    const member = await getWorkspaceMember(workspaceId, userId);
     if (!member) return false;
-    if (roles && !roles.includes(member.role as any)) return false;
+    if (roles && !roles.includes(member.role)) return false;
     return true;
   } catch (error) {
     return false;
