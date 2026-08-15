@@ -1,0 +1,5 @@
+# Confirmed false positives - CI stub secrets and test fixtures, not real credentials.
+.github/workflows/ci-api-server.yml:generic-api-key:65
+.github/workflows/ci-api-server.yml:generic-api-key:68
+artifacts/ai-tracker/src/pages/api-docs.tsx:curl-auth-header:92
+artifacts/api-server/src/routes/__tests__/webhooks-auth.test.ts:generic-api-key:81
