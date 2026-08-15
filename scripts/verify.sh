@@ -46,8 +46,8 @@ if command -v markdown-link-check >/dev/null 2>&1; then
     | xargs -0 -r -n1 markdown-link-check || error "doc-freshness" "broken doc links"
 fi
 # audit age (≤ 30 days)
-newest_file=$(find audits -name '*.md' -not -path '*/private/*' -print 2>/dev/null \
-  | xargs ls -t 2>/dev/null | head -1)
+newest_file=$(find audits -name '*.md' -not -path '*/private/*' -print0 2>/dev/null \
+  | xargs -0 ls -t 2>/dev/null | head -1)
 if [ -z "$newest_file" ]; then
   error "doc-freshness" "no audit found under audits/"
 else
