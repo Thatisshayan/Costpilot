@@ -9,8 +9,8 @@ vi.mock("@workspace/db", () => ({
   workspacesTable: {},
 }));
 
-import { requireAuth } from "../middlewares/auth";
-import { verifyClerkSignature } from "../routes/webhooks";
+import { requireAuth } from "../../middlewares/auth";
+import { verifyClerkSignature } from "../webhooks";
 
 function makeReq(headers: Record<string, string> = {}, query: Record<string, string> = {}) {
   return {

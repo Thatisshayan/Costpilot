@@ -104,7 +104,7 @@ router.post("/incoming/:provider", async (req, res) => {
 });
 
 // Helper function to verify Clerk's webhook signature (SVIX specification)
-function verifyClerkSignature(
+export function verifyClerkSignature(
   rawBody: string,
   headers: Record<string, string | string[] | undefined>,
   secret: string
