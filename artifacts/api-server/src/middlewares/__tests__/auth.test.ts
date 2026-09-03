@@ -54,6 +54,13 @@ describe("Auth Middleware", () => {
         expect(nextFn).toHaveBeenCalled();
         expect(res.status).not.toHaveBeenCalled();
       });
+
+      it("should bypass auth for Clerk webhooks (signature-verified)", async () => {
+        req.originalUrl = "/api/webhooks/clerk";
+        await requireAuth(req as Request, res as Response, nextFn);
+        expect(nextFn).toHaveBeenCalled();
+        expect(res.status).not.toHaveBeenCalled();
+      });
     });
 
     describe("development bypass", () => {

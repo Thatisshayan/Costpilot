@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken as clerkVerifyToken } from "@clerk/clerk-sdk-node";
-import { db, workspaceMembersTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { getWorkspaceMember } from "./authz";
 
 // Exported configuration object to facilitate robust unit testing/mocking across package boundaries
 export const authConfig = {
@@ -26,9 +25,23 @@ declare global {
  * Populates req.userId from the verified session.
  */
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
-  // Bypass Clerk auth for external webhooks (e.g. Stripe, provider telemetry)
-  if (req.originalUrl.includes("/webhooks/stripe") || req.originalUrl.includes("/webhooks/incoming")) {
+  // Bypass Clerk auth for external webhooks (e.g. Stripe, Clerk, provider telemetry)
+  // These endpoints verify their own HMAC signatures independently of the bearer session.
+  if (
+    req.originalUrl.includes("/webhooks/stripe") ||
+    req.originalUrl.includes("/webhooks/incoming") ||
+    req.originalUrl.includes("/webhooks/clerk")
+  ) {
     return next();
+  }
+
+  // Development bypass: allow simulating a user via header or query param
+  if (process.env.NODE_ENV !== "production") {
+    const devUserId = (req.headers["x-user-id"] as string) || (req.query.simulatedUserId as string);
+    if (devUserId) {
+      req.userId = devUserId;
+      return next();
+    }
   }
 
   const authHeader = req.headers.authorization;
@@ -52,10 +65,11 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
       req.auth = decoded;
       return next();
     }
-  } catch {
+  } catch (err: any) {
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid or expired token",
+      details: err?.message,
     });
   }
 
@@ -64,6 +78,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
 /**
  * Verifies if a user is a member of the workspace with optional role restriction.
+ * Delegates to the canonical getWorkspaceMember lookup in authz.ts.
  */
 export async function isWorkspaceMember(
   workspaceId: number,
@@ -71,18 +86,9 @@ export async function isWorkspaceMember(
   roles?: ("owner" | "admin" | "viewer")[]
 ): Promise<boolean> {
   try {
-    const [member] = await db
-      .select()
-      .from(workspaceMembersTable)
-      .where(
-        and(
-          eq(workspaceMembersTable.workspaceId, workspaceId),
-          eq(workspaceMembersTable.userId, userId)
-        )
-      );
-
+    const member = await getWorkspaceMember(workspaceId, userId);
     if (!member) return false;
-    if (roles && !roles.includes(member.role as any)) return false;
+    if (roles && !roles.includes(member.role as "owner" | "admin" | "viewer")) return false;
     return true;
   } catch (error) {
     return false;

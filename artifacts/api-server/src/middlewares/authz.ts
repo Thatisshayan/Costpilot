@@ -2,11 +2,34 @@ import { Request, Response, NextFunction } from "express";
 import { db, workspaceMembersTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 
+export type WorkSpaceRole = "owner" | "admin" | "viewer";
+
+/**
+ * Single, canonical workspace-membership lookup shared by the middleware,
+ * route guards, and service layer. Returns the member row or undefined.
+ * Callers must not re-implement this query (see auth.ts isWorkspaceMember).
+ */
+export async function getWorkspaceMember(
+  workspaceId: number,
+  userId: string
+): Promise<{ role: string; workspaceId: number; userId: string } | undefined> {
+  const [member] = await db
+    .select()
+    .from(workspaceMembersTable)
+    .where(
+      and(
+        eq(workspaceMembersTable.workspaceId, workspaceId),
+        eq(workspaceMembersTable.userId, userId)
+      )
+    );
+  return member;
+}
+
 /**
  * Authorization middleware to verify if a user has access to a workspace.
  * Resolves the workspaceId from req.params, req.body, or req.query.
  */
-export const requireWorkspaceMember = (roleRequirement?: ("owner" | "admin" | "viewer")[]) => {
+export const requireWorkspaceMember = (roleRequirement?: WorkSpaceRole[]) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = req.userId;
     
@@ -20,22 +43,14 @@ export const requireWorkspaceMember = (roleRequirement?: ("owner" | "admin" | "v
     }
 
     try {
-      const [member] = await db
-        .select()
-        .from(workspaceMembersTable)
-        .where(
-          and(
-            eq(workspaceMembersTable.workspaceId, workspaceId),
-            eq(workspaceMembersTable.userId, userId)
-          )
-        );
+      const member = await getWorkspaceMember(workspaceId, userId);
 
       if (!member) {
         res.status(403).json({ error: "Forbidden: You are not a member of this workspace" });
         return;
       }
 
-      if (roleRequirement && !roleRequirement.includes(member.role as any)) {
+      if (roleRequirement && !roleRequirement.includes(member.role as WorkSpaceRole)) {
         res.status(403).json({ error: "Forbidden: Insufficient workspace role" });
         return;
       }
