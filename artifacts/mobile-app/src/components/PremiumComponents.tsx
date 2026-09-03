@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Colors, Fonts, Spacing } from '@/constants/theme';
 
 // Premium Card Component
@@ -188,7 +188,7 @@ export const PremiumInput: React.FC<PremiumInputProps> = ({
     <View style={styles.inputContainer}>
       <View style={[styles.inputWrapper, error && styles.inputError]}>
         {icon && <Text style={styles.inputIcon}>{icon}</Text>}
-        <Text
+        <TextInput
           style={[styles.input, { color: value ? Colors.dark.text : Colors.dark.textSecondary }]}
           placeholder={placeholder}
           placeholderTextColor={Colors.dark.textSecondary}
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   premiumCard: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: Spacing[4],
+    padding: Spacing.three,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing[4],
+    marginBottom: Spacing.three,
   },
   sectionTitleContainer: {
     flex: 1,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
 
   // Input
   inputContainer: {
-    marginBottom: Spacing[4],
+    marginBottom: Spacing.three,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#2E3135',
-    paddingHorizontal: Spacing[3],
+    paddingHorizontal: Spacing.two,
     height: 48,
   },
   inputError: {
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   // Divider
   divider: {
     height: 1,
-    marginVertical: Spacing[3],
+    marginVertical: Spacing.two,
   },
   dividerDefault: {
     backgroundColor: '#2E3135',
