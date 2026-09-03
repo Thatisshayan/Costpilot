@@ -9,65 +9,94 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
+    text: '#0B0C10',
+    background: '#F8F9FC',
+    backgroundElement: '#FFFFFF',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    // New accents for Light Mode
+    accentAction: '#00A396',
+    accentAI: '#7048A3',
+    accentWarning: '#CC3333',
+    accentAWS: '#FF9900',
+    accentAzure: '#007FFF',
+    accentGCP: '#34A853',
+    accentOpenAI: '#8A2BE2',
   },
   dark: {
     text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
+    background: '#050508',
+    backgroundElement: '#12121A',
     backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    textSecondary: '#9499C3',
+    // New accents for Dark Mode
+    accentAction: '#66FCF1',
+    accentAI: '#C397EB',
+    accentWarning: '#FF4D4D',
+    accentAWS: '#FF9900',
+    accentAzure: '#007FFF',
+    accentGCP: '#34A853',
+    accentOpenAI: '#8A2BE2',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
-export const Spacing: {
-  readonly half: 2;
-  readonly one: 4;
-  readonly two: 8;
-  readonly three: 16;
-  readonly four: 24;
-  readonly five: 32;
-  readonly six: 64;
-} = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+export const Fonts = {
+  clashDisplay: Platform.select({
+    ios: 'Clash Display',
+    default: 'Clash Display',
+    web: 'Clash Display',
+  }),
+  plusJakartaSans: Platform.select({
+    ios: 'Plus Jakarta Sans',
+    default: 'Plus Jakarta Sans',
+    web: 'Plus Jakarta Sans',
+  }),
+  jetBrainsMono: Platform.select({
+    ios: 'JetBrains Mono',
+    default: 'JetBrains Mono',
+    web: 'JetBrains Mono',
+  }),
 };
+
+export const Spacing = {
+  px: 1,
+  0: 0,
+  0.5: 2,
+  1: 4,
+  1.5: 6,
+  2: 8,
+  2.5: 10,
+  3: 12,
+  3.5: 14,
+  4: 16,
+  5: 20,
+  6: 24,
+  7: 28,
+  8: 32,
+  9: 36,
+  10: 40,
+  11: 44,
+  12: 48,
+  14: 56,
+  16: 64,
+  20: 80,
+  24: 96,
+  28: 112,
+  32: 128,
+  36: 144,
+  40: 160,
+  44: 176,
+  48: 192,
+  52: 208,
+  56: 224,
+  60: 240,
+  64: 256,
+  72: 288,
+  80: 320,
+  96: 384,
+} as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
