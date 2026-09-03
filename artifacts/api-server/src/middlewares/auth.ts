@@ -35,6 +35,15 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     return next();
   }
 
+  // Development bypass: allow simulating a user via header or query param
+  if (process.env.NODE_ENV !== "production") {
+    const devUserId = (req.headers["x-user-id"] as string) || (req.query.simulatedUserId as string);
+    if (devUserId) {
+      req.userId = devUserId;
+      return next();
+    }
+  }
+
   const authHeader = req.headers.authorization;
   let token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
   if (!token && req.query.token) {
@@ -56,10 +65,11 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
       req.auth = decoded;
       return next();
     }
-  } catch {
+  } catch (err: any) {
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid or expired token",
+      details: err?.message,
     });
   }
 
@@ -78,7 +88,7 @@ export async function isWorkspaceMember(
   try {
     const member = await getWorkspaceMember(workspaceId, userId);
     if (!member) return false;
-    if (roles && !roles.includes(member.role)) return false;
+    if (roles && !roles.includes(member.role as "owner" | "admin" | "viewer")) return false;
     return true;
   } catch (error) {
     return false;

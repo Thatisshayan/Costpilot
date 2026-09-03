@@ -76,7 +76,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile --prefer-offline
 
       - name: Run pnpm audit
-        run: pnpm audit --audit-level=moderate || true
+        run: pnpm audit --audit-level=moderate
 
   db-migrate:
     runs-on: ubuntu-latest

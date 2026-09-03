@@ -78,21 +78,24 @@ describe("Auth Middleware", () => {
 });
 
 describe("Clerk Webhook Signature Verification", () => {
-  const testSecret = "whsec_test_secret_key_12345";
+  const testSecretBase64 = Buffer.from("test_secret_key_12345").toString("base64");
+  const testSecret = "whsec_" + testSecretBase64;
   const testRawBody = JSON.stringify({ type: "user.created", data: { id: "user_123" } });
 
-  function generateSignature(timestamp: string, body: string, secret: string): string {
-    const signedContent = `${timestamp}.${body}`;
-    const hmac = crypto.createHmac("sha256", Buffer.from(secret, "base64"));
+  function generateSignature(svixId: string, timestamp: string, body: string, secret: string): string {
+    const signedContent = `${svixId}.${timestamp}.${body}`;
+    const secretKey = secret.startsWith("whsec_") ? secret.substring(6) : secret;
+    const hmac = crypto.createHmac("sha256", Buffer.from(secretKey, "base64"));
     hmac.update(signedContent);
     return `v1,${hmac.digest("base64")}`;
   }
 
   it("should return true for valid signature", () => {
+    const svixId = "msg_123";
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const signature = generateSignature(timestamp, testRawBody, testSecret);
+    const signature = generateSignature(svixId, timestamp, testRawBody, testSecret);
     const headers = {
-      "svix-id": "msg_123",
+      "svix-id": svixId,
       "svix-timestamp": timestamp,
       "svix-signature": signature,
     };
@@ -106,10 +109,11 @@ describe("Clerk Webhook Signature Verification", () => {
   });
 
   it("should return false for expired timestamp (>5 min)", () => {
+    const svixId = "msg_123";
     const oldTimestamp = (Math.floor(Date.now() / 1000) - 600).toString();
-    const signature = generateSignature(oldTimestamp, testRawBody, testSecret);
+    const signature = generateSignature(svixId, oldTimestamp, testRawBody, testSecret);
     const headers = {
-      "svix-id": "msg_123",
+      "svix-id": svixId,
       "svix-timestamp": oldTimestamp,
       "svix-signature": signature,
     };
@@ -118,10 +122,11 @@ describe("Clerk Webhook Signature Verification", () => {
   });
 
   it("should return false for tampered body", () => {
+    const svixId = "msg_123";
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const signature = generateSignature(timestamp, testRawBody, testSecret);
+    const signature = generateSignature(svixId, timestamp, testRawBody, testSecret);
     const headers = {
-      "svix-id": "msg_123",
+      "svix-id": svixId,
       "svix-timestamp": timestamp,
       "svix-signature": signature,
     };
@@ -131,15 +136,15 @@ describe("Clerk Webhook Signature Verification", () => {
   });
 
   it("should handle whsec_ prefix in secret", () => {
+    const svixId = "msg_123";
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const prefixedSecret = "whsec_" + testSecret;
-    const signature = generateSignature(timestamp, testRawBody, testSecret);
+    const signature = generateSignature(svixId, timestamp, testRawBody, testSecret);
     const headers = {
-      "svix-id": "msg_123",
+      "svix-id": svixId,
       "svix-timestamp": timestamp,
       "svix-signature": signature,
     };
-    const result = verifyClerkSignature(testRawBody, headers, prefixedSecret);
+    const result = verifyClerkSignature(testRawBody, headers, testSecret);
     expect(result).toBe(true);
   });
 });

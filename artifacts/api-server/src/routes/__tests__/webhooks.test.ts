@@ -65,6 +65,7 @@ describe("Webhooks API", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();
+    process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "sk_test_fake";
     mockDbSelect.mockReturnValue(createChainableMock());
     
     const webhooks = await import("../webhooks");

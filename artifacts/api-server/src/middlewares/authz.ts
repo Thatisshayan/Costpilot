@@ -29,7 +29,7 @@ export async function getWorkspaceMember(
  * Authorization middleware to verify if a user has access to a workspace.
  * Resolves the workspaceId from req.params, req.body, or req.query.
  */
-export const requireWorkspaceMember = (roleRequirement?: WorkspaceRole[]) => {
+export const requireWorkspaceMember = (roleRequirement?: WorkSpaceRole[]) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = req.userId;
     
@@ -50,7 +50,7 @@ export const requireWorkspaceMember = (roleRequirement?: WorkspaceRole[]) => {
         return;
       }
 
-      if (roleRequirement && !roleRequirement.includes(member.role)) {
+      if (roleRequirement && !roleRequirement.includes(member.role as WorkSpaceRole)) {
         res.status(403).json({ error: "Forbidden: Insufficient workspace role" });
         return;
       }

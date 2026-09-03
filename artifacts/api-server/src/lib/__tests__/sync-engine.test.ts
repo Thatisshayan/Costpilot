@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 
+vi.mock("../kms-vault", () => ({
+  encrypt: (val: string) => val,
+  decrypt: (val: string) => val,
+}));
+
 vi.mock("@workspace/db", () => ({
   db: {
     execute: () => Promise.resolve(),

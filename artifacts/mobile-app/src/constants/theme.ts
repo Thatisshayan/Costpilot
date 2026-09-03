@@ -51,7 +51,15 @@ export const Fonts = Platform.select({
   },
 });
 
-export const Spacing = {
+export const Spacing: {
+  readonly half: 2;
+  readonly one: 4;
+  readonly two: 8;
+  readonly three: 16;
+  readonly four: 24;
+  readonly five: 32;
+  readonly six: 64;
+} = {
   half: 2,
   one: 4,
   two: 8,
@@ -59,7 +67,7 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
-} as const;
+};
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
