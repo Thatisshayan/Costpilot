@@ -1,11 +1,11 @@
 # Ground Truth: CostPilot Project State
 
-Last updated: June 11, 2026
+Last updated: September 3, 2026
 
 ## Repository Status
 - **Branch**: main
 - **Remote**: https://github.com/Thatisshayan/Costpilot
-- **Latest commit**: 6e65688 (fix: Correct STRIKE_SECRET_KEY typo to STRIPE_SECRET_KEY)
+- **Latest commit**: cf34541 (merge: fix CI failures, type errors, and mobile-app premium UI merge conflicts)
 
 ## Completed Work
 
@@ -18,8 +18,8 @@ Last updated: June 11, 2026
 
 ### Phase 2: Testing ✅
 - Frontend tests: 37 passing (dashboard, expenses, settings)
-- API tests: 99 passing (auth, authz, webhooks, health, expenses, platforms, dashboard, encryption, sync-engine)
-- Total: 136 tests passing
+- API tests: 114 passing (auth, authz, webhooks, health, expenses, platforms, dashboard, encryption, sync-engine, webhooks-auth)
+- Total: 151 tests passing
 
 ### Phase 3: Code Quality ✅
 - Dashboard routes split into 4 modules (summary, calendar, activity, utils)
@@ -29,8 +29,9 @@ Last updated: June 11, 2026
 ### Phase 4: CI/CD & Deployment ✅
 - CI workflow with typecheck, test, build, audit jobs
 - Staging environment config (`railway.staging.json`)
-- Security audit in CI pipeline
+- Security audit in CI pipeline (audit-level=moderate, no silent pass)
 - Port standardized to 8080
+- Governance gate with REPO_RULES.md enforcement
 
 ### Phase 5: Documentation ✅
 - README.md created
@@ -46,8 +47,9 @@ Last updated: June 11, 2026
 1. **Migrate Clerk SDK**: `@clerk/clerk-sdk-node` → `@clerk/express` (EOL Jan 2025, deprecated)
 
 ### Medium Priority
-2. **Add integration tests**: For webhooks and CSRF middleware
-3. **Configure KMS_MASTER_KEY**: For production encryption (currently uses fallback)
+2. **Fix security-audit failures**: Resolve moderate+ npm vulnerabilities (currently failing CI)
+3. **Add integration tests**: For webhooks and CSRF middleware
+4. **Configure KMS_MASTER_KEY**: For production encryption (currently uses fallback)
 
 ### Low Priority
 4. **Fix large chunk warning**: Some chunks still >500KB (acceptable for now)
