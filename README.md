@@ -16,7 +16,7 @@ AI-powered cost tracking and budget management for cloud infrastructure. Monitor
 | Mobile | Expo 56 + React Native 0.85 |
 | Web UI | React 19 + Vite 7 + TailwindCSS 4 |
 | Code Generation | Orval (from OpenAPI spec) |
-| Validation | Zod v4 |
+| Validation | Zod 3.x |
 
 ## Project Structure
 
@@ -36,7 +36,7 @@ costpilot/
 ## Setup
 
 ### Prerequisites
-- Node.js 24+
+- Node.js 22+
 - pnpm 9.x
 - Docker (for PostgreSQL/Redis)
 
