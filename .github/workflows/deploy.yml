@@ -47,7 +47,15 @@ jobs:
         env:
           NODE_ENV: production
           BASE_PATH: /Costpilot/
-        run: pnpm --filter "@workspace/ai-tracker" run build
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_API_ORIGIN: ${{ vars.VITE_API_ORIGIN }}
+        run: |
+          test -n "$VITE_CLERK_PUBLISHABLE_KEY" || { echo "Missing repository variable VITE_CLERK_PUBLISHABLE_KEY"; exit 1; }
+          case "$VITE_API_ORIGIN" in
+            https://*) ;;
+            *) echo "VITE_API_ORIGIN must be an HTTPS API origin"; exit 1 ;;
+          esac
+          pnpm --filter "@workspace/ai-tracker" run build
 
       - name: Verify Build
         run: |

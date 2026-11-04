@@ -13,7 +13,7 @@ COPY lib/api-client-react/package.json ./lib/api-client-react/
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 
 # Install dependencies globally via pnpm
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm install -g pnpm@9.15.9 && pnpm install --frozen-lockfile
 
 # Copy codebase
 COPY lib ./lib
@@ -31,7 +31,7 @@ ENV CI=true
 ENV NODE_ENV=production
 
 # Install pnpm for production run
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9.15.9
 
 # Copy root configs & dist from build stage
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

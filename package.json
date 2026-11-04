@@ -6,6 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "test": "pnpm --filter @workspace/api-server run test && pnpm --filter @workspace/ai-tracker run test",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"

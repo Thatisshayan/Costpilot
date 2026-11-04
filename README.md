@@ -1,6 +1,8 @@
 # Costpilot
 
 AI-powered cost tracking and budget management for cloud infrastructure. Monitor cloud spending, get intelligent insights, and automate cost optimization across multiple providers and projects.
+Launch readiness: [closure plan](docs/governance/LAUNCH_PLAN.md) and [current audit](audits/2026-11-04_Codex_LaunchReadiness_Audit.md). Public launch remains blocked by the recorded gaps.
+
 
 ## Tech Stack
 
