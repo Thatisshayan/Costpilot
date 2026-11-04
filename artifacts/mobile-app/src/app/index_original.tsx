@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Constants from 'expo-constants';
+import { apiResponse, getApiOrigin } from '@/lib/api';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -36,12 +36,8 @@ export default function HomeScreen() {
     OpenAI: 95
   });
 
-  // Dynamic Host IP finder to connect the physical iOS phone directly to their running local Express backend.
   const getBackendUrl = () => {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (!hostUri) return 'http://localhost:3000';
-    const ip = hostUri.split(':')[0];
-    return `http://${ip}:3000`;
+    return getApiOrigin();
   };
 
   useEffect(() => {
@@ -51,11 +47,7 @@ export default function HomeScreen() {
       const backendUrl = getBackendUrl();
       try {
         // 1. Fetch KPI Summary from local server
-        const kpiRes = await fetch(`${backendUrl}/api/dashboard/kpi-summary`, {
-          headers: {
-            'x-simulated-user-id': 'dev-user-1',
-          }
-        });
+        const kpiRes = await apiResponse('/dashboard/kpi-summary');
 
         if (kpiRes.ok) {
           const kpiData = await kpiRes.json();
@@ -80,11 +72,7 @@ export default function HomeScreen() {
         }
 
         // 2. Fetch platform distribution
-        const platformRes = await fetch(`${backendUrl}/api/dashboard/expenses-by-platform`, {
-          headers: {
-            'x-simulated-user-id': 'dev-user-1',
-          }
-        });
+        const platformRes = await apiResponse('/dashboard/expenses-by-platform');
         if (platformRes.ok) {
           const platformData = await platformRes.json();
           const newSpend = { AWS: 0, Azure: 0, GCP: 0, OpenAI: 0 };
@@ -107,12 +95,7 @@ export default function HomeScreen() {
         }
 
         // 3. Fetch active spending alerts
-        const auditRes = await fetch(`${backendUrl}/api/audits?workspaceId=1`, {
-          headers: {
-            'x-simulated-user-id': 'dev-user-1',
-            'x-simulated-workspace-role': 'owner'
-          }
-        });
+        const auditRes = await apiResponse('/audits', { params: { workspaceId: '1' } });
         if (auditRes.ok) {
           const auditData = await auditRes.json();
           setRiskCount(auditData.length || 0);
@@ -134,9 +117,7 @@ export default function HomeScreen() {
     const fetchLiveData = async () => {
       const backendUrl = getBackendUrl();
       try {
-        const kpiRes = await fetch(`${backendUrl}/api/dashboard/kpi-summary`, {
-          headers: { 'x-simulated-user-id': 'dev-user-1' }
-        });
+        const kpiRes = await apiResponse('/dashboard/kpi-summary');
         if (kpiRes.ok) {
           const kpiData = await kpiRes.json();
           const mtd = Number(kpiData.monthToDateSpend || 0);
@@ -166,12 +147,8 @@ export default function HomeScreen() {
     const backendUrl = getBackendUrl();
 
     try {
-      const response = await fetch(`${backendUrl}/api/sync/mobile`, {
+      const response = await apiResponse('/sync/mobile', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-simulated-user-id': 'dev-user-1',
-        },
         body: JSON.stringify({
           created: [
             {

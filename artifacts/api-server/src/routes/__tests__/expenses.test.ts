@@ -61,6 +61,7 @@ vi.mock("@workspace/db", () => ({
   expensesTable: {},
   platformsTable: {},
   projectsTable: {},
+  workspaceMembersTable: { workspaceId: "workspaceId", userId: "userId", role: "role" },
 }));
 
 vi.mock("@workspace/api-zod", () => ({
@@ -155,7 +156,7 @@ describe("Expenses API", () => {
       const now = new Date();
       const inserted = { id: 1, platformId: 1, projectId: null, amount: "99.99", currency: "USD", description: "Test", category: "API Usage", date: "2025-02-01", userId: "user-1", createdAt: now };
       mockDbState.insertResult = Promise.resolve([inserted]);
-      mockDbState.selectResult = Promise.resolve([{ name: "OpenAI" }]);
+      mockDbState.selectResult = Promise.resolve([{ id: 1, name: "OpenAI", userId: "user-1", workspaceId: null }]);
 
       const req = makeMockRequest({ platformId: 1, amount: 99.99, currency: "USD", description: "Test", category: "API Usage", date: "2025-02-01" });
       const res = makeMockResponse();
@@ -187,7 +188,7 @@ describe("Expenses API", () => {
 
       const now = new Date();
       mockDbState.selectResult = Promise.resolve([
-        { id: 5, platformId: null, platformName: null, projectId: null, projectName: null, amount: "25.00", currency: "USD", description: "Single expense", category: "Compute", date: "2025-03-01", createdAt: now },
+        { id: 5, userId: "user-1", workspaceId: null, platformId: null, platformName: null, projectId: null, projectName: null, amount: "25.00", currency: "USD", description: "Single expense", category: "Compute", date: "2025-03-01", createdAt: now },
       ]);
 
       const req = makeMockRequest({}, { id: "5" });
@@ -206,6 +207,18 @@ describe("Expenses API", () => {
       expect(res.statusCode).toBe(404);
       expect(res.jsonData.error).toBe("Not found");
     });
+
+    it("should allow a workspace member to read shared expenses", async () => {
+      const handler = getHandler("/:id", "get");
+      mockDbState.selectResult = Promise.resolve([
+        { id: 5, userId: "another-user", workspaceId: 9, role: "viewer", platformId: null, platformName: null, projectId: null, projectName: null, amount: "25.00", currency: "USD", description: "Shared expense", category: "Compute", date: "2025-03-01", createdAt: new Date() },
+      ]);
+      const res = makeMockResponse();
+      await handler(makeMockRequest({}, { id: "5" }), res);
+      expect(res.statusCode).toBe(200);
+      expect(res.jsonData.workspaceId).toBe(9);
+      expect(res.jsonData).not.toHaveProperty("userId");
+    });
   });
 
   describe("PATCH /:id", () => {
@@ -216,7 +229,7 @@ describe("Expenses API", () => {
       const now = new Date();
       const updated = { id: 1, platformId: null, projectId: null, amount: "150.00", currency: "USD", description: "Updated", category: "Storage", date: "2025-03-15", userId: "user-1", createdAt: now };
       mockDbState.updateResult = Promise.resolve([updated]);
-      mockDbState.selectResult = Promise.resolve([]);
+      mockDbState.selectResult = Promise.resolve([{ ...updated, workspaceId: null }]);
 
       const req = makeMockRequest({ amount: 150, description: "Updated" }, { id: "1" });
       const res = makeMockResponse();
@@ -228,11 +241,22 @@ describe("Expenses API", () => {
     it("should return 404 when updating non-existent expense", async () => {
       const handler = getHandler("/:id", "patch");
       mockDbState.updateResult = Promise.resolve([]);
+      mockDbState.selectResult = Promise.resolve([]);
       const req = makeMockRequest({ description: "nope" }, { id: "999" });
       const res = makeMockResponse();
       await handler(req, res);
       expect(res.statusCode).toBe(404);
       expect(res.jsonData.error).toBe("Not found");
+    });
+
+    it("should reject a viewer attempting to update a shared expense", async () => {
+      const handler = getHandler("/:id", "patch");
+      mockDbState.selectResult = Promise.resolve([
+        { id: 1, userId: "another-user", workspaceId: 9, role: "viewer", amount: "10.00", createdAt: new Date() },
+      ]);
+      const res = makeMockResponse();
+      await handler(makeMockRequest({ description: "change" }, { id: "1" }), res);
+      expect(res.statusCode).toBe(403);
     });
   });
 
@@ -240,6 +264,7 @@ describe("Expenses API", () => {
     it("should delete an expense and return 204", async () => {
       const handler = getHandler("/:id", "delete");
       expect(handler).toBeDefined();
+      mockDbState.selectResult = Promise.resolve([{ id: 1, userId: "user-1", workspaceId: null }]);
       const req = makeMockRequest({}, { id: "1" });
       const res = makeMockResponse();
       await handler(req, res);

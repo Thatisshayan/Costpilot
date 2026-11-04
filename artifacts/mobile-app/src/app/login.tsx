@@ -1,11 +1,14 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useSignIn } from '@clerk/clerk-expo';
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,19 +23,31 @@ export default function LoginScreen() {
   const router = useRouter();
   const safeAreaInsets = useSafeAreaInsets();
   const theme = useTheme();
+  const { isLoaded, signIn, setActive } = useSignIn();
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const insets = {
     ...safeAreaInsets,
     bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    if (!isLoaded) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const attempt = await signIn.create({ identifier: email.trim(), password });
+      if (attempt.status !== 'complete' || !attempt.createdSessionId) {
+        throw new Error('This sign-in needs an additional verification step. Use the web app to complete it.');
+      }
+      await setActive({ session: attempt.createdSessionId });
       router.replace('/');
-    }, 800);
+    } catch (error) {
+      Alert.alert('Sign in failed', error instanceof Error ? error.message : 'Check your credentials and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const contentPlatformStyle = Platform.select({
@@ -103,13 +118,33 @@ export default function LoginScreen() {
         </ThemedView>
 
         <ThemedView style={styles.actionsSection}>
+          <TextInput
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            placeholder="Email address"
+            placeholderTextColor="#9499C3"
+            value={email}
+            onChangeText={setEmail}
+            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          />
+          <TextInput
+            autoCapitalize="none"
+            autoComplete="password"
+            placeholder="Password"
+            placeholderTextColor="#9499C3"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          />
           <Pressable
             style={({ pressed }) => [
               styles.signInButton,
               pressed && styles.signInButtonPressed,
             ]}
             onPress={handleSignIn}
-            disabled={isLoading}
+            disabled={isLoading || !isLoaded || !email.trim() || !password}
           >
             {isLoading ? (
               <ActivityIndicator color="#0B0C10" size="small" />
@@ -120,17 +155,7 @@ export default function LoginScreen() {
             )}
           </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.skipButton,
-              pressed && styles.skipButtonPressed,
-            ]}
-            onPress={() => router.replace('/')}
-          >
-            <ThemedText style={styles.skipButtonText}>
-              Continue as Guest
-            </ThemedText>
-          </Pressable>
+          <ThemedText style={styles.skipButtonText}>Sign in to continue to your workspace.</ThemedText>
         </ThemedView>
       </ThemedView>
     </ScrollView>
@@ -207,6 +232,14 @@ const styles = StyleSheet.create({
   actionsSection: {
     gap: Spacing.three,
     paddingBottom: Spacing.five,
+  },
+  input: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    backgroundColor: '#151720',
   },
   signInButton: {
     backgroundColor: BRAND_TEAL,

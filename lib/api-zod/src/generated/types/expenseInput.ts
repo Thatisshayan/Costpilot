@@ -7,6 +7,8 @@
  */
 
 export interface ExpenseInput {
+  /** @minimum 1 */
+  workspaceId?: number;
   platformId?: number;
   projectId?: number;
   amount: number;

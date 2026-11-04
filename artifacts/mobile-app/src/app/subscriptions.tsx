@@ -114,7 +114,6 @@ export default function SubscriptionsScreen() {
       setError(null);
 
       const data = await apiFetch<Subscription[]>('/subscriptions', {
-        headers: { 'x-simulated-user-id': 'dev-user-1' },
       });
       setSubscriptions(data);
     } catch (err) {

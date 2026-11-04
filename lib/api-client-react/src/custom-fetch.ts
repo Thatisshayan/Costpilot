@@ -22,7 +22,7 @@ let _authTokenGetter: AuthTokenGetter | null = null;
  * Set a base URL that is prepended to every relative request URL
  * (i.e. paths that start with `/`).
  *
- * Useful for Expo bundles that need to call a remote API server.
+ * Use this to configure the API origin for web and native clients.
  * Pass `null` to clear the base URL.
  */
 export function setBaseUrl(url: string | null): void {
@@ -34,11 +34,9 @@ export function setBaseUrl(url: string | null): void {
  * the getter is invoked; when it returns a non-null string, an
  * `Authorization: Bearer <token>` header is attached to the request.
  *
- * Useful for Expo bundles making token-gated API calls.
+ * Use this to attach the active Clerk session token to API requests.
  * Pass `null` to clear the getter.
  *
- * NOTE: This function should never be used in web applications where session
- * token cookies are automatically associated with API calls by the browser.
  */
 export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
@@ -76,6 +74,20 @@ function resolveUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;
   if (isUrl(input)) return input.toString();
   return input.url;
+}
+
+/** Fetch an API response while applying the configured API origin and Clerk bearer token. */
+export async function authenticatedFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  const request = applyBaseUrl(input);
+  const headers = mergeHeaders(isRequest(request) ? request.headers : undefined, init.headers);
+  if (_authTokenGetter && !headers.has("authorization")) {
+    const token = await _authTokenGetter();
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
+  return fetch(request, { ...init, headers });
 }
 
 function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {

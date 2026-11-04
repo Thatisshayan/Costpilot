@@ -115,7 +115,6 @@ export default function ExpensesScreen() {
       setError(null);
 
       const data = await apiFetch<Expense[]>('/expenses', {
-        headers: { 'x-simulated-user-id': 'dev-user-1' },
       });
       setExpenses(data);
     } catch (err) {

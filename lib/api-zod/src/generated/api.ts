@@ -180,6 +180,7 @@ export const DeleteProjectParams = zod.object({
 
 export const ListExpensesResponseItem = zod.object({
   "id": zod.number(),
+  "workspaceId": zod.number().nullish(),
   "platformId": zod.number().nullish(),
   "platformName": zod.string().nullish(),
   "projectId": zod.number().nullish(),
@@ -194,7 +195,11 @@ export const ListExpensesResponseItem = zod.object({
 export const ListExpensesResponse = zod.array(ListExpensesResponseItem)
 
 
+
+
+
 export const CreateExpenseBody = zod.object({
+  "workspaceId": zod.number().min(1).optional(),
   "platformId": zod.number().optional(),
   "projectId": zod.number().optional(),
   "amount": zod.number(),
@@ -211,6 +216,7 @@ export const GetExpenseParams = zod.object({
 
 export const GetExpenseResponse = zod.object({
   "id": zod.number(),
+  "workspaceId": zod.number().nullish(),
   "platformId": zod.number().nullish(),
   "platformName": zod.string().nullish(),
   "projectId": zod.number().nullish(),
@@ -240,6 +246,7 @@ export const UpdateExpenseBody = zod.object({
 
 export const UpdateExpenseResponse = zod.object({
   "id": zod.number(),
+  "workspaceId": zod.number().nullish(),
   "platformId": zod.number().nullish(),
   "platformName": zod.string().nullish(),
   "projectId": zod.number().nullish(),

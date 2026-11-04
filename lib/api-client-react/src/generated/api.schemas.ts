@@ -196,6 +196,8 @@ export interface ProjectUpdate {
 export interface Expense {
   id: number;
   /** @nullable */
+  workspaceId?: number | null;
+  /** @nullable */
   platformId?: number | null;
   /** @nullable */
   platformName?: string | null;
@@ -214,6 +216,8 @@ export interface Expense {
 }
 
 export interface ExpenseInput {
+  /** @minimum 1 */
+  workspaceId?: number;
   platformId?: number;
   projectId?: number;
   amount: number;

@@ -147,14 +147,18 @@ describe("Auth Middleware", () => {
         expect(nextFn).toHaveBeenCalled();
       });
 
-      it("should accept token from query parameter", async () => {
+      it("should reject query tokens and require an Authorization bearer token", async () => {
         req.query = { token: "query_token" };
         mockVerifyToken.mockResolvedValue({ sub: "user_query" });
 
         await requireAuth(req as Request, res as Response, nextFn);
 
-        expect(req.userId).toBe("user_query");
-        expect(nextFn).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Unauthorized",
+          message: "Authentication token missing",
+        });
+        expect(mockVerifyToken).not.toHaveBeenCalled();
       });
 
       it("should set auth object on request when token is valid", async () => {

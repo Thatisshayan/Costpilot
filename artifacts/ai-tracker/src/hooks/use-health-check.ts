@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "@workspace/api-client-react/custom-fetch";
 import { useState, useEffect } from "react";
 
 interface HealthCheckResult {
@@ -14,7 +15,7 @@ export function useHealthCheck(): HealthCheckResult {
 
     async function check() {
       try {
-        const res = await fetch("/api/healthz");
+        const res = await authenticatedFetch("/api/healthz");
         if (!mounted) return;
         setIsHealthy(res.ok);
       } catch {

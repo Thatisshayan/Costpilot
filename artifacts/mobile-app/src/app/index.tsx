@@ -12,8 +12,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Constants from 'expo-constants';
 import { Fonts, Colors, Spacing } from '@/constants/theme';
+import { apiFetch, getApiOrigin } from '@/lib/api';
 
 const { width } = Dimensions.get('window');
 
@@ -38,25 +38,13 @@ export default function HomeScreenPremium() {
     OpenAI: 95
   });
 
-  const getBackendUrl = () => {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (!hostUri) return 'http://localhost:3000';
-    const ip = hostUri.split(':')[0];
-    return `http://${ip}:3000`;
-  };
-
   useEffect(() => {
     const fetchLiveData = async () => {
       setIsLoading(true);
       setError(null);
-      const backendUrl = getBackendUrl();
       try {
-        const kpiRes = await fetch(`${backendUrl}/api/dashboard/kpi-summary`, {
-          headers: { 'x-simulated-user-id': 'dev-user-1' }
-        });
-
-        if (kpiRes.ok) {
-          const kpiData = await kpiRes.json();
+        const kpiData = await apiFetch<any>('/dashboard/kpi-summary');
+        if (kpiData) {
           const mtd = Number(kpiData.monthToDateSpend || 0);
           setMonthSpend(`$${mtd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
           setTotalSpend(`$${Number(kpiData.totalSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
@@ -76,11 +64,8 @@ export default function HomeScreenPremium() {
           setIsLiveMode(true);
         }
 
-        const platformRes = await fetch(`${backendUrl}/api/dashboard/expenses-by-platform`, {
-          headers: { 'x-simulated-user-id': 'dev-user-1' }
-        });
-        if (platformRes.ok) {
-          const platformData = await platformRes.json();
+        const platformData = await apiFetch<any[]>('/dashboard/expenses-by-platform');
+        if (platformData) {
           const newSpend = { AWS: 0, Azure: 0, GCP: 0, OpenAI: 0 };
 
           platformData.forEach((p: any) => {
@@ -100,18 +85,10 @@ export default function HomeScreenPremium() {
           });
         }
 
-        const auditRes = await fetch(`${backendUrl}/api/audits?workspaceId=1`, {
-          headers: {
-            'x-simulated-user-id': 'dev-user-1',
-            'x-simulated-workspace-role': 'owner'
-          }
-        });
-        if (auditRes.ok) {
-          const auditData = await auditRes.json();
-          setRiskCount(auditData.length || 0);
-        }
+        const auditData = await apiFetch<any[]>('/audits', { params: { workspaceId: '1' } });
+        setRiskCount(auditData.length || 0);
       } catch (err) {
-        console.log('Backend server unreachable; running in offline mock sandbox.');
+        console.log('Authenticated dashboard request failed; showing offline sample data.', err);
       } finally {
         setIsLoading(false);
       }
@@ -124,13 +101,9 @@ export default function HomeScreenPremium() {
     setError(null);
     setIsLoading(true);
     const fetchLiveData = async () => {
-      const backendUrl = getBackendUrl();
       try {
-        const kpiRes = await fetch(`${backendUrl}/api/dashboard/kpi-summary`, {
-          headers: { 'x-simulated-user-id': 'dev-user-1' }
-        });
-        if (kpiRes.ok) {
-          const kpiData = await kpiRes.json();
+        const kpiData = await apiFetch<any>('/dashboard/kpi-summary');
+        if (kpiData) {
           const mtd = Number(kpiData.monthToDateSpend || 0);
           setMonthSpend(`$${mtd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
           setTotalSpend(`$${Number(kpiData.totalSpend || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
@@ -155,15 +128,9 @@ export default function HomeScreenPremium() {
   const handleSync = async () => {
     setIsSyncing(true);
     setSyncDetails(null);
-    const backendUrl = getBackendUrl();
-
     try {
-      const response = await fetch(`${backendUrl}/api/sync/mobile`, {
+      const data = await apiFetch<any>('/sync/mobile', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-simulated-user-id': 'dev-user-1',
-        },
         body: JSON.stringify({
           created: [
             {
@@ -171,7 +138,7 @@ export default function HomeScreenPremium() {
               amount: 145.20,
               category: 'ai-tokens',
               description: 'Mobile offline LLM token usage',
-              spentAt: new Date().toISOString(),
+              date: new Date().toISOString().slice(0, 10),
             }
           ],
           updated: [],
@@ -179,25 +146,20 @@ export default function HomeScreenPremium() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const dateStr = new Date().toLocaleTimeString();
-        setLastSynced(dateStr);
-        setSyncDetails(`Synchronized ${data.reconciledIds?.length || 1} local offline changes with Server.`);
-        Alert.alert(
-          'Sync Success! 🔄',
-          `Successfully pushed 1 offline expense to Server.\nReconciled Server Transaction ID: ${data.reconciledIds?.[0]?.server || 'id-reconciled'}`
-        );
-      } else {
-        throw new Error('Server returned error status');
-      }
+      const dateStr = new Date().toLocaleTimeString();
+      setLastSynced(dateStr);
+      setSyncDetails(`Synchronized ${data.reconciledIds?.length || 1} local offline changes with Server.`);
+      Alert.alert(
+        'Sync Success! 🔄',
+        `Successfully pushed 1 offline expense to Server.\nReconciled Server Transaction ID: ${data.reconciledIds?.[0]?.server || 'id-reconciled'}`
+      );
     } catch (error) {
       const dateStr = new Date().toLocaleTimeString();
       setLastSynced(dateStr);
       setSyncDetails('Local Simulation Mode (Backend Offline)');
       Alert.alert(
         'Sandbox Sync Active 🔄',
-        `Sync simulated successfully in Offline Mode.\nBackend target: ${backendUrl}\n(Start your api-server locally to test live replication!)`
+        `Sync could not reach the API at ${getApiOrigin()}. Please check your connection and try again.`
       );
     } finally {
       setIsSyncing(false);

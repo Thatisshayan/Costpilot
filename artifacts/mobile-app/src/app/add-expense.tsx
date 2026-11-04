@@ -58,16 +58,11 @@ export default function AddExpenseScreen() {
     try {
       await apiFetch('/expenses', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-simulated-user-id': 'dev-user-1',
-        },
         body: JSON.stringify({
           amount: parsedAmount,
-          platformName: platform,
           description: description || `${platform} expense`,
           category,
-          spentAt: new Date(date).toISOString(),
+          date,
         }),
       });
 

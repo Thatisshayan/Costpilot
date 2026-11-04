@@ -45,10 +45,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
   }
 
   const authHeader = req.headers.authorization;
-  let token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
-  if (!token && req.query.token) {
-    token = req.query.token as string;
-  }
+  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
 
   if (!token) {
     return res.status(401).json({ error: "Unauthorized", message: "Authentication token missing" });

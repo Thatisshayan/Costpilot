@@ -1327,6 +1327,8 @@ components:
       properties:
         id:
           type: integer
+        workspaceId:
+          type: ["integer", "null"]
         platformId:
           type: ["integer", "null"]
         platformName:
@@ -1352,6 +1354,9 @@ components:
       type: object
       required: [amount, date]
       properties:
+        workspaceId:
+          type: integer
+          minimum: 1
         platformId:
           type: integer
         projectId:

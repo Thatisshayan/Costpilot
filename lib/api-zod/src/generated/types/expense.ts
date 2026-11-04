@@ -9,6 +9,8 @@
 export interface Expense {
   id: number;
   /** @nullable */
+  workspaceId?: number | null;
+  /** @nullable */
   platformId?: number | null;
   /** @nullable */
   platformName?: string | null;

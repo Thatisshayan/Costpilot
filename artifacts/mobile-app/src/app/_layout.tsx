@@ -1,4 +1,6 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
+import { tokenCache } from '@clerk/clerk-expo/token-cache';
+import { DarkTheme, DefaultTheme, Redirect, ThemeProvider, useSegments } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -6,12 +8,16 @@ import { useEffect } from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
+import { ThemedText } from '@/components/themed-text';
+import { setApiAuthTokenGetter } from '@/lib/api';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
+function AuthenticatedTabs() {
   const colorScheme = useColorScheme();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const segments = useSegments();
   const [loaded, error] = useFonts({
     'Clash Display': require('../../assets/fonts/ClashDisplay-Regular.ttf'),
     'Plus Jakarta Sans': require('../../assets/fonts/PlusJakartaSans[wght].ttf'),
@@ -29,8 +35,17 @@ export default function TabLayout() {
     }
   }, [loaded]);
 
-  if (!loaded) {
+  useEffect(() => {
+    setApiAuthTokenGetter(() => isSignedIn ? getToken() : null);
+    return () => setApiAuthTokenGetter(null);
+  }, [getToken, isSignedIn]);
+
+  if (!loaded || !isLoaded) {
     return null;
+  }
+
+  if (!isSignedIn && segments[segments.length - 1] !== 'login') {
+    return <Redirect href="/login" />;
   }
 
   return (
@@ -38,5 +53,17 @@ export default function TabLayout() {
       <AnimatedSplashOverlay />
       <AppTabs />
     </ThemeProvider>
+  );
+}
+
+export default function TabLayout() {
+  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!publishableKey) {
+    return <ThemedText>Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY to enable sign-in.</ThemedText>;
+  }
+  return (
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <AuthenticatedTabs />
+    </ClerkProvider>
   );
 }
