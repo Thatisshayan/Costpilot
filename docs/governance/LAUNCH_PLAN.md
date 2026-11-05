@@ -38,6 +38,33 @@ The supplied Clerk **test** publishable key is configured in ignored web/mobile 
 
 An independent review of PR #7 found and fixed (branch `agent/claude/pr7-blocker-fixes`, PR into `docs/fix-doc-drift`): viewer access to invite tokens enabling admin escalation, automatic Pages publishing on merge, platform credentials overwritten by the mask on edit, NODE_ENV-only test impersonation, and a missing duplicate guard before the membership unique index. The same batch adds money/currency/date validation, mobile HTTPS and personal-only scope, a scoped web CSV/PDF export control, batch-import query reuse and smaller review fixes. Local Node 22/PostgreSQL 16 evidence and open items are in the [audit](../../audits/2026-11-05_Claude_PR7BlockerFixes_Audit.md); exact-SHA CI is on that PR. Pages deploys are now manual-only.
 
+## Engineering baseline — `main` at `19c4e04` (2026-11-05)
+
+`main` is the new baseline. PR #7, with PRs #8–#11 folded in, is merged; all required CI passed on the exact head, and `main` CI is green. See [main baseline audit](../../audits/2026-11-05_Claude_MainBaseline_Audit.md).
+
+| Verified technical work (CI and disposable databases) | Not yet verified (live acceptance) |
+| --- | --- |
+| Clerk bearer auth; workspace isolation; invite tokens hashed (escalation fixed) | Real Clerk staging sign-in with two accounts |
+| Expense validation; refunds labelled; per-currency cent-exact totals; single-scope CSV/PDF export | Physical-device mobile testing |
+| Personal-only mobile; HTTPS-only release sessions | Deployed CORS, webhook delivery, monitoring alerts |
+| Migrations, duplicate guard, backup/restore, container smoke | Real backup/restore on approved hosting |
+| Fail-closed gitleaks over every introduced commit; exact-fingerprint exceptions | Hosting, region and budget approval; operator identity; reviewed legal pages |
+| pnpm 10.34.7 with minimumReleaseAge enforced; zero audit advisories | Disposition of 5 unidentified Codacy findings |
+
+Publishing is manual only. Merging to `main` does not deploy, and no production migration or paid service exists. Proposed designs awaiting approval: [hosting](../design/HOSTING_OPTIONS.md) and [AWS cost integration v1](../design/AWS_COST_INTEGRATION_V1.md).
+
+## Roadmap from the baseline (owner direction, 2026-11-05)
+
+Primary customers are development teams and businesses managing cloud and AI/API spending. Each step needs the stated approval before work that spends money or touches external systems:
+
+1. **Secure, stable core.** Done at `19c4e04`. Open item: Codacy findings must be dispositioned before external access.
+2. **Commercial staging.** Needs hosting/region/budget approval; see [hosting](../design/HOSTING_OPTIONS.md).
+3. **Real end-to-end acceptance.** Run the matrix above on staging: two accounts, a device, CORS, webhooks, monitoring and a restore.
+4. **Controlled private B2B pilot.** Needs operator identity, reviewed privacy/terms and an approved pilot group.
+5. **One verified read-only provider integration.** AWS is proposed; see the [design](../design/AWS_COST_INTEGRATION_V1.md). It needs design approval and a CostPilot AWS account.
+6. **Public beta evaluation.**
+7. **AI cost analytics and optimization.** Simulated AI, provider sync, payments and remediation stay disabled until each is approved.
+
 ## Remaining sequence
 
 1. The existing Pages web URL is approved. Select/provision an approved API host and confirm its URL and public operator identity. Configure matching server Clerk/webhook secrets, authorized domains/Native API, and persistent encryption-key custody privately. Run the status-only environment preflight; the missing contact input is resolved.
