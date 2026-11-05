@@ -85,5 +85,5 @@ No migration was needed. On 200,000 local rows, the existing `expenses_user_date
 
 ## Follow-ups
 
-- **Phone filters:** the filter panel is a long single column on phones; a collapsible "Filters" control would help.
+- **Phone filters — DONE (follow-up branch `agent/claude/batch2-completion`):** below `sm`, only Search shows by default. A "More filters" button (`aria-expanded`, `aria-controls`, with a count of active filters) reveals the rest. The panel stays open while a filter is invalid, so errors are never hidden. Tests: 2 page tests, 1 unit test (`activeFilterCount`); the 375px check passes in all 24 combinations.
 - **Live sign-in:** a real Clerk sign-in was not exercised here, so the phone-width check uses stubbed sign-in.
