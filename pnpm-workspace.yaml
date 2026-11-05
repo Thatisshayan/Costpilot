@@ -25,10 +25,11 @@
 #     - typescript
 #
 # ============================================================================
-# ENFORCEMENT NOTE (2026-11-05): the pinned packageManager is pnpm 9.15.9, which
-# does not implement minimumReleaseAge (support starts in pnpm 10.16). Until the
-# pnpm upgrade in docs/governance/DEFERRED_WORK.md lands, this setting is NOT
-# enforced; protection comes from the frozen lockfile and the dependency audit.
+# ENFORCEMENT (2026-11-05): packageManager pins pnpm 10.34.7, which enforces
+# minimumReleaseAge (pnpm >= 10.16) and reads every setting in this file
+# (overrides, minimumReleaseAge*, allowBuilds, strictDepBuilds). This file is
+# the single source of truth for them; package.json no longer has a `pnpm`
+# block. Enforcement proof: audits/2026-11-05_Claude_Pnpm10Hardening_Audit.md.
 minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:
@@ -71,14 +72,6 @@ catalog:
   zod: ^4.6.6
 
 autoInstallPeers: false
-
-onlyBuiltDependencies:
-  - '@clerk/shared'
-  - '@swc/core'
-  - esbuild
-  - msgpackr-extract
-  - msw
-  - unrs-resolver
 
 overrides:
   "glob@>=13.0.0 <14.0.2": "14.0.2"
@@ -124,11 +117,24 @@ overrides:
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
 
+# Dependency lifecycle scripts (pnpm 10 blocks them by default).
+# Every package installed on Linux (CI, Docker) with an install script is listed
+# here, so the decision is explicit; strictDepBuilds fails the install when a
+# new dependency brings an unreviewed script. Review before adding `true`.
+# The former onlyBuiltDependencies entries @clerk/shared, @swc/core,
+# msgpackr-extract and msw were dropped: none is in the lockfile with an
+# install script (msgpackr-extract, @swc/core and msw are not in it at all).
+strictDepBuilds: true
+
 allowBuilds:
-  '@clerk/shared': true
-  msgpackr-extract: true
+  # postinstall (install.js) verifies the platform binary matches the pinned
+  # esbuild version and fetches it with an integrity check if the optional
+  # platform package is missing. Used by the api-server build, tsx and drizzle-kit.
   esbuild: true
-  '@swc/core': true
-  msw: true
-  unrs-resolver: true
-  core-js: true
+  # Not required: these postinstall scripts only print donation banners.
+  core-js: false
+  browser-tabs-lock: false
+  # Not required: napi-postinstall only re-downloads the native binding when
+  # the optional platform package is missing; pnpm installs that package.
+  # Only eslint-import-resolver-typescript (mobile lint) uses it.
+  unrs-resolver: false
