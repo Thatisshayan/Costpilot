@@ -8,7 +8,7 @@ Launch readiness: [closure plan](docs/governance/LAUNCH_PLAN.md) and [current au
 
 | Layer | Technology |
 |-------|------------|
-| Package Manager | pnpm 9.x with workspaces |
+| Package Manager | pnpm 10.34.7 (pinned) with workspaces |
 | Language | TypeScript 5.9+ |
 | API Server | Express 5 |
 | Database | PostgreSQL 16 + Drizzle ORM |
@@ -39,7 +39,7 @@ costpilot/
 
 ### Prerequisites
 - Node.js 22.13+ (Node 22 is used in CI/production)
-- pnpm 9.x
+- pnpm 10.34.7 (pinned in `package.json` `packageManager`; `corepack enable` selects it). pnpm 9 does not read the supply-chain settings in `pnpm-workspace.yaml` (`minimumReleaseAge`, `overrides`, `allowBuilds`), so do not install with it.
 - Docker (for PostgreSQL/Redis)
 
 ### Installation
