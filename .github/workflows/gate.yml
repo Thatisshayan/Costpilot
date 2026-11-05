@@ -16,6 +16,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history so the secret scan can cover every commit the PR or push introduces.
+          fetch-depth: 0
 
       - name: Setup pnpm
         if: ${{ hashFiles('pnpm-lock.yaml') != '' }}
@@ -36,10 +39,35 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install gitleaks
+      - name: Install gitleaks (checksum-verified)
+        env:
+          # SHA-256 of gitleaks_8.21.2_linux_x64.tar.gz from the official release checksums file.
+          GITLEAKS_SHA256: 5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
-            | tar -xz -C /usr/local/bin gitleaks
+          curl -sSfL -o /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz
+          echo "$GITLEAKS_SHA256  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Select secret-scan commit range
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            range="$PR_BASE..$PR_HEAD"
+          elif [ -n "$PUSH_BEFORE" ] && ! printf '%s' "$PUSH_BEFORE" | grep -qE '^0+$' \
+               && git merge-base --is-ancestor "$PUSH_BEFORE" "$PUSH_AFTER" 2>/dev/null; then
+            range="$PUSH_BEFORE..$PUSH_AFTER"
+          else
+            # New branch or force-push: everything not yet on main.
+            range="origin/main..$PUSH_AFTER"
+          fi
+          echo "Secret-scan range: $range ($(git rev-list --count "$range") commits)"
+          echo "SECRET_SCAN_RANGE=$range" >> "$GITHUB_ENV"
 
       - name: Run governance verification
         run: bash scripts/verify.sh
