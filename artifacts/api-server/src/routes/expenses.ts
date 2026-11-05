@@ -6,7 +6,7 @@ import {
   projectsTable,
   workspaceMembersTable,
 } from "@workspace/db";
-import { and, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import {
   CreateExpenseBody,
   UpdateExpenseBody,
@@ -18,6 +18,8 @@ import { getWorkspaceMember } from "../middlewares/authz";
 import { resourceScope } from "../lib/resource-scope";
 import { expenseFieldIssue, normalizeExpenseInput } from "../lib/money";
 import { z } from "zod";
+import { ExpenseSearchQuery, searchFilters } from "../lib/expense-search";
+import { filterConditions, fromCents, projectJoin, scopeCondition, toCents, vendorJoin } from "../lib/spend";
 
 const ImportBatchBody = z.object({
   transactions: z.array(z.any()).min(1).max(500),
@@ -183,6 +185,61 @@ router.post("/", async (req, res) => {
     platformName,
     projectName,
     createdAt: expense.createdAt.toISOString(),
+  });
+});
+
+// Server-side search over one scope (Personal or one workspace), with the same filters and
+// money semantics as the dashboard summary and exports.
+router.get("/search", async (req, res) => {
+  const parsed = ExpenseSearchQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Bad Request", message: parsed.error.issues.map(i => `${i.path.join(".") || "query"}: ${i.message}`).join("; ") });
+    return;
+  }
+  const userId = req.userId!;
+  const { workspaceId = null, sort, limit, offset } = parsed.data;
+  if (workspaceId !== null && !(await getWorkspaceMember(workspaceId, userId))) {
+    res.status(403).json({ error: "Forbidden", message: "Workspace membership required" });
+    return;
+  }
+  const where = and(scopeCondition({ userId, workspaceId }), ...filterConditions(searchFilters(parsed.data)));
+  const order = {
+    date_desc: [desc(expensesTable.date), desc(expensesTable.id)],
+    date_asc: [asc(expensesTable.date), asc(expensesTable.id)],
+    amount_desc: [desc(expensesTable.amount), desc(expensesTable.id)],
+    amount_asc: [asc(expensesTable.amount), asc(expensesTable.id)],
+  }[sort];
+  const [items, totals] = await Promise.all([
+    db.select({
+      id: expensesTable.id,
+      workspaceId: expensesTable.workspaceId,
+      platformId: expensesTable.platformId,
+      platformName: platformsTable.name,
+      projectId: expensesTable.projectId,
+      projectName: projectsTable.name,
+      amount: expensesTable.amount,
+      currency: expensesTable.currency,
+      description: expensesTable.description,
+      category: expensesTable.category,
+      date: expensesTable.date,
+      createdAt: expensesTable.createdAt,
+    }).from(expensesTable)
+      .leftJoin(platformsTable, vendorJoin).leftJoin(projectsTable, projectJoin)
+      .where(where).orderBy(...order).limit(limit).offset(offset),
+    db.select({
+      currency: expensesTable.currency,
+      net: sql<string>`sum(${expensesTable.amount})::numeric(20,2)::text`,
+      count: sql<number>`count(*)::int`,
+    }).from(expensesTable)
+      .leftJoin(platformsTable, vendorJoin).leftJoin(projectsTable, projectJoin)
+      .where(where).groupBy(expensesTable.currency).orderBy(expensesTable.currency),
+  ]);
+  res.json({
+    items: items.map(e => ({ ...e, amount: Number(e.amount), createdAt: e.createdAt.toISOString() })),
+    total: totals.reduce((n, t) => n + t.count, 0),
+    limit,
+    offset,
+    totals: totals.map(t => ({ currency: t.currency, net: fromCents(toCents(t.net)), count: t.count })),
   });
 });
 

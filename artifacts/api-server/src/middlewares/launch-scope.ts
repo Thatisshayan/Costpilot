@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 
-const core = new Set(["healthz", "expenses", "projects", "platforms", "workspaces", "exports"]);
+const core = new Set(["healthz", "expenses", "projects", "platforms", "workspaces", "exports", "spend"]);
 
 export function launchScope(req: Request, res: Response, next: NextFunction) {
   const path = req.path.split("/").filter(Boolean);

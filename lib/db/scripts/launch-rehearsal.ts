@@ -165,7 +165,7 @@ try {
   const personalText = await personalCsv.text();
   assert(personalText.includes("personal fixture") && !personalText.includes("shared fixture"));
   assert(personalText.startsWith('ID,Date,Type,Amount'), "CSV states the entry type explicitly");
-  assert(/"Refund\/credit","-4\.5","EUR"/.test(personalText), "refunds export with an explicit type and a signed amount");
+  assert(/"Refund\/credit","-4\.50","EUR"/.test(personalText), "refunds export with an explicit type and the exact signed 2-decimal amount");
   const sharedCsv = await call("launch-viewer", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: workspace.id });
   assert.equal(sharedCsv.status, 200);
   const sharedText = await sharedCsv.text();
@@ -190,6 +190,111 @@ try {
   const attempts = await Promise.all([call("launch-c", "/workspaces/accept-invite", "POST", { token }), call("launch-d", "/workspaces/accept-invite", "POST", { token })]);
   assert.deepEqual(attempts.map(a => a.status).sort(), [200, 400]);
   assert.equal((await call("launch-a", "/remediation/execute", "POST", { actionId: 1 })).status, 503);
+
+  // ---- Batch 2: monthly spend summary, expense search and export agree to the cent ----
+  const [ws2] = await db.insert(ws).values({ name: "Spend fixture", slug: `spend-${Date.now()}`, ownerId: "launch-a" }).returning();
+  await db.insert(members).values([
+    { workspaceId: ws2.id, userId: "launch-a", email: "a@example.test", role: "owner" },
+    { workspaceId: ws2.id, userId: "launch-c", email: "c@example.test", role: "viewer" },
+  ]);
+  const [aws] = await db.insert(platforms).values({ userId: "launch-a", workspaceId: ws2.id, name: "AWS" }).returning();
+  const [openai] = await db.insert(platforms).values({ userId: "launch-a", workspaceId: ws2.id, name: "OpenAI" }).returning();
+  const [checkout] = await db.insert(projects).values({ userId: "launch-a", workspaceId: ws2.id, name: "Checkout" }).returning();
+  const row = (amount: string, currency: string, date: string, extra: Record<string, unknown> = {}) =>
+    ({ userId: "launch-a", workspaceId: ws2.id, amount, currency, date, ...extra });
+  await db.insert(expenses).values([
+    row("100.10", "USD", "2026-09-03", { platformId: aws.id, projectId: checkout.id, category: "Compute", description: "September compute" }),
+    row("0.20", "USD", "2026-09-30", { platformId: aws.id, category: "Compute" }),
+    row("-20.00", "USD", "2026-09-15", { platformId: aws.id, description: "Support credit" }),
+    row("50.00", "EUR", "2026-09-10", { platformId: openai.id, category: "AI / LLM API", description: "API usage" }),
+    row("1500.00", "JPY", "2026-09-20", { category: "SaaS subscription" }),
+    row("80.00", "USD", "2026-08-31", { platformId: aws.id }),
+    row("5.00", "USD", "2026-10-01", { platformId: aws.id }),
+    { userId: "launch-b", amount: "999.99", currency: "USD", date: "2026-09-05", description: "other account" },
+  ]);
+  const summaryRes = await call("launch-a", `/spend/summary?workspaceId=${ws2.id}&month=2026-09`);
+  assert.equal(summaryRes.status, 200);
+  type Cur = { currency: string; net: string; charges: string; credits: string; count: number; previousNet: string; changeAmount: string; changePercent: number | null;
+    byVendor: { id: number | null; name: string | null; net: string }[]; byProject: { id: number | null; net: string }[]; byCategory: { name: string | null; net: string }[]; trend: { month: string; net: string }[] };
+  const summary = await summaryRes.json() as { period: { isPartial: boolean; through: string }; comparison: { basis: string; through: string }; currencies: Cur[] };
+  assert.deepEqual(summary.comparison, { month: "2026-08", start: "2026-08-01", through: "2026-08-31", basis: "full-month" });
+  assert.equal(summary.period.isPartial, false);
+  assert.deepEqual(summary.currencies.map(c => c.currency), ["EUR", "JPY", "USD"], "one row per currency, never combined");
+  const usd = summary.currencies.find(c => c.currency === "USD")!;
+  assert.deepEqual([usd.net, usd.charges, usd.credits, usd.count, usd.previousNet, usd.changeAmount, usd.changePercent], ["80.30", "100.30", "-20.00", 3, "80.00", "0.30", 0.4]);
+  assert.deepEqual(usd.byVendor.map(v => [v.name, v.net]), [["AWS", "80.30"]]);
+  assert.deepEqual(usd.byProject.map(p => [p.id, p.net]), [[checkout.id, "100.10"], [null, "-19.80"]]);
+  assert.deepEqual(usd.byCategory.map(c => [c.name, c.net]), [["Compute", "100.30"], [null, "-20.00"]]);
+  assert.deepEqual(usd.trend.slice(-3).map(t => [t.month, t.net]), [["2026-07", "0.00"], ["2026-08", "80.00"], ["2026-09", "80.30"]]);
+  const eur = summary.currencies.find(c => c.currency === "EUR")!;
+  assert.deepEqual([eur.net, eur.previousNet, eur.changePercent], ["50.00", "0.00", null], "no percentage against a zero baseline");
+  assert.equal(summary.currencies.find(c => c.currency === "JPY")!.net, "1500.00");
+  assert.equal((await call("launch-c", `/spend/summary?workspaceId=${ws2.id}&month=2026-09`)).status, 200, "viewers can read the summary");
+  assert.equal((await call("launch-b", `/spend/summary?workspaceId=${ws2.id}&month=2026-09`)).status, 403, "non-members cannot");
+  const personalB = await (await call("launch-b", "/spend/summary?month=2026-09")).json() as { currencies: Cur[] };
+  assert.deepEqual(personalB.currencies.map(c => [c.currency, c.net]), [["USD", "999.99"]], "Personal scope holds only the caller's own rows");
+  assert.equal((await call("launch-a", "/spend/summary?month=2999-01")).status, 400, "future months are rejected");
+  assert.equal((await call("launch-a", "/spend/summary?month=2026-13")).status, 400);
+  assert.equal((await call("launch-a", "/spend/summary?unknown=1")).status, 400);
+
+  // Current (partial) month is compared with the same days of the previous month.
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonth = today.slice(0, 7);
+  const day = Number(today.slice(8, 10));
+  const [py, pm] = [Number(thisMonth.slice(0, 4)) - (thisMonth.endsWith("-01") ? 1 : 0), thisMonth.endsWith("-01") ? 12 : Number(thisMonth.slice(5, 7)) - 1];
+  const prevMonth = `${py}-${String(pm).padStart(2, "0")}`;
+  const prevLast = new Date(Date.UTC(py, pm, 0)).getUTCDate();
+  await db.insert(expenses).values([
+    row("10.00", "CHF", today),
+    row("4.00", "CHF", `${prevMonth}-01`),
+    ...(Math.min(day, prevLast) < prevLast ? [row("6.00", "CHF", `${prevMonth}-${String(prevLast).padStart(2, "0")}`)] : []),
+  ]);
+  const current = await (await call("launch-a", `/spend/summary?workspaceId=${ws2.id}`)).json() as { period: { month: string; isPartial: boolean }; comparison: { basis: string }; currencies: Cur[] };
+  assert.equal(current.period.month, thisMonth);
+  if (current.period.isPartial) {
+    assert.equal(current.comparison.basis, "same-days");
+    assert.equal(current.currencies.find(c => c.currency === "CHF")!.previousNet, "4.00", "later days of the previous month are not compared with a partial month");
+  }
+
+  // Search: server-side filters, sort, pagination and per-currency totals over all matches.
+  type Page = { items: { id: number; amount: number; currency: string; platformName: string | null; projectName: string | null }[]; total: number; totals: { currency: string; net: string; count: number }[] };
+  const range = `workspaceId=${ws2.id}&from=2026-09-01&to=2026-09-30`;
+  const page1 = await (await call("launch-c", `/expenses/search?${range}&sort=amount_desc&limit=2`)).json() as Page;
+  assert.equal(page1.total, 5);
+  assert.deepEqual(page1.items.map(i => i.amount), [1500, 100.1]);
+  assert.deepEqual(page1.totals.map(t => [t.currency, t.net, t.count]), [["EUR", "50.00", 1], ["JPY", "1500.00", 1], ["USD", "80.30", 3]], "search totals equal the summary");
+  const page3 = await (await call("launch-c", `/expenses/search?${range}&sort=amount_desc&limit=2&offset=4`)).json() as Page;
+  assert.deepEqual(page3.items.map(i => i.amount), [-20]);
+  const byText = await (await call("launch-a", `/expenses/search?${range}&q=openai`)).json() as Page;
+  assert.deepEqual(byText.items.map(i => i.currency), ["EUR"], "q matches vendor names");
+  const literal = await (await call("launch-a", `/expenses/search?${range}&q=${encodeURIComponent("%")}`)).json() as Page;
+  assert.equal(literal.total, 0, "LIKE wildcards in q are matched literally");
+  const noVendor = await (await call("launch-a", `/expenses/search?${range}&platformId=none`)).json() as Page;
+  assert.deepEqual(noVendor.items.map(i => i.currency), ["JPY"]);
+  const credits = await (await call("launch-a", `/expenses/search?${range}&entryType=credit`)).json() as Page;
+  assert.deepEqual(credits.items.map(i => i.amount), [-20]);
+  const big = await (await call("launch-a", `/expenses/search?${range}&minAmount=50&maxAmount=100.10&currency=USD`)).json() as Page;
+  assert.deepEqual(big.items.map(i => [i.amount, i.platformName, i.projectName]), [[100.1, "AWS", "Checkout"]]);
+  assert.equal((await call("launch-b", `/expenses/search?workspaceId=${ws2.id}`)).status, 403);
+  const bOwn = await (await call("launch-b", "/expenses/search?from=2026-09-01&to=2026-09-30")).json() as Page;
+  assert.deepEqual(bOwn.items.map(i => i.amount), [999.99], "Personal search never returns workspace or other-account rows");
+  for (const bad of ["from=2026-02-30", "minAmount=1.234", "limit=101", "sort=evil", "from=2026-09-30&to=2026-09-01", "nope=1"]) {
+    assert.equal((await call("launch-a", `/expenses/search?${bad}`)).status, 400, `rejects ${bad}`);
+  }
+
+  // Export with the same filters: per-currency row sums equal the dashboard summary.
+  const exportRes = await call("launch-c", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { from: "2026-09-01", to: "2026-09-30" } });
+  assert.equal(exportRes.status, 200);
+  const lines = (await exportRes.text()).trim().split("\n");
+  assert.equal(lines[0], "ID,Date,Type,Amount,Currency,Description,Category,Vendor,Project,Scope");
+  const sums = new Map<string, number>();
+  for (const line of lines.slice(1)) {
+    const cells = line.match(/"((?:[^"]|"")*)"/g)!.map(c => c.slice(1, -1));
+    assert.equal(cells[9], "Spend fixture", "every row names its workspace");
+    sums.set(cells[4], (sums.get(cells[4]) ?? 0) + Math.round(Number(cells[3]) * 100));
+  }
+  assert.deepEqual([...sums].sort(), [["EUR", 5000], ["JPY", 150000], ["USD", 8030]], "export totals equal the summary (in cents)");
+  assert.equal((await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { evil: 1 } })).status, 400);
   await db.insert(expenses).values(Array.from({ length: 1000 }, (_, i) => ({ userId: "launch-a", workspaceId: workspace.id, amount: "1.00", date: "2026-11-04", description: `load fixture ${i}` })));
   const timings: number[] = [];
   for (let batch = 0; batch < 4; batch++) await Promise.all(Array.from({ length: 5 }, async () => {

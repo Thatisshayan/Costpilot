@@ -337,6 +337,65 @@ paths:
         "403":
           description: Not a member with write access to a referenced workspace
 
+  /expenses/search:
+    get:
+      operationId: searchExpenses
+      tags: [expenses]
+      summary: Search, filter, sort and page the expenses of one scope
+      description: Omit workspaceId for Personal expenses; a workspace id requires active membership (any role). Totals are per currency over all matching rows (not just the page) and never converted.
+      parameters:
+        - { name: workspaceId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 100 }, description: "Text in description, category, vendor or project name" }
+        - { name: from, in: query, schema: { type: string, format: date }, description: "Earliest expense date (inclusive)" }
+        - { name: to, in: query, schema: { type: string, format: date }, description: "Latest expense date (inclusive)" }
+        - { name: minAmount, in: query, schema: { type: string, pattern: '^-?\d{1,8}(\.\d{1,2})?$' }, description: "Minimum signed amount (credits are negative)" }
+        - { name: maxAmount, in: query, schema: { type: string, pattern: '^-?\d{1,8}(\.\d{1,2})?$' }, description: "Maximum signed amount" }
+        - { name: platformId, in: query, schema: { type: string, pattern: '^(none|[1-9]\d*)$' }, description: "Vendor id, or none for expenses without a vendor" }
+        - { name: projectId, in: query, schema: { type: string, pattern: '^(none|[1-9]\d*)$' }, description: "Project id, or none" }
+        - { name: category, in: query, schema: { type: string, maxLength: 100 }, description: "Exact category; empty string for uncategorised" }
+        - { name: currency, in: query, schema: { type: string, pattern: '^[A-Z]{3}$' } }
+        - { name: entryType, in: query, schema: { type: string, enum: [expense, credit] } }
+        - { name: sort, in: query, schema: { type: string, enum: [date_desc, date_asc, amount_desc, amount_asc], default: date_desc } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        "200":
+          description: One page of matching expenses with per-currency totals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpenseSearchResult"
+        "400":
+          description: Invalid query
+        "403":
+          description: Not an active member of the requested workspace
+
+  /spend/summary:
+    get:
+      operationId: getSpendSummary
+      tags: [spend]
+      summary: Monthly spend for one scope, per currency, with breakdowns and a comparison
+      description: |
+        Totals are computed in the database from stored expenses, per currency and never converted.
+        net = charges (amounts >= 0) + credits (negative amounts). An expense counts in the month of its date.
+        The current month runs to today (UTC) and is compared with the same days of the previous month;
+        a complete month is compared with the complete previous month. changePercent is null when the
+        previous net is zero or negative.
+      parameters:
+        - { name: workspaceId, in: query, schema: { type: integer, minimum: 1 }, description: "Omit for Personal" }
+        - { name: month, in: query, schema: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }, description: "YYYY-MM; defaults to the current month. Future months are rejected." }
+      responses:
+        "200":
+          description: Spend summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendSummary"
+        "400":
+          description: Invalid or future month
+        "403":
+          description: Not an active member of the requested workspace
+
   /subscriptions:
     get:
       x-costpilot-availability: disabled  # blocked by the API launch scope (503)
@@ -803,7 +862,7 @@ paths:
       operationId: generateExpenseExport
       tags: [exports]
       summary: Export recorded expenses for one scope as CSV or PDF
-      description: Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Amounts are listed per row and never converted or totalled across currencies.
+      description: Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Optional filters match GET /expenses/search. Amounts are exact 2-decimal values per row; the PDF adds net totals per currency, never converted.
       requestBody:
         required: true
         content:
@@ -823,6 +882,8 @@ paths:
                   type: integer
                   minimum: 1
                   nullable: true
+                filters:
+                  $ref: "#/components/schemas/ExpenseFilters"
       responses:
         "200":
           description: Export file (Content-Disposition carries the filename)
@@ -1336,6 +1397,105 @@ components:
           type: string
           deprecated: true
           description: Ignored. The server generates a unique identifier; display names need not be unique.
+
+    ExpenseFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        q: { type: string, minLength: 1, maxLength: 100 }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        minAmount: { type: string, pattern: '^-?\d{1,8}(\.\d{1,2})?$' }
+        maxAmount: { type: string, pattern: '^-?\d{1,8}(\.\d{1,2})?$' }
+        platformId: { type: string, pattern: '^(none|[1-9]\d*)$' }
+        projectId: { type: string, pattern: '^(none|[1-9]\d*)$' }
+        category: { type: string, maxLength: 100 }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        entryType: { type: string, enum: [expense, credit] }
+
+    CurrencyTotal:
+      type: object
+      required: [currency, net, count]
+      properties:
+        currency: { type: string }
+        net: { type: string, description: "Exact signed amount with 2 decimals" }
+        count: { type: integer }
+
+    ExpenseSearchResult:
+      type: object
+      required: [items, total, limit, offset, totals]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+        totals:
+          type: array
+          items:
+            $ref: "#/components/schemas/CurrencyTotal"
+
+    SpendGroup:
+      type: object
+      required: [name, net, count]
+      properties:
+        id: { type: ["integer", "null"], description: "Vendor or project id; null for unassigned" }
+        name: { type: ["string", "null"], description: "Null for unassigned" }
+        net: { type: string }
+        count: { type: integer }
+
+    SpendCurrency:
+      type: object
+      required: [currency, net, charges, credits, count, previousNet, changeAmount, changePercent, byVendor, byProject, byCategory, trend]
+      properties:
+        currency: { type: string }
+        net: { type: string }
+        charges: { type: string }
+        credits: { type: string, description: "Sum of refunds/credits (zero or negative)" }
+        count: { type: integer }
+        previousNet: { type: string }
+        changeAmount: { type: string }
+        changePercent: { type: ["number", "null"], description: "Null when the previous net is zero or negative" }
+        byVendor: { type: array, items: { $ref: "#/components/schemas/SpendGroup" } }
+        byProject: { type: array, items: { $ref: "#/components/schemas/SpendGroup" } }
+        byCategory: { type: array, items: { $ref: "#/components/schemas/SpendGroup" } }
+        trend:
+          type: array
+          items:
+            type: object
+            required: [month, net]
+            properties:
+              month: { type: string }
+              net: { type: string }
+
+    SpendSummary:
+      type: object
+      required: [workspaceId, period, comparison, currencies]
+      properties:
+        workspaceId: { type: ["integer", "null"] }
+        period:
+          type: object
+          required: [month, start, end, through, isPartial]
+          properties:
+            month: { type: string }
+            start: { type: string }
+            end: { type: string }
+            through: { type: string }
+            isPartial: { type: boolean }
+        comparison:
+          type: object
+          required: [month, start, through, basis]
+          properties:
+            month: { type: string }
+            start: { type: string }
+            through: { type: string }
+            basis: { type: string, enum: [full-month, same-days] }
+        currencies:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpendCurrency"
 
     MessageResponse:
       type: object

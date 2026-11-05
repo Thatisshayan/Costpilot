@@ -5,6 +5,7 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { ExpenseFilters } from './expenseFilters';
 import type { GenerateExpenseExportBodyFormat } from './generateExpenseExportBodyFormat';
 import type { GenerateExpenseExportBodyModule } from './generateExpenseExportBodyModule';
 
@@ -16,4 +17,5 @@ export type GenerateExpenseExportBody = {
      * @nullable
      */
   workspaceId?: number | null;
+  filters?: ExpenseFilters;
 };
