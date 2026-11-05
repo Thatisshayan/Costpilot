@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/context/workspace-context";
 import { useState } from "react";
 import {
   useListExpenses,
@@ -61,9 +62,13 @@ const emptyForm = (): FormState => ({
 
 export default function Expenses() {
   const qc = useQueryClient();
-  const { data: expenses = [], isLoading } = useListExpenses();
-  const { data: platforms = [] } = useListPlatforms();
-  const { data: projects = [] } = useListProjects();
+  const { data: accessibleExpenses = [], isLoading, isError } = useListExpenses();
+  const { data: accessiblePlatforms = [] } = useListPlatforms();
+  const { data: accessibleProjects = [] } = useListProjects();
+  const { activeWorkspaceId } = useWorkspace();
+  const platforms = accessiblePlatforms.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
+  const projects = accessibleProjects.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
+  const expenses = accessibleExpenses.filter(e => (e.workspaceId ?? null) === activeWorkspaceId);
   const createMutation = useCreateExpense();
   const [currency] = useCurrency();
   const updateMutation = useUpdateExpense();
@@ -119,7 +124,7 @@ export default function Expenses() {
         await updateMutation.mutateAsync({ id: editTarget.id, data: payload });
         toast.success("Expense updated successfully.");
       } else {
-        await createMutation.mutateAsync({ data: payload });
+        await createMutation.mutateAsync({ data: { ...payload, ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}) } });
         toast.success("Expense logged successfully.");
       }
       invalidate();
@@ -140,41 +145,8 @@ export default function Expenses() {
     setDeleteId(null);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const result = await uploadReceipt({ data: { receipt: file } });
-      if (result.success && result.data) {
-        const { amount, platform, category, date, description } = result.data;
-        
-        setEditTarget(null);
-        setForm({
-          ...emptyForm(),
-          amount: amount ? String(amount) : "",
-          category: category || "API Usage",
-          date: date || new Date().toISOString().slice(0, 10),
-          description: description || "",
-        });
-
-        // Fuzzy match platform if it's a string from AI
-        if (platform) {
-          const match = platforms.find(p => p.name.toLowerCase().includes(platform!.toLowerCase()));
-          if (match) {
-            setForm(prev => ({ ...prev, platformId: String(match.id) }));
-          }
-        }
-        
-        setDialogOpen(true);
-        toast.success("Receipt parsed! Please verify the details.");
-      }
-    } catch (err) {
-      toast.error("Failed to parse receipt. Please check your OpenAI API key.");
-    } finally {
-      // Clear input
-      e.target.value = "";
-    }
+  const handleFileChange = async (_e: React.ChangeEvent<HTMLInputElement>) => {
+    toast.error("Receipt scanning is not enabled for this release. Enter expenses manually.");
   };
 
   return (
@@ -210,7 +182,7 @@ export default function Expenses() {
       <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-md">
         <h2 className="text-lg font-semibold text-white mb-5">Expense History</h2>
         
-        {isLoading ? (
+        {isError ? <p role="alert">Expenses could not be loaded. Please refresh and try again.</p> : isLoading ? (
           <div className="text-center py-12 text-slate-500 font-medium">Loading history...</div>
         ) : expenses && expenses.length > 0 ? (
           <div className="overflow-x-auto">

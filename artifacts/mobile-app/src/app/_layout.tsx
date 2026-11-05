@@ -4,7 +4,7 @@ import { DarkTheme, DefaultTheme, Redirect, ThemeProvider, useSegments } from 'e
 import { useColorScheme } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
@@ -18,6 +18,7 @@ function AuthenticatedTabs() {
   const colorScheme = useColorScheme();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const segments = useSegments();
+  const [authReady, setAuthReady] = useState(false);
   const [loaded, error] = useFonts({
     'Clash Display': require('../../assets/fonts/ClashDisplay-Regular.ttf'),
     'Plus Jakarta Sans': require('../../assets/fonts/PlusJakartaSans[wght].ttf'),
@@ -37,10 +38,11 @@ function AuthenticatedTabs() {
 
   useEffect(() => {
     setApiAuthTokenGetter(() => isSignedIn ? getToken() : null);
+    setAuthReady(true);
     return () => setApiAuthTokenGetter(null);
   }, [getToken, isSignedIn]);
 
-  if (!loaded || !isLoaded) {
+  if (!loaded || !isLoaded || !authReady) {
     return null;
   }
 
@@ -48,6 +50,8 @@ function AuthenticatedTabs() {
     return <Redirect href="/login" />;
   }
 
+  const screen = segments[segments.length - 1];
+  if (screen && !["index", "expenses", "add-expense", "login"].includes(screen)) return <Redirect href="/" />;
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />

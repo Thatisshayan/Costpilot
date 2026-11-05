@@ -1,24 +1,23 @@
-import { initSentry } from "./lib/sentry";
-import app from "./app";
-import { logger } from "./lib/logger";
-import { initCronJobs } from "./lib/cron-service";
+import { initSentry, flushMonitoring } from "./lib/sentry";
 import { validateEnv } from "./lib/env";
-
-validateEnv();
-
-initSentry();
+import { logger } from "./lib/logger";
 
 const env = validateEnv();
-const port = env.PORT;
-
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-
-  logger.info({ port: env.PORT }, "Server listening");
-
-  // Initialize background automation
-  initCronJobs();
+initSentry();
+const { default: app } = await import("./app");
+const { pool } = await import("@workspace/db");
+const server = app.listen(env.PORT, () => logger.info({ port: env.PORT }, "Server listening"));
+// Provider jobs are excluded from this launch runtime. A future worker needs a
+// distributed execution lock, deduplication and explicit provider authorization.
+let shuttingDown = false;
+for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  const deadline = setTimeout(() => process.exit(1), 15000);
+  deadline.unref();
+  server.close(async () => {
+    try { await pool.end(); await flushMonitoring(); process.exitCode = 0; }
+    catch { process.exitCode = 1; }
+    clearTimeout(deadline);
+  });
 });

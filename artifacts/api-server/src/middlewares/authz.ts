@@ -19,7 +19,8 @@ export async function getWorkspaceMember(
     .where(
       and(
         eq(workspaceMembersTable.workspaceId, workspaceId),
-        eq(workspaceMembersTable.userId, userId)
+        eq(workspaceMembersTable.userId, userId),
+        eq(workspaceMembersTable.status, "active")
       )
     );
   return member;

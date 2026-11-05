@@ -1,0 +1,32 @@
+name: Launch verification
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @workspace/api-spec run codegen
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-contracts
+          retention-days: 3
+          path: |
+            lib/api-client-react/src/generated
+            lib/api-zod/src/generated
+      - run: pnpm run build
+      - run: pnpm run test
+      - name: Check committed generated contracts
+        run: git diff --exit-code -- lib/api-client-react/src/generated lib/api-zod/src/generated

@@ -6,7 +6,7 @@ WORKDIR /app
 ENV CI=true
 
 # Copy root configurations (for pnpm monorepo structure)
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY lib/db/package.json ./lib/db/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/api-client-react/package.json ./lib/api-client-react/
@@ -34,7 +34,7 @@ ENV NODE_ENV=production
 RUN npm install -g pnpm@9.15.9
 
 # Copy root configs & dist from build stage
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY --from=builder /app/lib/db ./lib/db
 COPY --from=builder /app/lib/api-zod ./lib/api-zod
 COPY --from=builder /app/artifacts/api-server/package.json ./artifacts/api-server/

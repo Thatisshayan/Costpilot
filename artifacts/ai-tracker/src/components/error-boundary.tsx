@@ -1,3 +1,4 @@
+import { captureError } from "@/lib/sentry";
 import { Component, type ReactNode, type ErrorInfo } from "react";
 
 interface ErrorBoundaryProps {
@@ -21,7 +22,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("[ErrorBoundary]", error, errorInfo);
+    captureError(error);
   }
 
   render() {

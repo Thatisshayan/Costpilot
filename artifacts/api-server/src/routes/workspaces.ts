@@ -27,7 +27,7 @@ router.get("/", async (req, res) => {
     })
     .from(workspacesTable)
     .innerJoin(workspaceMembersTable, eq(workspacesTable.id, workspaceMembersTable.workspaceId))
-    .where(eq(workspaceMembersTable.userId, userId));
+    .where(and(eq(workspaceMembersTable.userId, userId), eq(workspaceMembersTable.status, "active")));
 
   res.json(workspaces);
 });
@@ -37,20 +37,10 @@ router.post("/", async (req, res) => {
   const userId = req.userId!;
   const { name, slug } = CreateWorkspaceBody.parse(req.body);
 
-  const [workspace] = await db
-    .insert(workspacesTable)
-    .values({
-      name,
-      slug,
-      ownerId: userId,
-    })
-    .returning();
-
-  await db.insert(workspaceMembersTable).values({
-    workspaceId: workspace.id,
-    userId,
-    role: "owner",
-    email: (req as any).userEmail || "unknown@example.com",
+  const workspace = await db.transaction(async tx => {
+    const [created] = await tx.insert(workspacesTable).values({ name, slug, ownerId: userId }).returning();
+    await tx.insert(workspaceMembersTable).values({ workspaceId: created.id, userId, role: "owner", email: req.userEmail || userId });
+    return created;
   });
 
   res.status(201).json(workspace);
@@ -61,7 +51,10 @@ router.get("/:id/members", requireWorkspaceMember(["owner", "admin", "viewer"]),
   const workspaceId = parseInt(req.params.id as string);
 
   const members = await db
-    .select()
+    .select({ id: workspaceMembersTable.id, workspaceId: workspaceMembersTable.workspaceId,
+      userId: workspaceMembersTable.userId, email: workspaceMembersTable.email,
+      role: workspaceMembersTable.role, status: workspaceMembersTable.status,
+      joinedAt: workspaceMembersTable.joinedAt, createdAt: workspaceMembersTable.createdAt })
     .from(workspaceMembersTable)
     .where(eq(workspaceMembersTable.workspaceId, workspaceId));
 
@@ -193,7 +186,8 @@ router.delete("/members/:memberId", async (req, res) => {
     .where(
       and(
         eq(workspaceMembersTable.workspaceId, memberToRemove.workspaceId),
-        eq(workspaceMembersTable.userId, currentUserId)
+        eq(workspaceMembersTable.userId, currentUserId),
+        eq(workspaceMembersTable.status, "active")
       )
     );
 
@@ -219,78 +213,34 @@ router.delete("/members/:memberId", async (req, res) => {
 
 // Accept Invite
 router.post("/accept-invite", async (req, res) => {
-  const { token } = req.body;
-  if (!token) {
-    res.status(400).json({ error: "Invite token is required" });
+  const token = req.body?.token;
+  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+    res.status(400).json({ error: "A valid invite token is required" });
     return;
   }
-
-  const [invite] = await db
-    .select()
-    .from(workspaceInvitesTable)
-    .where(eq(workspaceInvitesTable.token, token));
-
-  if (!invite) {
-    res.status(404).json({ error: "Invite not found" });
-    return;
-  }
-
-  if (invite.status !== "pending") {
-    res.status(400).json({ error: "Invite has already been " + invite.status });
-    return;
-  }
-
-  if (new Date() > new Date(invite.expiresAt)) {
-    await db
-      .update(workspaceInvitesTable)
-      .set({ status: "expired" })
-      .where(eq(workspaceInvitesTable.id, invite.id));
-
-    await db
-      .update(workspaceMembersTable)
-      .set({ status: "expired" })
-      .where(eq(workspaceMembersTable.inviteToken, token));
-
-    res.status(400).json({ error: "Invite has expired" });
-    return;
-  }
-
-  const userId = req.userId!;
-  const userEmail = (req as any).userEmail || invite.email;
-
-  await db
-    .update(workspaceInvitesTable)
-    .set({ status: "accepted" })
-    .where(eq(workspaceInvitesTable.id, invite.id));
-
-  const [updatedMember] = await db
-    .update(workspaceMembersTable)
-    .set({
-      userId,
-      email: userEmail,
-      status: "active",
-      inviteToken: null,
-    })
-    .where(eq(workspaceMembersTable.inviteToken, token))
-    .returning();
-
-  if (!updatedMember) {
-    const [newMember] = await db
-      .insert(workspaceMembersTable)
-      .values({
-        workspaceId: invite.workspaceId,
-        userId,
-        email: userEmail,
-        role: invite.role,
-        status: "active",
-      })
+  // The random invite token is a bearer capability. A signed-in account must
+  // explicitly accept it; possession, not an unverified email claim, grants access.
+  const result = await db.transaction(async tx => {
+    const [invite] = await tx.select().from(workspaceInvitesTable)
+      .where(eq(workspaceInvitesTable.token, token)).for("update");
+    if (!invite || invite.status !== "pending" || invite.expiresAt <= new Date()) {
+      return { status: 400, body: { error: "Invite is invalid, expired or already consumed" } };
+    }
+    // Serialize accepts for this workspace, including separate tokens for one user.
+    await tx.select().from(workspacesTable).where(eq(workspacesTable.id, invite.workspaceId)).for("update");
+    const [existing] = await tx.select().from(workspaceMembersTable).where(and(
+      eq(workspaceMembersTable.workspaceId, invite.workspaceId), eq(workspaceMembersTable.userId, req.userId!)
+    ));
+    if (existing) return { status: 409, body: { error: "Account already has a membership in this workspace" } };
+    const [member] = await tx.update(workspaceMembersTable)
+      .set({ userId: req.userId!, email: invite.email, status: "active", inviteToken: null })
+      .where(and(eq(workspaceMembersTable.inviteToken, token), eq(workspaceMembersTable.status, "pending")))
       .returning();
-
-    res.json({ message: "Invite accepted", member: newMember });
-    return;
-  }
-
-  res.json({ message: "Invite accepted", member: updatedMember });
+    if (!member) throw new Error("Pending invitation membership is missing");
+    await tx.update(workspaceInvitesTable).set({ status: "accepted" }).where(eq(workspaceInvitesTable.id, invite.id));
+    return { status: 200, body: { message: "Invite accepted", member } };
+  });
+  res.status(result.status).json(result.body);
 });
 
 // Get Workspace by invite token (for accept-invite page)

@@ -1212,6 +1212,10 @@ components:
       type: object
       required: [id, name, createdAt]
       properties:
+        workspaceId:
+          type: integer
+          nullable: true
+          minimum: 1
         id:
           type: integer
         name:
@@ -1235,6 +1239,10 @@ components:
       type: object
       required: [name]
       properties:
+        workspaceId:
+          type: integer
+          nullable: true
+          minimum: 1
         name:
           type: string
         website:
@@ -1283,6 +1291,10 @@ components:
       type: object
       required: [id, name, createdAt]
       properties:
+        workspaceId:
+          type: integer
+          nullable: true
+          minimum: 1
         id:
           type: integer
         name:
@@ -1300,6 +1312,10 @@ components:
       type: object
       required: [name]
       properties:
+        workspaceId:
+          type: integer
+          nullable: true
+          minimum: 1
         name:
           type: string
         description:

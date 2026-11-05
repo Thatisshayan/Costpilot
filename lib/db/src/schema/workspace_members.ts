@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { workspacesTable } from "./workspaces";
 
 export const workspaceMembersTable = pgTable("workspace_members", {
@@ -11,7 +11,7 @@ export const workspaceMembersTable = pgTable("workspace_members", {
   inviteToken: text("invite_token"),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, table => [uniqueIndex("workspace_members_workspace_user_unique").on(table.workspaceId, table.userId)]);
 
 export const workspaceInvitesTable = pgTable("workspace_invites", {
   id: serial("id").primaryKey(),

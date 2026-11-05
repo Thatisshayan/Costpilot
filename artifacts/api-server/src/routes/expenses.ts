@@ -15,6 +15,7 @@ import {
   DeleteExpenseParams,
 } from "@workspace/api-zod";
 import { getWorkspaceMember } from "../middlewares/authz";
+import { resourceScope } from "../lib/resource-scope";
 import { z } from "zod";
 
 const ImportBatchBody = z.object({
@@ -28,7 +29,7 @@ async function memberWorkspaceIds(userId: string): Promise<number[]> {
   const memberships = await db
     .select({ workspaceId: workspaceMembersTable.workspaceId })
     .from(workspaceMembersTable)
-    .where(eq(workspaceMembersTable.userId, userId));
+    .where(and(eq(workspaceMembersTable.userId, userId), eq(workspaceMembersTable.status, "active")));
   return memberships.map((membership) => membership.workspaceId);
 }
 
@@ -246,9 +247,7 @@ router.patch("/:id", async (req, res) => {
   const [expense] = await db
     .update(expensesTable)
     .set(updateData)
-    .where(existing.workspaceId === null
-      ? and(eq(expensesTable.id, id), eq(expensesTable.userId, req.userId!), isNull(expensesTable.workspaceId))
-      : and(eq(expensesTable.id, id), eq(expensesTable.workspaceId, existing.workspaceId)))
+    .where(and(eq(expensesTable.id, id), resourceScope(expensesTable, req.userId!, true)))
     .returning();
   if (!expense) {
     res.status(404).json({ error: "Not found" });
@@ -278,9 +277,7 @@ router.delete("/:id", async (req, res) => {
     res.status(403).json({ error: "Workspace role cannot delete expenses" });
     return;
   }
-  await db.delete(expensesTable).where(existing.workspaceId === null
-    ? and(eq(expensesTable.id, id), eq(expensesTable.userId, req.userId!), isNull(expensesTable.workspaceId))
-    : and(eq(expensesTable.id, id), eq(expensesTable.workspaceId, existing.workspaceId)));
+  await db.delete(expensesTable).where(and(eq(expensesTable.id, id), resourceScope(expensesTable, req.userId!, true)));
   res.status(204).send();
 });
 

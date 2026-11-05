@@ -1,0 +1,17 @@
+**/node_modules
+**/.env
+**/.env.*
+**/.git
+**/dist
+**/coverage
+.claude
+.aws
+.codex
+.agents
+audits/private
+audits/private-*
+.launch-modules
+*.p8
+*.pem
+*.key
+**/*credential*

@@ -18,12 +18,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { apiFetch } from '@/lib/api';
 
 type Expense = {
-  id: string;
+  id: number;
   amount: number;
   description: string;
-  platformName: string;
+  platformName: string | null;
   category: string;
-  spentAt: string;
+  date: string;
+  currency: string;
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -52,7 +53,7 @@ function formatDate(dateStr: string): string {
 
 function ExpenseCard({ item }: { item: Expense }) {
   const theme = useTheme();
-  const platformColor = getPlatformColor(item.platformName);
+  const platformColor = getPlatformColor(item.platformName ?? "General");
 
   return (
     <ThemedView
@@ -66,12 +67,12 @@ function ExpenseCard({ item }: { item: Expense }) {
             {item.description || item.category}
           </ThemedText>
           <ThemedText style={styles.expenseMeta}>
-            {item.platformName} · {formatDate(item.spentAt)}
+            {item.platformName} · {formatDate(item.date)}
           </ThemedText>
         </View>
       </View>
       <ThemedText style={styles.expenseAmount}>
-        ${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {item.currency} {item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </ThemedText>
     </ThemedView>
   );

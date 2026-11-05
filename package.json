@@ -13,10 +13,8 @@
   },
   "private": true,
   "devDependencies": {
-    "@esbuild/win32-x64": "^0.28.0",
-    "@rollup/rollup-win32-x64-msvc": "^4.60.4",
     "@testing-library/dom": "^10.4.1",
-    "esbuild": "0.28.0",
+    "esbuild": "0.28.1",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
   },
@@ -27,7 +25,7 @@
   "pnpm": {
     "overrides": {
       "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0",
-      "esbuild": "0.28.0",
+      "esbuild": "0.28.1",
       "@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64": "-",
       "@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64": "-",
       "@expo/ngrok-bin>@expo/ngrok-bin-freebsd-ia32": "-",
@@ -37,7 +35,11 @@
       "@expo/ngrok-bin>@expo/ngrok-bin-linux-ia32": "-",
       "@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64": "-",
       "@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
+      "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-",
+      "proxy-addr@>=2.0.0 <2.0.8": "2.0.8",
+      "shell-quote@>=1.0.0 <1.11.0": "1.11.0",
+      "dompurify@>=3.0.0 <3.4.17": "3.4.17"
     }
-  }
+  },
+  "packageManager": "pnpm@9.15.9"
 }

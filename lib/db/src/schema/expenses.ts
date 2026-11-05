@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, numeric, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { platformsTable } from "./platforms";
@@ -18,7 +18,10 @@ export const expensesTable = pgTable("expenses", {
   date: text("date").notNull(),
   tags: text("tags"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, table => [
+  index("expenses_user_date_idx").on(table.userId, table.date),
+  index("expenses_workspace_date_idx").on(table.workspaceId, table.date),
+]);
 
 export type InsertExpense = typeof expensesTable.$inferInsert;
 export type Expense = typeof expensesTable.$inferSelect;

@@ -1,3 +1,4 @@
+import { captureError } from "../lib/sentry";
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 
@@ -12,8 +13,9 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  if (!err.statusCode || err.statusCode >= 500) captureError(err);
   // Log the full detailed error for server side observability
-  req.log?.error(err, `Error processing request ${req.method} ${req.url}`);
+  req.log?.error(err, `Error processing request ${req.method}`);
 
   // Handle Zod validation errors
   if (err instanceof ZodError) {

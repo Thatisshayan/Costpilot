@@ -25,13 +25,11 @@ declare global {
  * Populates req.userId from the verified session.
  */
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
+  if (req.path === "/healthz" && req.method === "GET") return next();
   // Bypass Clerk auth for external webhooks (e.g. Stripe, Clerk, provider telemetry)
   // These endpoints verify their own HMAC signatures independently of the bearer session.
-  if (
-    req.originalUrl.includes("/webhooks/stripe") ||
-    req.originalUrl.includes("/webhooks/incoming") ||
-    req.originalUrl.includes("/webhooks/clerk")
-  ) {
+  const path = req.originalUrl.split("?")[0];
+  if (/^\/api\/webhooks\/(stripe|clerk|incoming\/[^/]+)\/?$/.test(path)) {
     return next();
   }
 
@@ -66,7 +64,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid or expired token",
-      details: err?.message,
+
     });
   }
 

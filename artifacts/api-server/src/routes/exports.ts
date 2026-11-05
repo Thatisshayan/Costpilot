@@ -1,3 +1,5 @@
+import { csvCell } from "../lib/csv";
+import { resourceScope } from "../lib/resource-scope";
 import { Router } from "express";
 import { logger } from "../lib/logger";
 import { z } from "zod";
@@ -8,19 +10,10 @@ import PDFDocument from "pdfkit";
 const router = Router();
 
 const GenerateExportBody = z.object({
-  module: z.string(),
+  module: z.literal("expenses"),
   format: z.enum(["csv", "pdf"]),
   dateRange: z.string().optional(),
 });
-
-function sanitizeCsvField(val: string | null | undefined): string {
-  if (!val) return "";
-  const trimmed = val.trim();
-  if (trimmed.length > 0 && ["=", "+", "-", "@"].includes(trimmed.charAt(0))) {
-    return `'${trimmed}`;
-  }
-  return trimmed.replace(/"/g, '""');
-}
 
 // Generate Premium PDF/CSV Export
 router.post("/generate", async (req, res) => {
@@ -41,17 +34,14 @@ router.post("/generate", async (req, res) => {
         platformName: platformsTable.name,
       })
       .from(expensesTable)
-      .leftJoin(platformsTable, eq(expensesTable.platformId, platformsTable.id))
-      .where(eq(expensesTable.userId, userId))
+      .leftJoin(platformsTable, and(eq(expensesTable.platformId, platformsTable.id), sql`((${expensesTable.workspaceId} IS NULL AND ${platformsTable.workspaceId} IS NULL AND ${expensesTable.userId} = ${platformsTable.userId}) OR ${expensesTable.workspaceId} = ${platformsTable.workspaceId})`))
+      .where(resourceScope(expensesTable, userId))
       .orderBy(desc(expensesTable.date));
 
     if (format === "csv") {
       let csv = "ID,Date,Amount,Currency,Description,Category,Platform\n";
       for (const e of userExpenses) {
-        const descSanitized = sanitizeCsvField(e.description);
-        const catSanitized = sanitizeCsvField(e.category);
-        const platformSanitized = sanitizeCsvField(e.platformName);
-        csv += `${e.id},${e.date},${e.amount},${e.currency},"${descSanitized}","${catSanitized}","${platformSanitized}"\n`;
+        csv += [e.id, e.date, e.amount, e.currency, e.description, e.category, e.platformName].map(csvCell).join(",") + "\n";
       }
 
       res.setHeader("Content-Type", "text/csv");
@@ -85,7 +75,7 @@ router.post("/generate", async (req, res) => {
       } else {
         for (const e of userExpenses) {
           doc.fontSize(10).text(
-            `${e.date} | ${e.platformName || "General"} | ${e.description || "N/A"} | $${Number(e.amount).toFixed(2)} ${e.currency || "USD"}`
+            `${e.date} | ${e.platformName || "General"} | ${e.description || "N/A"} | ${Number(e.amount).toFixed(2)} ${e.currency || "USD"}`
           );
         }
       }

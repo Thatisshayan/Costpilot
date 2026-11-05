@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { useSignIn } from '@clerk/clerk-expo';
+import { useSignIn, useAuth, useClerk } from '@clerk/clerk-expo';
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +21,8 @@ const BRAND_TEAL = '#66FCF1';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const safeAreaInsets = useSafeAreaInsets();
   const theme = useTheme();
   const { isLoaded, signIn, setActive } = useSignIn();
@@ -63,6 +65,7 @@ export default function LoginScreen() {
     },
   });
 
+  if (isSignedIn) return <ThemedView style={{ flex: 1, padding: 32, paddingTop: 80 }}><ThemedText>Signed in</ThemedText><Pressable accessibilityRole="button" onPress={() => signOut()}><ThemedText>Sign out</ThemedText></Pressable></ThemedView>;
   return (
     <ScrollView
       style={[styles.scrollView, { backgroundColor: theme.background }]}
@@ -75,7 +78,7 @@ export default function LoginScreen() {
             <ThemedText style={styles.logoText}>CostPilot</ThemedText>
           </ThemedView>
           <ThemedText style={styles.tagline}>
-            Track your cloud costs,{'\n'}optimize your spend.
+            Track your recorded costs,{'\n'}optimize your spend.
           </ThemedText>
         </ThemedView>
 
@@ -84,10 +87,10 @@ export default function LoginScreen() {
             <ThemedText style={styles.featureIcon}>📊</ThemedText>
             <ThemedView style={styles.featureContent}>
               <ThemedText style={styles.featureTitle}>
-                Real-time Cost Tracking
+                Expense Tracking
               </ThemedText>
               <ThemedText style={styles.featureSubtitle}>
-                Monitor spend across all your cloud providers
+                Manage the expenses you record.
               </ThemedText>
             </ThemedView>
           </ThemedView>
@@ -96,7 +99,7 @@ export default function LoginScreen() {
             <ThemedText style={styles.featureIcon}>🔔</ThemedText>
             <ThemedView style={styles.featureContent}>
               <ThemedText style={styles.featureTitle}>
-                Smart Alerts
+                Your records
               </ThemedText>
               <ThemedText style={styles.featureSubtitle}>
                 Get notified when spend exceeds budgets

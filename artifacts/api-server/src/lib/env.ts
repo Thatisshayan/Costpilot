@@ -6,18 +6,25 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url().optional(),
   SESSION_SECRET: z.string().min(32).optional(),
-  JWT_SECRET: z.string().min(32),
+  JWT_SECRET: z.string().min(32).optional(),
   CLERK_SECRET_KEY: z.string().min(1),
   CLERK_JWT_KEY: z.string().optional(),
-  STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
+  STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
-  WEBHOOK_SECRET: z.string().min(1),
+  WEBHOOK_SECRET: z.string().min(1).optional(),
   CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
-  KMS_MASTER_KEY: z.string().length(64).optional(),
-  ENCRYPTION_KEY: z.string().length(64).optional(),
+  KMS_MASTER_KEY: z.string().regex(/^[a-fA-F0-9]{64}$/).optional(),
+  ENCRYPTION_KEY: z.string().regex(/^[a-fA-F0-9]{64}$/).optional(),
   SENTRY_DSN: z.string().url().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).optional(),
+}).superRefine((env, ctx) => {
+  if (!env.KMS_MASTER_KEY && !env.ENCRYPTION_KEY) ctx.addIssue({ code: "custom", path: ["KMS_MASTER_KEY"], message: "An encryption master key is required" });
+  if (env.NODE_ENV === "production") {
+    for (const key of ["ALLOWED_ORIGINS", "CLERK_WEBHOOK_SIGNING_SECRET"] as const) {
+      if (!env[key]) ctx.addIssue({ code: "custom", path: [key], message: "Required for production" });
+    }
+  }
 });
 
 type Env = z.infer<typeof envSchema>;

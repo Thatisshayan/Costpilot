@@ -17,87 +17,13 @@ async function triggerAutomatedRemediation(
   amount: number,
   reason: string
 ): Promise<void> {
-  logger.info(`Triggering automated remediation policy for workspace ${workspaceId} (${severity} anomaly on ${platformName})`);
-
-  try {
-    let title = "";
-    let description = "";
-    let impact: "High" | "Medium" | "Low" = "Medium";
-    let savingsPotential = "";
-
-    if (severity === "Critical") {
-      title = `Auto-Remediation: Downgrade and Restrict ${platformName}`;
-      description = `Critical spending anomaly detected on ${platformName} ($${amount.toFixed(2)}). Automatically downgrading tier and applying active throttling policies.`;
-      impact = "High";
-      savingsPotential = `$${(amount * 0.75).toFixed(2)}`;
-    } else {
-      title = `Auto-Remediation: Rate-Limit Alert for ${platformName}`;
-      description = `High spending anomaly detected on ${platformName} ($${amount.toFixed(2)}). Automatically dispatching system alert notifications and initiating rate limits.`;
-      impact = "Medium";
-      savingsPotential = `$${(amount * 0.25).toFixed(2)}`;
-    }
-
-    // 1. Insert remediation action as "Executing"
-    const [action] = await db.insert(remediationActionsTable).values({
-      workspaceId,
-      title,
-      description,
-      impact,
-      savingsPotential,
-      status: "Executing",
-    }).returning();
-
-    if (!action) {
-      logger.error("Failed to insert remediation action into database");
-      return;
-    }
-
-    const actionId = action.id;
-
-    // 2. Log step 1: Policy trigger
-    await db.insert(remediationLogsTable).values({
-      actionId,
-      logMessage: `[Automated Policy Runner] System triggered policy for ${severity} anomaly: ${reason}`,
-    });
-
-    // 3. Log step 2: Execution action depending on severity
-    if (severity === "Critical") {
-      await db.insert(remediationLogsTable).values({
-        actionId,
-        logMessage: `[Automated Policy Runner] Initiating API credentials restriction and plan downgrade for ${platformName}...`,
-      });
-      
-      // Simulate API downgrade request
-      await db.insert(remediationLogsTable).values({
-        actionId,
-        logMessage: `[Automated Policy Runner] Downgraded platform ${platformName} to baseline tier. Active throttling of apiKeys initiated.`,
-        details: `Successfully completed. Downgraded key settings verified. Potential savings secured: ${savingsPotential}`,
-      });
-    } else {
-      await db.insert(remediationLogsTable).values({
-        actionId,
-        logMessage: `[Automated Policy Runner] Generating automated alert telemetry for admin dispatch...`,
-      });
-      
-      await db.insert(remediationLogsTable).values({
-        actionId,
-        logMessage: `[Automated Policy Runner] Dispatched Slack & Email alerts to workspace administrators. Rate-limiting enforced.`,
-        details: `Workspace notifications dispatched successfully. Potential savings: ${savingsPotential}`,
-      });
-    }
-
-    // 4. Mark action as "Completed"
-    await db.update(remediationActionsTable)
-      .set({
-        status: "Completed",
-        executedAt: new Date()
-      })
-      .where(eq(remediationActionsTable.id, actionId));
-
-    logger.info(`Automated remediation completed successfully for Action ID ${actionId}`);
-  } catch (err) {
-    logger.error(err, `Error executing triggerAutomatedRemediation for workspace ${workspaceId}`);
-  }
+  await db.insert(remediationActionsTable).values({
+    workspaceId,
+    title: `Review ${severity.toLowerCase()} spending anomaly on ${platformName}`,
+    description: `${reason}. Review provider settings manually; no automated action has been executed.`,
+    impact: severity === "Critical" ? "High" : "Medium",
+    status: "Pending",
+  });
 }
 
 /**
@@ -222,6 +148,10 @@ export async function runAnomalyDetection(): Promise<number> {
 }
 
 export function initCronJobs() {
+  if (process.env.BACKGROUND_JOBS_ENABLED !== "true") {
+    logger.info("Background jobs disabled; no provider automation will run.");
+    return;
+  }
   // 1. Daily Sync at 03:00 AM
   cron.schedule("0 3 * * *", async () => {
     logger.info("Starting automated daily sync for all platforms...");

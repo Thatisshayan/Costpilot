@@ -133,7 +133,6 @@ describe("Auth Middleware", () => {
         expect(res.json).toHaveBeenCalledWith({
           error: "Unauthorized",
           message: "Invalid or expired token",
-          details: "Invalid token",
         });
       });
 

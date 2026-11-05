@@ -1,3 +1,6 @@
+import { resourceScope } from "../lib/resource-scope";
+import { getWorkspaceMember } from "../middlewares/authz";
+import { z } from "zod";
 import { Router } from "express";
 import { db, platformsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -28,7 +31,7 @@ const maskApiKey = (key: string | null) => {
 
 router.get("/", async (req, res) => {
   const reveal = req.query.reveal === "true" || req.headers["x-reveal-key"] === "true";
-  const platforms = await db.select().from(platformsTable).where(eq(platformsTable.userId, req.userId!)).orderBy(platformsTable.name);
+  const platforms = await db.select().from(platformsTable).where(resourceScope(platformsTable, req.userId!)).orderBy(platformsTable.name);
   
   const results = [];
   for (const p of platforms) {
@@ -55,10 +58,18 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   const body = CreatePlatformBody.parse(req.body);
+  const { workspaceId = null } = z.object({ workspaceId: z.number().int().positive().nullable().optional() }).parse(req.body);
+  if (workspaceId !== null) {
+    const member = await getWorkspaceMember(workspaceId, req.userId!);
+    if (!member || !["owner", "admin"].includes(member.role)) {
+      res.status(403).json({ error: "Workspace write permission required" });
+      return;
+    }
+  }
   if (body.apiKey) {
     body.apiKey = encrypt(body.apiKey);
   }
-  const [platform] = await db.insert(platformsTable).values({ ...body, userId: req.userId! }).returning();
+  const [platform] = await db.insert(platformsTable).values({ ...body, workspaceId, userId: req.userId! }).returning();
   res.status(201).json({ 
     ...platform, 
     apiKey: platform.apiKey ? "••••••••" : null,
@@ -69,7 +80,7 @@ router.post("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   const { id } = GetPlatformParams.parse({ id: Number(req.params.id) });
   const reveal = req.query.reveal === "true" || req.headers["x-reveal-key"] === "true";
-  const [platform] = await db.select().from(platformsTable).where(and(eq(platformsTable.id, id), eq(platformsTable.userId, req.userId!)));
+  const [platform] = await db.select().from(platformsTable).where(and(eq(platformsTable.id, id), resourceScope(platformsTable, req.userId!, req.method !== "GET")));
   if (!platform) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -93,6 +104,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
+  if (req.body.workspaceId !== undefined) { res.status(400).json({ error: "Workspace assignment is immutable" }); return; }
   const { id } = UpdatePlatformParams.parse({ id: Number(req.params.id) });
   const body = UpdatePlatformBody.parse(req.body);
   
@@ -100,7 +112,7 @@ router.patch("/:id", async (req, res) => {
     body.apiKey = encrypt(body.apiKey);
   }
 
-  const [platform] = await db.update(platformsTable).set(body).where(and(eq(platformsTable.id, id), eq(platformsTable.userId, req.userId!))).returning();
+  const [platform] = await db.update(platformsTable).set(body).where(and(eq(platformsTable.id, id), resourceScope(platformsTable, req.userId!, req.method !== "GET"))).returning();
   if (!platform) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -114,7 +126,7 @@ router.patch("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const { id } = DeletePlatformParams.parse({ id: Number(req.params.id) });
-  await db.delete(platformsTable).where(and(eq(platformsTable.id, id), eq(platformsTable.userId, req.userId!)));
+  await db.delete(platformsTable).where(and(eq(platformsTable.id, id), resourceScope(platformsTable, req.userId!, req.method !== "GET")));
   res.status(204).send();
 });
 

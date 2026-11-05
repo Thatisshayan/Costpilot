@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/context/workspace-context";
 import { useState } from "react";
 import {
   useListPlatforms,
@@ -50,7 +51,9 @@ const emptyForm = (): FormState => ({
 
 export default function Platforms() {
   const qc = useQueryClient();
-  const { data: platforms = [], isLoading } = useListPlatforms();
+  const { data: accessiblePlatforms = [], isLoading } = useListPlatforms();
+  const { activeWorkspaceId } = useWorkspace();
+  const platforms = accessiblePlatforms.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
   const createMutation = useCreatePlatform();
   const updateMutation = useUpdatePlatform();
   const deleteMutation = useDeletePlatform();
@@ -104,7 +107,7 @@ export default function Platforms() {
         await updateMutation.mutateAsync({ id: editTarget.id, data: payload });
         toast.success("Platform updated successfully.");
       } else {
-        await createMutation.mutateAsync({ data: payload });
+        await createMutation.mutateAsync({ data: { ...payload, ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}) } });
         toast.success("Platform created successfully.");
       }
       invalidate();
@@ -125,22 +128,8 @@ export default function Platforms() {
     setDeleteId(null);
   };
 
-  const handleSync = async (id: number) => {
-    setSyncingId(id);
-    try {
-      const res = await syncMutation.mutateAsync({ id });
-      if (res.success) {
-        toast.success(res.message || "Platform usage synced successfully.");
-        // Invalidate dashboard totals so sync changes propagate
-        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      } else {
-        toast.error(res.message || "Auto-sync failed.");
-      }
-    } catch (err) {
-      toast.error("Auto-sync request failed.");
-    } finally {
-      setSyncingId(null);
-    }
+  const handleSync = async (_id: number) => {
+    toast.info("Provider synchronization is not enabled in this release.");
   };
 
   return (

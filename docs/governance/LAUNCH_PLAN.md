@@ -29,3 +29,12 @@ Evidence: [launch audit](../../audits/2026-11-04_Codex_LaunchReadiness_Audit.md)
 - Implemented: L01 bearer CSRF path (21 auth/CSRF tests passed), L03 Pages config guard, L09 explicit API/web root test entry, L11 Docker manager pin. Full governance verification, Docker and deployment verification remain open; see audit execution record.
 - Next batch: authenticated dashboard updates, production mock-data removal and explicit remediation disablement.
 - Then dependency remediation and full scope/migration hardening. Do not call these complete based only on source changes.
+
+
+## Execution checkpoint — 2026-11-04
+
+Core release scope is recorded in [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md). The web dashboard now uses recorded expense data; preview routes/provider execution are disabled. Active membership scoping extends to projects/platforms and expense writes. Invitation acceptance is transactional. A generated migration adds missing invitation/budget tables, membership columns, uniqueness and expense indexes. Verification scripts now fail on required stage errors and enforce timeouts; CI has frozen installs, generated-contract verification and a disposable PostgreSQL/restore rehearsal.
+
+Patched-lockfile audit: zero critical advisories, 66 high, 48 moderate, 11 low at this checkpoint. Remaining dependency advisories and full verification are OPEN; this is not release approval. Monitoring SDKs and graceful shutdown are implemented but not yet runtime verified. Docker engine is returning API errors and local PostgreSQL refused connection; neither restore nor migration success is claimed. An isolated dependency install and remote CI verification are in progress.
+
+Shayan approved removal of package-lock.json; it has been removed. The remaining external gates are actual staging origins/client keys, server encryption/webhook configuration, approved privacy/support details, live sign-in/device checks and release approval. No production migration or deployment has been performed.

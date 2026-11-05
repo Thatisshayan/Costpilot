@@ -16,11 +16,7 @@ import { getEnv } from "../lib/env";
 
 const router = Router();
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY environment variable is required");
-}
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 // List Webhooks
 router.get("/", requireWorkspaceMember(["owner", "admin", "viewer"]), async (req, res) => {
@@ -55,6 +51,7 @@ router.post("/", requireWorkspaceMember(["owner", "admin"]), async (req, res) =>
 
 // Stripe Webhook Endpoint
 router.post("/stripe", async (req, res) => {
+  if (!stripe) { res.status(503).json({ error: "Payments unavailable" }); return; }
   const sig = req.headers['stripe-signature'];
   let event;
 

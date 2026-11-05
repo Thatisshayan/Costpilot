@@ -1,0 +1,49 @@
+name: Launch rehearsal
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  postgres-rehearsal:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: costpilot_launch_rehearsal
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-fixture-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:local-fixture-only@localhost:5432/costpilot_launch_rehearsal
+      LAUNCH_REHEARSAL_DATABASE_URL: postgresql://postgres:local-fixture-only@localhost:5432/costpilot_launch_rehearsal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @workspace/db run migrate
+      - run: pnpm --filter @workspace/db run migrate
+      - run: pnpm --filter @workspace/db run rehearsal
+      - name: Backup and restore disposable fixture
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$POSTGRES_CONTAINER" pg_dump -U postgres -d costpilot_launch_rehearsal --format=custom --file=/tmp/fixture.dump
+          docker exec "$POSTGRES_CONTAINER" createdb -U postgres costpilot_launch_restore
+          docker exec "$POSTGRES_CONTAINER" pg_restore --exit-on-error -U postgres --dbname=costpilot_launch_restore /tmp/fixture.dump
+          original=$(docker exec "$POSTGRES_CONTAINER" psql -U postgres -d costpilot_launch_rehearsal -Atc 'SELECT count(*) FROM expenses')
+          restored=$(docker exec "$POSTGRES_CONTAINER" psql -U postgres -d costpilot_launch_restore -Atc 'SELECT count(*) FROM expenses')
+          test "$original" = "$restored"
+      - name: Build production container
+        run: docker build -f artifacts/api-server/Dockerfile -t costpilot-api .
+      - name: Production container smoke
+        run: node scripts/container-smoke.mjs

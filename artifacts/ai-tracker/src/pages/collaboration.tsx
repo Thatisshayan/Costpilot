@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/clerk-react";
 import React, { useState } from 'react';
 import {
   Users,
@@ -109,6 +110,8 @@ function LoadingSkeletonRow() {
 
 export default function Collaboration() {
   const queryClient = useQueryClient();
+  const { userId } = useAuth();
+  const [inviteLinks, setInviteLinks] = useState<string[]>([]);
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { data: workspaces } = useListWorkspaces();
 
@@ -121,7 +124,7 @@ export default function Collaboration() {
 
   const members = liveMembers ?? [];
   const currentUserRole = members.find(
-    (m: WorkspaceMember) => m.userId === 'u1' || m.role === 'owner'
+    (m: WorkspaceMember) => m.userId === userId
   )?.role || 'viewer';
   const isOwner = currentUserRole === 'owner';
   const isAdminOrOwner = currentUserRole === 'owner' || currentUserRole === 'admin';
@@ -162,7 +165,9 @@ export default function Collaboration() {
 
     for (const email of emails) {
       try {
-        await inviteMutation.mutateAsync({ id: activeWorkspaceId, data: { email, role: inviteRole } });
+        const invite = await inviteMutation.mutateAsync({ id: activeWorkspaceId, data: { email, role: inviteRole } });
+        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+        setInviteLinks(links => [...links, new URL(`${base}/accept-invite?token=${encodeURIComponent(invite.token ?? "")}`, window.location.origin).toString()]);
         successCount++;
       } catch {
         failCount++;
@@ -172,7 +177,7 @@ export default function Collaboration() {
     if (successCount > 0) {
       setInviteEmails('');
       invalidateMembers();
-      toast.success(`Invitation${successCount > 1 ? 's' : ''} sent to ${successCount} user${successCount > 1 ? 's' : ''}`);
+      toast.success(`Invitation${successCount > 1 ? 's' : ''} created. Copy and share the private links below.`);
     }
     if (failCount > 0) {
       toast.error(`${failCount} invitation${failCount > 1 ? 's' : ''} failed`);
@@ -243,13 +248,15 @@ export default function Collaboration() {
     }
   };
 
-  const handleCopyInviteLink = () => {
-    navigator.clipboard.writeText(window.location.origin + '/accept-invite?token=');
-    toast.success('Invite link copied to clipboard');
+  const handleCopyInviteLink = async () => {
+    if (inviteLinks.length === 0) { toast.info("Create an invitation first."); return; }
+    try { await navigator.clipboard.writeText(inviteLinks.join("\n")); toast.success("Private invite links copied. Share them only with intended recipients."); }
+    catch { toast.error("Clipboard access failed. Select the links below to copy them manually."); }
   };
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-5xl mx-auto space-y-10">
+      {inviteLinks.length > 0 && <section aria-label="Private invitation links"><p>Anyone with a link can accept its workspace role. Share privately.</p>{inviteLinks.map(link => <p key={link} className="break-all select-all">{link}</p>)}</section>}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -380,7 +387,7 @@ export default function Collaboration() {
                 ) : (
                   <UserPlus size={18} />
                 )}
-                {inviteMutation.isPending ? 'Sending...' : 'Send Invite'}
+                {inviteMutation.isPending ? 'Creating...' : 'Create Invite'}
               </button>
             </div>
             <p className="text-xs text-slate-500 flex items-center gap-1.5">
