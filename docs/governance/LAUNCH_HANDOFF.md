@@ -27,8 +27,8 @@ The authorized Clerk **test** publishable key is configured in ignored web/mobil
 
 | Item | What it means | Where it belongs |
 | --- | --- | --- |
-| Web URL | Address where people open the dashboard, including any base path | Reply with the intended URL. For Pages the existing candidate is `https://thatisshayan.github.io/Costpilot/`; confirm before staging acceptance. |
-| API origin | Address serving `/api/healthz`; origin has no `/api` suffix | Reply with the intended URL. Set GitHub variable `VITE_API_ORIGIN` and mobile build variable `EXPO_PUBLIC_API_ORIGIN`. A historical Railway hostname in source is not approval to use/deploy that service. |
+| Web URL | Address where people open the dashboard, including any base path | **Approved:** `https://thatisshayan.github.io/Costpilot/`. Build base path is `/Costpilot/`; local allowed origins include its host. |
+| API origin | Address serving `/api/healthz`; origin has no `/api` suffix | **Not provisioned**, confirmed by Shayan. Select/provision an approved API host before assigning this value. Set GitHub variable `VITE_API_ORIGIN` and mobile build variable `EXPO_PUBLIC_API_ORIGIN`. A historical Railway hostname in source is not approval to use/deploy that service. |
 | Allowed web origin | Scheme and host of the web URL, without its path | Server `ALLOWED_ORIGINS` and matching Clerk instance/domain configuration. For Pages the origin would be `https://thatisshayan.github.io`. |
 | Public operator name | Person/company responsible for the service | Reply with approved display/legal name; complete terms/privacy review before signup opens. Contact is already supplied. |
 | Clerk server key | Secret for the same instance as the supplied client key | Configure `CLERK_SECRET_KEY` privately in the API host; do not post it in chat or commit it. Confirm Native API is enabled for mobile. |
@@ -50,3 +50,7 @@ Root `.env` is for local server configuration. Client `.env.local` files are sep
 ## Local verification limitations
 
 The host currently has Node 25 and an older installed module tree; target validation is on Node 22 CI. Local Docker engine/API errors and refused PostgreSQL connections prevented a local database/container run. Remote CI successfully ran disposable PostgreSQL 16, restore and production-container verification. An isolated install attempt and other diagnostics remain ignored under `audits/private/`; they are retained, not silently deleted. No production migration or deployment occurred.
+
+## Latest operator decisions
+
+Shayan approved the existing GitHub Pages URL and confirmed **the API host is not set up yet**. This prevents live protected-request acceptance. Existing Railway configuration can be prepared/reviewed, but creating an API/database or starting a billable service requires explicit spend approval. No host was provisioned. Web builds create a same-entry `404.html` fallback for Pages direct links; Pages may return HTTP 404 for those URLs while the application renders. Actual deployed routing still requires acceptance. The public operator name is still missing.

@@ -36,7 +36,7 @@ The supplied Clerk **test** publishable key is configured in ignored web/mobile 
 
 ## Remaining sequence
 
-1. Confirm approved staging web/API URLs and public operator identity. Configure matching server Clerk/webhook secrets, authorized domains/Native API, and persistent encryption-key custody privately. Run the status-only environment preflight; the missing contact input is resolved.
+1. The existing Pages web URL is approved. Select/provision an approved API host and confirm its URL and public operator identity. Configure matching server Clerk/webhook secrets, authorized domains/Native API, and persistent encryption-key custody privately. Run the status-only environment preflight; the missing contact input is resolved.
 2. Complete real two-account web and physical-device journeys, Pages base-path/CORS checks, actual webhook delivery and approved monitoring delivery. CI's synthetic identity/database tests do not replace these checks.
 3. Approve terms/privacy/data practices, retention/deletion/backup and on-call/hosting decisions. Verify a real environment backup/restore and record the release commit, URL, time and evidence. The draft legal pages remain an explicit public-release blocker.
 4. Require all final exact-SHA CI checks and Shayan approval before merge, migration, release or paid deployment. No production migration/deployment has occurred.

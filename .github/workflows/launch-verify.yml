@@ -28,6 +28,8 @@ jobs:
             lib/api-client-react/src/generated
             lib/api-zod/src/generated
       - run: pnpm run build
+      - name: Verify Pages direct-link fallback
+        run: cmp artifacts/ai-tracker/dist/public/index.html artifacts/ai-tracker/dist/public/404.html
       - run: pnpm run test
       - name: Verify native lint tooling
         run: pnpm --filter mobile-app exec eslint src/hooks/use-theme.ts src/components/app-tabs.web.tsx
