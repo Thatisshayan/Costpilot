@@ -156,7 +156,15 @@ describe("server-side search parameters", () => {
   it("keeps the phone filters open while one of them is invalid", () => {
     window.history.replaceState(null, "", "/expenses?minAmount=abc");
     render(<Expenses />);
-    expect(screen.getByRole("button", { name: /hide filters/i }).getAttribute("aria-expanded")).toBe("true");
+    const toggle = screen.getByRole("button", { name: /hide filters/i });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect((toggle as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    // Fixing the value leaves the panel open so the field does not disappear while typing.
+    fireEvent.change(screen.getByLabelText(/min/i), { target: { value: "5" } });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect((toggle as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("resets filters when the workspace scope changes", async () => {

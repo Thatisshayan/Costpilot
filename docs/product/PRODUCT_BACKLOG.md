@@ -379,7 +379,7 @@ P0-16 (ledger integrity): Batch 2 verified the existing indexes cover the new qu
 
 ## Batch 3 plan: budgets and CSV import (approved 2026-11-05; implementation in review)
 
-Scope: P0-09, P0-12 (with P2-01 provenance), P0-07, P0-11. One branch, `agent/claude/batch3-budgets-import`; nothing is merged without owner approval. Migrations are rehearsed on the local disposable database only; no production migration.
+Scope: P0-09, P0-12 (with P2-01 provenance), P0-07, P0-11. Two branches: `agent/claude/batch3-budgets` (budgets, PR #18) and `agent/claude/batch3-csv-import` (CSV import, PR #19, stacked on the budgets branch); nothing is merged without owner approval. Migrations are rehearsed on the local disposable database only; no production migration.
 
 ### Findings in the existing code (not reused)
 
@@ -399,14 +399,14 @@ Scope: P0-09, P0-12 (with P2-01 provenance), P0-07, P0-11. One branch, `agent/cl
   - validates each row and its authorization, but stops at the first bad row;
   - has no provenance and no duplicate check.
 
-### Database changes (migration `0002`)
+### Database changes (as implemented: migrations `0002_budgets` and `0003_csv_import_provenance`)
 
 | Change | Detail |
 |---|---|
-| New `budgets` table | `id`, `workspace_id` (FK, cascade; null for Personal with `user_id` owner), `project_id` and `platform_id` (optional FKs, cascade), `name` (1–80), `currency` (ISO 3 letters), `amount numeric(12,2) > 0`, `thresholds smallint[]` default `{50,80,100}` (each 1–100, ascending), `period` = `monthly` (check), `created_by`, `created_at`, `updated_at`. Unique `(workspace_id, user_id, project_id, platform_id, currency) NULLS NOT DISTINCT` |
+| New `budgets` table (0002) | `id`, `user_id` (always the creator; for a Personal budget also its only reader and writer), `workspace_id` (FK, cascade; null for Personal), `project_id` (optional FK, cascade), `name` (1–80), `currency` (ISO 3 letters), `amount numeric(12,2) > 0`, `thresholds smallint[]` default `{50,80,100}` (1–5 values, each 1–100, ascending), `period` = `monthly` (check), `created_at`, `updated_at`. One budget per scope, project (or none) and currency: partial unique indexes on `(workspace_id, coalesce(project_id,0), currency)` for workspaces and `(user_id, coalesce(project_id,0), currency)` for Personal. No platform-level budgets yet |
 | New `import_batches` table | `id`, `user_id`, `workspace_id` (nullable), `file_name`, `row_count`, `inserted_count`, `skipped_count`, `created_at`, `undone_at` |
-| `expenses` provenance | `source text not null default 'manual'` (check `manual`/`import`), `external_id text`, `import_batch_id` (FK, set null), `fingerprint text` |
-| Duplicate guards | Unique `(workspace_id, source, external_id) WHERE workspace_id IS NOT NULL AND external_id IS NOT NULL`; unique `(user_id, source, external_id) WHERE workspace_id IS NULL AND external_id IS NOT NULL` (NULL workspace values are otherwise distinct); plain index on `(workspace_id, fingerprint)` and `(user_id, fingerprint)` for flagging |
+| `expenses` provenance (0003) | `source text not null default 'manual'` (check `manual`/`import`), `external_id text`, `import_batch_id` (FK, set null). Possible duplicates are found by comparing date, amount, currency, vendor, project and description at import time; no stored fingerprint |
+| Duplicate guards | Unique `(workspace_id, source, external_id) WHERE workspace_id IS NOT NULL AND external_id IS NOT NULL`; unique `(user_id, source, external_id) WHERE workspace_id IS NULL AND external_id IS NOT NULL` (NULL workspace values are otherwise distinct); the key has no provider, so two different files that reuse the same transaction id in one scope are treated as a repeat import (owner decision: add a provider or file source to the key when bank or provider imports arrive) |
 | Lock impact | `ADD COLUMN` with a constant default does not rewrite the table (PostgreSQL 11+). New indexes are built without `CONCURRENTLY` inside the migration; for a populated database, schedule a maintenance window (same note as migration 0001) |
 
 ### API (OpenAPI first, contract-tested)

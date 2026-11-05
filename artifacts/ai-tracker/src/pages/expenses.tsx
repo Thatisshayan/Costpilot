@@ -156,6 +156,8 @@ export default function Expenses() {
   const moreFilterCount = activeFilterCount(query);
   // On phones the filters beyond search fold away; they stay open while any of them is invalid.
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // An invalid filter opens the panel and keeps it open after it is fixed, so the field does not vanish.
+  useEffect(() => { if (!filtersValid) setFiltersOpen(true); }, [filtersValid]);
   const showMoreFilters = filtersOpen || !filtersValid;
 
   // A page beyond the end (e.g. after deleting the last row) moves to the last page.
@@ -348,7 +350,7 @@ export default function Expenses() {
               value={qInput} maxLength={100} onChange={e => setQInput(e.target.value)} />
           </div>
           <button type="button" className="sm:hidden inline-flex items-center justify-between gap-2 w-full rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-sm font-semibold text-white"
-            aria-expanded={showMoreFilters} aria-controls="more-expense-filters" onClick={() => setFiltersOpen(open => !open)}>
+            aria-expanded={showMoreFilters} aria-controls="more-expense-filters" disabled={!filtersValid} onClick={() => setFiltersOpen(open => !open)}>
             <span className="inline-flex items-center gap-2"><SlidersHorizontal size={14} aria-hidden /> {showMoreFilters ? "Hide filters" : "More filters"}</span>
             {moreFilterCount > 0 && <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs text-indigo-200">{moreFilterCount} active</span>}
           </button>

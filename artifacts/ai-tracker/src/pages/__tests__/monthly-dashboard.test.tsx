@@ -134,6 +134,17 @@ describe("monthly dashboard", () => {
     expect(options[0].text).toMatch(/September 2026 \(month to date\)/);
     expect(options.map(o => o.value)).not.toContain("2026-10");
     expect(options[1].value).toBe("2026-08");
+    expect(options).toHaveLength(12);
+  });
+
+  it("keeps the month list anchored to the server month after a past month is chosen", () => {
+    summaryHook.result = ok(summary([currency({})], true));
+    render(<Dashboard />);
+    fireEvent.change(screen.getByLabelText("Month"), { target: { value: "2026-07" } });
+    expect(summaryHook.calls.at(-1)).toMatchObject({ month: "2026-07" });
+    const options = [...(screen.getByLabelText("Month") as HTMLSelectElement).options];
+    expect(options[0].text).toMatch(/September 2026 \(month to date\)/);
+    expect(options.map(o => o.value)).toContain("2026-07");
   });
 });
 

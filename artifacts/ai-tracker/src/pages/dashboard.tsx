@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Info, Minus } from "lucide-react";
 import { useGetSpendSummary, type SpendCurrency, type SpendGroup, type SpendSummary } from "@workspace/api-client-react";
@@ -136,7 +136,12 @@ export default function Dashboard() {
   const currencies = summary?.currencies ?? [];
   const active = currencies.find(c => c.currency === selectedCurrency) ?? currencies[0];
   const scopeName = activeWorkspaceId === null ? "Personal" : activeWorkspace?.name ?? "Workspace";
-  const currentMonth = month === "" && summary ? summary.period.month : months[0];
+  // Remember the server's month so the list stays anchored to it after a past month is chosen.
+  // With month "" the summary refetches on window focus, so a new month is picked up.
+  const [serverMonth, setServerMonth] = useState<string | null>(null);
+  const defaultMonth = month === "" ? summary?.period.month : undefined;
+  useEffect(() => { if (defaultMonth) setServerMonth(defaultMonth); }, [defaultMonth]);
+  const currentMonth = defaultMonth ?? serverMonth ?? months[0];
   const shownMonth = month || currentMonth;
   const range = summary ? `from=${summary.period.start}&to=${summary.period.through}` : "";
 
@@ -156,7 +161,7 @@ export default function Dashboard() {
             className="bg-white/[0.03] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           >
             <option value="" className="bg-zinc-950">{monthLabel(currentMonth)} (month to date)</option>
-            {months.filter(m => m < currentMonth).slice(0, months.length - 1).map(m => <option key={m} value={m} className="bg-zinc-950">{monthLabel(m)}</option>)}
+            {recentMonths(currentMonth).slice(1).map(m => <option key={m} value={m} className="bg-zinc-950">{monthLabel(m)}</option>)}
           </select>
         </div>
       </header>
