@@ -4,11 +4,11 @@ import type { SpendCurrency, SpendSummary } from "@workspace/api-client-react";
 
 const ws = vi.hoisted(() => ({ value: { activeWorkspaceId: 7 as number | null, activeWorkspace: { id: 7, name: "Platform" } as { id: number; name: string } | null, canWrite: true } }));
 const summaryHook = vi.hoisted(() => ({ calls: [] as unknown[], result: {} as Record<string, unknown> }));
-const budgetHook = vi.hoisted(() => ({ calls: [] as unknown[], budgets: [] as unknown[] }));
+const budgetHook = vi.hoisted(() => ({ calls: [] as unknown[], budgets: [] as unknown[], isError: false, refetch: vi.fn() }));
 vi.mock("@/context/workspace-context", () => ({ useWorkspace: () => ws.value }));
 vi.mock("@workspace/api-client-react", () => ({
   useGetSpendSummary: (params: unknown) => { summaryHook.calls.push(params); return summaryHook.result; },
-  useGetBudgetStatus: (params: unknown) => { budgetHook.calls.push(params); return { data: { budgets: budgetHook.budgets } }; },
+  useGetBudgetStatus: (params: unknown) => { budgetHook.calls.push(params); return budgetHook.isError ? { data: undefined, isError: true, refetch: budgetHook.refetch } : { data: { budgets: budgetHook.budgets }, isError: false, refetch: budgetHook.refetch }; },
 }));
 
 import Dashboard, { comparisonText, recentMonths } from "../dashboard";
@@ -26,7 +26,7 @@ const summary = (currencies: SpendCurrency[], partial = false): SpendSummary => 
 });
 const ok = (data: SpendSummary) => ({ data, isLoading: false, isError: false, error: null, refetch: vi.fn() });
 
-beforeEach(() => { budgetHook.calls = []; budgetHook.budgets = []; summaryHook.calls = []; ws.value = { activeWorkspaceId: 7, activeWorkspace: { id: 7, name: "Platform" }, canWrite: true }; });
+beforeEach(() => { budgetHook.calls = []; budgetHook.budgets = []; budgetHook.isError = false; budgetHook.refetch.mockClear(); summaryHook.calls = []; ws.value = { activeWorkspaceId: 7, activeWorkspace: { id: 7, name: "Platform" }, canWrite: true }; });
 afterEach(cleanup);
 
 describe("monthly dashboard", () => {
@@ -132,6 +132,15 @@ describe("budget alerts on the dashboard", () => {
     render(<Dashboard />);
     expect(screen.queryByRole("region", { name: "Budget alerts" })).toBeNull();
     expect(budgetHook.calls.at(-1)).toEqual({ workspaceId: 7 });
+  });
+
+  it("says when budget alerts could not be loaded instead of showing nothing", () => {
+    summaryHook.result = ok(summary([]));
+    budgetHook.isError = true;
+    render(<Dashboard />);
+    const alert = screen.getAllByRole("alert").find(el => el.textContent?.includes("Budget alerts could not be loaded"))!;
+    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(budgetHook.refetch).toHaveBeenCalled();
   });
 
   it("lists reached thresholds and over-budget amounts in each budget's own currency", () => {

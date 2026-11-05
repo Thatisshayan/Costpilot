@@ -9,8 +9,8 @@
 // - Money is exact: numeric sums from PostgreSQL, integer cents (BigInt) here.
 import { Router } from "express";
 import { z } from "zod";
-import { and, asc, eq, gte, isNull, lte, sql } from "drizzle-orm";
-import { db, expensesTable, projectsTable, spendBudgetsTable, type SpendBudget } from "@workspace/db";
+import { and, asc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
+import { db, expensesTable, projectsTable, spendBudgetsTable, workspaceMembersTable, type SpendBudget } from "@workspace/db";
 import { getWorkspaceMember } from "../middlewares/authz";
 import { resourceScope } from "../lib/resource-scope";
 import { fromCents, monthPeriod, scopeCondition, toCents } from "../lib/spend";
@@ -31,20 +31,22 @@ const name = z.string().trim().min(1, "name is required").max(80, "name must be 
   // PostgreSQL text cannot hold NUL; reject it here instead of failing the insert with a 500.
   .refine(v => !v.includes("\u0000"), "name contains an invalid character");
 
-const ScopeQuery = z.object({ workspaceId: z.coerce.number().int().positive().optional() }).strict();
+// Ids are PostgreSQL integers; larger values would fail in the database (500) instead of a 400/404.
+const PG_INT_MAX = 2147483647;
+const ScopeQuery = z.object({ workspaceId: z.coerce.number().int().positive().max(PG_INT_MAX).optional() }).strict();
 const StatusQuery = ScopeQuery.extend({
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "month must be YYYY-MM").optional(),
 }).strict();
 const CreateBody = z.object({
-  workspaceId: z.number().int().positive().nullable().optional(),
-  projectId: z.number().int().positive().nullable().optional(),
+  workspaceId: z.number().int().positive().max(PG_INT_MAX).nullable().optional(),
+  projectId: z.number().int().positive().max(PG_INT_MAX).nullable().optional(),
   name,
   currency: z.string().regex(/^[A-Z]{3}$/, "currency must be a 3-letter ISO 4217 code"),
   amount,
   thresholds: thresholds.optional(),
 }).strict();
 const UpdateBody = z.object({ name: name.optional(), amount: amount.optional(), thresholds: thresholds.optional() }).strict();
-const IdParam = z.object({ id: z.coerce.number().int().positive() });
+const IdParam = z.object({ id: z.coerce.number().int().positive().max(PG_INT_MAX) });
 
 function badRequest(res: import("express").Response, error: z.ZodError) {
   res.status(400).json({ error: "Bad Request", message: error.issues.map(i => (i.path.length ? `${i.path.join(".")}: ` : "") + i.message).join("; ") });
@@ -185,11 +187,29 @@ router.post("/", async (req, res) => {
     return;
   }
   try {
-    const [created] = await db.insert(spendBudgetsTable).values({
-      userId, workspaceId, projectId, name: body.name, currency: body.currency,
-      amount: fromCents(toCents(body.amount)), thresholds: body.thresholds ?? DEFAULT_THRESHOLDS,
-    }).returning();
-    res.status(201).json(serialize((await findVisible(created.id, userId))!));
+    const created = await db.transaction(async tx => {
+      // Re-check the write role inside the transaction and hold the membership row, so a
+      // removal or downgrade cannot slip in between the check above and the insert.
+      if (workspaceId !== null) {
+        const [member] = await tx.select({ id: workspaceMembersTable.id }).from(workspaceMembersTable)
+          .where(and(eq(workspaceMembersTable.workspaceId, workspaceId), eq(workspaceMembersTable.userId, userId),
+            eq(workspaceMembersTable.status, "active"), inArray(workspaceMembersTable.role, ["owner", "admin"])))
+          .for("share");
+        if (!member) return null;
+      }
+      const [row] = await tx.insert(spendBudgetsTable).values({
+        userId, workspaceId, projectId, name: body.name, currency: body.currency,
+        amount: fromCents(toCents(body.amount)), thresholds: body.thresholds ?? DEFAULT_THRESHOLDS,
+      }).returning({ id: spendBudgetsTable.id });
+      return row;
+    });
+    if (!created) {
+      res.status(403).json({ error: "Forbidden", message: "Workspace owner or admin role required" });
+      return;
+    }
+    const budget = await findVisible(created.id, userId);
+    if (!budget) { res.status(404).json({ error: "Not found" }); return; }
+    res.status(201).json(serialize(budget));
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
     res.status(409).json({ error: "Conflict", message: `A ${body.currency} budget already exists for this ${projectId === null ? "scope" : "project"}` });
@@ -223,7 +243,9 @@ router.patch("/:id", async (req, res) => {
     updatedAt: new Date(),
   }).where(and(eq(spendBudgetsTable.id, budget.id), resourceScope(spendBudgetsTable, req.userId!, true))).returning({ id: spendBudgetsTable.id });
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(serialize((await findVisible(budget.id, req.userId!))!));
+  const fresh = await findVisible(budget.id, req.userId!);
+  if (!fresh) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(serialize(fresh));
 });
 
 router.delete("/:id", async (req, res) => {

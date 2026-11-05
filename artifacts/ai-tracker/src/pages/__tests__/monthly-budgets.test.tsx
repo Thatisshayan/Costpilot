@@ -61,6 +61,11 @@ describe("budget status", () => {
     expect(options.some(o => o.value > "2026-09")).toBe(false);
     fireEvent.change(screen.getByLabelText("Month"), { target: { value: "2026-08" } });
     expect(api.statusCalls.at(-1)).toEqual({ workspaceId: 5, month: "2026-08" });
+    // After choosing an earlier month, the list is still anchored to the server's month.
+    const after = [...(screen.getByLabelText("Month") as HTMLSelectElement).options];
+    expect(after[0].text).toContain("September 2026 (month to date)");
+    expect(after.some(o => o.value > "2026-09")).toBe(false);
+    expect(after.map(o => o.value)).toContain("2026-08");
   });
 
   it("shows exact spent, remaining, refunds and the threshold reached", () => {
@@ -174,6 +179,16 @@ describe("creating and editing", () => {
     fireEvent.change(screen.getByLabelText("Monthly amount"), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
     expect((await screen.findByRole("alert")).textContent).toContain("A USD budget already exists for this scope");
+  });
+
+  it("discards unsaved edits on Cancel", () => {
+    api.result = ok([status()]);
+    render(<MonthlyBudgets />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit budget Cloud" }));
+    fireEvent.change(screen.getByLabelText("Amount (USD)"), { target: { value: "999" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit budget Cloud" }));
+    expect((screen.getByLabelText("Amount (USD)") as HTMLInputElement).value).toBe("100.00");
   });
 
   it("edits the amount and thresholds; currency and scope stay fixed", async () => {

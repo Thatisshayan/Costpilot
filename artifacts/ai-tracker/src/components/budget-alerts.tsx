@@ -20,6 +20,16 @@ export function alertText(s: BudgetStatus): string {
 export function BudgetAlerts() {
   const { activeWorkspaceId } = useWorkspace();
   const query = useGetBudgetStatus(activeWorkspaceId !== null ? { workspaceId: activeWorkspaceId } : {});
+  if (query.isError) {
+    // Never look like "no alerts" when the status could not be loaded.
+    return (
+      <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100">
+        <AlertTriangle size={16} aria-hidden />
+        <span>Budget alerts could not be loaded.</span>
+        <button type="button" onClick={() => void query.refetch()} className="underline text-indigo-300">Try again</button>
+      </div>
+    );
+  }
   const alerts = (query.data?.budgets ?? []).filter(s => s.state !== "ok");
   if (alerts.length === 0) return null;
   return (
