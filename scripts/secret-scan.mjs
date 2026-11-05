@@ -60,8 +60,13 @@ export function runSecretScan() {
   // Current files of the checked-out commit, excluding untracked/ignored local files.
   const tree = mkdtempSync(join(tmpdir(), "costpilot-scan-"));
   try {
-    const archive = sh("sh", ["-c", `git archive HEAD | tar -x -C "${tree}"`]);
+    // No shell: export to a tar file, then unpack it, each as a plain argv call.
+    const tarball = `${tree}.tar`;
+    const archive = sh("git", ["archive", "--format=tar", "--output", tarball, "HEAD"]);
     if (archive.status !== 0) fail(`could not export HEAD for the file scan: ${archive.stderr}`);
+    const unpack = sh("tar", ["-xf", tarball, "-C", tree]);
+    rmSync(tarball, { force: true });
+    if (unpack.status !== 0) fail(`could not unpack HEAD for the file scan: ${unpack.stderr}`);
     console.log("Scanning files at HEAD");
     // Run inside the export so findings and fingerprints use repo-relative paths.
     gitleaks(["dir", "."], join(reportDir, "gitleaks-files.json"), tree);
