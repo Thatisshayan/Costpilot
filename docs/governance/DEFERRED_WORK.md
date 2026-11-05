@@ -27,6 +27,7 @@ The closed auth and expense items have targeted tests: 30 API auth/expense tests
 
 ## Remaining release acceptance
 
+- [2026-11-05] security: Codacy repository backlog (345 findings) triaged — single source [Codacy remediation register](../security/CODACY_REMEDIATION_REGISTER.md). Reachable critical/high weaknesses fixed (GCM tag length, webhook timing-safe compare, pinned action, non-root container; export cap in Batch 2); 103 **DEFERRED WITH REASON** (dependency pinning decision, code-quality refactors, disabled modules); PR #14's 25 new findings **PENDING** the PR-specific Codacy list.
 - [2026-11-05] product: fabricated data remains in hidden preview code (36 unrouted web pages, 12 with mock fallbacks; unmounted API routes including `telemetry` writing estimated costs as expenses; mobile `index_original`/`index_premium`; `artifacts/web-dashboard`) — **OPEN**. Only the launch-scope gates keep it unreachable; removal needs owner approval (Rule 14). Evidence: [product assessment](../../audits/2026-11-05_Claude_ProductAssessment_Audit.md).
 - [2026-11-05] product: development priorities (P0–P3) and delivery batches — **PLANNED, awaiting owner approval**. Single source: [product backlog](../product/PRODUCT_BACKLOG.md); open product decisions D1–D10 are listed there.
 - [2026-11-05] baseline: PR #7 (with #8–#11) **MERGED to `main` at `19c4e04`** with owner approval; all required CI green on the exact head and on `main`; no deployment triggered. Evidence: [main baseline audit](../../audits/2026-11-05_Claude_MainBaseline_Audit.md).
