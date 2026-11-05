@@ -27,7 +27,9 @@ const thresholds = z.array(z.number().int()).superRefine((value, ctx) => {
   const issue = thresholdsIssue(value);
   if (issue) ctx.addIssue({ code: "custom", message: issue });
 });
-const name = z.string().trim().min(1, "name is required").max(80, "name must be at most 80 characters");
+const name = z.string().trim().min(1, "name is required").max(80, "name must be at most 80 characters")
+  // PostgreSQL text cannot hold NUL; reject it here instead of failing the insert with a 500.
+  .refine(v => !v.includes("\u0000"), "name contains an invalid character");
 
 const ScopeQuery = z.object({ workspaceId: z.coerce.number().int().positive().optional() }).strict();
 const StatusQuery = ScopeQuery.extend({

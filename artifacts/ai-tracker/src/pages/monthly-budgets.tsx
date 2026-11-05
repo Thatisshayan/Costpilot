@@ -140,7 +140,13 @@ function BudgetCard({ s, canWrite, onChanged }: { s: BudgetStatus; canWrite: boo
   );
 }
 
+/** Remounts per scope so no form value (such as a project) carries over to another workspace. */
 export default function MonthlyBudgets() {
+  const { activeWorkspaceId } = useWorkspace();
+  return <BudgetsForScope key={activeWorkspaceId ?? "personal"} />;
+}
+
+function BudgetsForScope() {
   const { activeWorkspaceId, activeWorkspace, canWrite, activeRole } = useWorkspace();
   const cache = useQueryClient();
   const scopeParams = activeWorkspaceId !== null ? { workspaceId: activeWorkspaceId } : {};

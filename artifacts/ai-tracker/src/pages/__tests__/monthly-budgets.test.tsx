@@ -157,6 +157,16 @@ describe("creating and editing", () => {
     await waitFor(() => expect(api.create).toHaveBeenCalledWith({ data: { name: "Me", currency: "USD", amount: "10", thresholds: [50, 80, 100] } }));
   });
 
+  it("starts a fresh form when the scope changes, so a project never carries over", () => {
+    const view = render(<MonthlyBudgets />);
+    fireEvent.change(screen.getByLabelText("Applies to"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Draft" } });
+    ws.value = { activeWorkspaceId: null, activeWorkspace: null, activeRole: null, canWrite: true };
+    view.rerender(<MonthlyBudgets />);
+    expect((screen.getByLabelText("Applies to") as HTMLSelectElement).value).toBe("__scope");
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("");
+  });
+
   it("shows the server's reason when a budget is rejected", async () => {
     api.create.mockRejectedValue({ status: 409, data: { message: "A USD budget already exists for this scope" } });
     render(<MonthlyBudgets />);

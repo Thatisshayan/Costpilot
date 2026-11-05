@@ -346,7 +346,7 @@ try {
   assert.equal((await createBudget("launch-b", { name: "Mine again", currency: "USD", amount: "5" })).status, 409, "Personal duplicates are caught too (NULL workspace)");
   const [aPersonalProject] = await db.insert(projects).values({ userId: "launch-a", name: "Personal project" }).returning();
   assert.equal((await createBudget("launch-a", { workspaceId: ws2.id, projectId: aPersonalProject.id, name: "Leak", currency: "USD", amount: "5" })).status, 400, "a project from another scope is rejected");
-  for (const bad of [{ amount: "0" }, { amount: "-5" }, { amount: "1.234" }, { currency: "usd" }, { thresholds: [80, 50] }, { thresholds: [0] }, { name: "" }, { evil: 1 }]) {
+  for (const bad of [{ amount: "0" }, { amount: "-5" }, { amount: "1.234" }, { currency: "usd" }, { thresholds: [80, 50] }, { thresholds: [0] }, { name: "" }, { name: "bad\u0000name" }, { evil: 1 }]) {
     assert.equal((await createBudget("launch-a", { workspaceId: ws2.id, name: "Bad", currency: "CAD", amount: "5", ...bad })).status, 400, `rejects ${JSON.stringify(bad)}`);
   }
 
