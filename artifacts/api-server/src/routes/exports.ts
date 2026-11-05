@@ -12,6 +12,10 @@ import PDFDocument from "pdfkit";
 
 const router = Router();
 
+// Upper bound on rows per export so one request cannot build an unbounded file in memory
+// (Codacy: loop over user-controlled data). Larger ledgers export by narrowing the filters.
+export const MAX_EXPORT_ROWS = 50_000;
+
 // Mirrors OpenAPI GenerateExpenseExportBody; kept local because .strict() (unknown
 // keys such as dateRange -> 400) is not emitted by the generated schema.
 const GenerateExportBody = z.object({
@@ -56,7 +60,12 @@ router.post("/generate", async (req, res) => {
       .leftJoin(platformsTable, vendorJoin)
       .leftJoin(projectsTable, projectJoin)
       .where(and(resourceScope(expensesTable, userId), scopeCondition({ userId, workspaceId }), ...filterConditions(searchFilters(filters))))
-      .orderBy(desc(expensesTable.date), desc(expensesTable.id));
+      .orderBy(desc(expensesTable.date), desc(expensesTable.id))
+      .limit(MAX_EXPORT_ROWS + 1);
+    if (userExpenses.length > MAX_EXPORT_ROWS) {
+      res.status(413).json({ error: "Payload Too Large", message: `Exports are limited to ${MAX_EXPORT_ROWS.toLocaleString("en-US")} expenses. Narrow the date range or filters and export again.` });
+      return;
+    }
     // Per-currency net totals in exact cents (same rule as the dashboard summary).
     const totals = new Map<string, bigint>();
     for (const e of userExpenses) totals.set(e.currency, (totals.get(e.currency) ?? 0n) + toCents(e.amount));

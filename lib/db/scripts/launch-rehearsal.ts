@@ -10,7 +10,7 @@ process.env.NODE_ENV = "production";
 process.env.KMS_MASTER_KEY = "1".repeat(64);
 const { db, pool, workspacesTable: ws, workspaceMembersTable: members,
   workspaceInvitesTable: invites, expensesTable: expenses, projectsTable: projects, platformsTable: platforms } = await import("../src/index");
-const { eq, and } = await import("drizzle-orm");
+const { eq, and, sql } = await import("drizzle-orm");
 const { authConfig } = await import("../../../artifacts/api-server/src/middlewares/auth");
 authConfig.verifyToken = (async (token: string) => {
   if (!["launch-a", "launch-b", "launch-viewer", "launch-c", "launch-d", "launch-e", "launch-f"].includes(token)) throw new Error("Invalid fixture token");
@@ -295,6 +295,15 @@ try {
   }
   assert.deepEqual([...sums].sort(), [["EUR", 5000], ["JPY", 150000], ["USD", 8030]], "export totals equal the summary (in cents)");
   assert.equal((await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { evil: 1 } })).status, 400);
+
+  // Export size is capped so one request cannot build an unbounded file (Codacy DoS finding).
+  await db.execute(sql`INSERT INTO expenses (user_id, amount, currency, date)
+    SELECT 'launch-d', 1.00, 'USD', to_char(date '2025-01-01' + (g % 365), 'YYYY-MM-DD') FROM generate_series(1, 50001) g`);
+  const tooBig = await call("launch-d", "/exports/generate", "POST", { module: "expenses", format: "csv" });
+  assert.equal(tooBig.status, 413);
+  assert.match((await tooBig.json() as { message: string }).message, /limited to 50,000 expenses/);
+  const narrowed = await call("launch-d", "/exports/generate", "POST", { module: "expenses", format: "csv", filters: { from: "2025-01-01", to: "2025-01-31" } });
+  assert.equal(narrowed.status, 200, "a narrower export still works");
   await db.insert(expenses).values(Array.from({ length: 1000 }, (_, i) => ({ userId: "launch-a", workspaceId: workspace.id, amount: "1.00", date: "2026-11-04", description: `load fixture ${i}` })));
   const timings: number[] = [];
   for (let batch = 0; batch < 4; batch++) await Promise.all(Array.from({ length: 5 }, async () => {

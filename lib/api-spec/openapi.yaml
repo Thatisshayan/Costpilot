@@ -899,6 +899,8 @@ paths:
           description: Invalid request body
         "403":
           description: Not an active member of the requested workspace
+        "413":
+          description: More than 50,000 matching expenses; narrow the filters
 
   /workspaces:
     get:
