@@ -1,6 +1,21 @@
 # CostPilot launch handoff
 
-Updated 2026-11-04. Branch: `docs/fix-doc-drift`. Review: [PR #7](https://github.com/Thatisshayan/Costpilot/pull/7). **Public release remains blocked pending live environment acceptance and Shayan approval.**
+Updated 2026-11-05. Baseline: `main` at `19c4e04` (PR #7 merged). Earlier sections below are the historical handoff record. **Public release remains blocked pending live environment acceptance and Shayan approval.**
+
+## Engineering baseline — `main` at `19c4e04` (2026-11-05)
+
+`main` is the new baseline. PR #7, with PRs #8–#11 folded in, is merged; all required CI passed on the exact head, and `main` CI is green. See [main baseline audit](../../audits/2026-11-05_Claude_MainBaseline_Audit.md).
+
+| Verified technical work (CI and disposable databases) | Not yet verified (live acceptance) |
+| --- | --- |
+| Clerk bearer auth; workspace isolation; invite tokens hashed (escalation fixed) | Real Clerk staging sign-in with two accounts |
+| Expense validation; refunds labelled; per-currency cent-exact totals; single-scope CSV/PDF export | Physical-device mobile testing |
+| Personal-only mobile; HTTPS-only release sessions | Deployed CORS, webhook delivery, monitoring alerts |
+| Migrations, duplicate guard, backup/restore, container smoke | Real backup/restore on approved hosting |
+| Fail-closed gitleaks over every introduced commit; exact-fingerprint exceptions | Hosting, region and budget approval; operator identity; reviewed legal pages |
+| pnpm 10.34.7 with minimumReleaseAge enforced; zero audit advisories | Disposition of 5 unidentified Codacy findings |
+
+Publishing is manual only. Merging to `main` does not deploy, and no production migration or paid service exists. Proposed designs awaiting approval: [hosting](../design/HOSTING_OPTIONS.md) and [AWS cost integration v1](../design/AWS_COST_INTEGRATION_V1.md).
 
 ## What is implemented
 
