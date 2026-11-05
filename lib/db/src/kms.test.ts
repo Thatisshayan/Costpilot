@@ -102,4 +102,42 @@ describe("KMS Simulated Envelope Encryption (AES-256-GCM)", () => {
 
     expect(() => decrypt(JSON.stringify(p))).toThrow();
   });
+
+  describe("GCM authentication tag and nonce are enforced (Codacy: GCM decipher without tag length)", () => {
+    it("rejects a truncated (4-byte) secret tag that Node would otherwise accept", () => {
+      const payload = JSON.parse(encrypt(SECRET_TEXT));
+      payload.secretTag = payload.secretTag.slice(0, 8);
+      expect(() => decrypt(JSON.stringify(payload))).toThrow(/authentication tag/);
+    });
+    it("rejects a truncated data-key tag and a wrong-length nonce", () => {
+      const a = JSON.parse(encrypt(SECRET_TEXT));
+      a.dekTag = a.dekTag.slice(0, 24);
+      expect(() => decrypt(JSON.stringify(a))).toThrow(/authentication tag/);
+      const b = JSON.parse(encrypt(SECRET_TEXT));
+      b.secretIv = b.secretIv + "00";
+      expect(() => decrypt(JSON.stringify(b))).toThrow(/IV/);
+    });
+    it("rejects an exact-length but non-hex nonce or tag", () => {
+      const a = JSON.parse(encrypt(SECRET_TEXT));
+      a.secretIv = "zz" + a.secretIv.slice(2);
+      expect(() => decrypt(JSON.stringify(a))).toThrow(/Invalid IV: expected 12 bytes/);
+      const b = JSON.parse(encrypt(SECRET_TEXT));
+      b.secretTag = "zz" + b.secretTag.slice(2);
+      expect(() => decrypt(JSON.stringify(b))).toThrow(/Invalid authentication tag: expected 16 bytes/);
+    });
+    it("rejects truncated tags in the legacy 3-part format too", () => {
+      const key = crypto.scryptSync(process.env.ENCRYPTION_KEY!, "salt", 32);
+      const iv = crypto.randomBytes(12);
+      const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+      const content = Buffer.concat([cipher.update("legacy", "utf8"), cipher.final()]).toString("hex");
+      const tag = cipher.getAuthTag().toString("hex");
+      expect(decrypt(`${iv.toString("hex")}:${tag}:${content}`)).toBe("legacy");
+      expect(() => decrypt(`${iv.toString("hex")}:${tag.slice(0, 8)}:${content}`)).toThrow(/authentication tag/);
+    });
+    it("still rejects a full-length but wrong tag", () => {
+      const payload = JSON.parse(encrypt(SECRET_TEXT));
+      payload.secretTag = (payload.secretTag[0] === "0" ? "1" : "0") + payload.secretTag.slice(1);
+      expect(() => decrypt(JSON.stringify(payload))).toThrow();
+    });
+  });
 });

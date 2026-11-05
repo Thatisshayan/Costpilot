@@ -4,6 +4,9 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: costpilot-postgres
+    # Local development only. Block setuid privilege escalation inside the container.
+    security_opt:
+      - no-new-privileges:true
     ports:
       - '5432:5432'
     environment:
@@ -23,6 +26,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: costpilot-redis
+    security_opt:
+      - no-new-privileges:true
     ports:
       - '6379:6379'
     healthcheck:
