@@ -73,7 +73,7 @@ Recommended remediation, as a separate PR: move `packageManager`, workflows and 
 
 ## Follow-up — Codacy, legacy invites, refunds (same day)
 
-- **Codacy "2 new high security issues" (PR #8):** the rule IDs and lines are **not retrievable from this session**; `app.codacy.com` is outside the environment's allowed network domains. Local reproduction of Codacy's usual engines on the changed files:
+- **Codacy high-severity security issues (PR #8): 2 at `24ea6a3`, 3 at `5fecb48`. UNRESOLVED; details unknown. Not classified as false positives.** Owner accepted merging PR #8 into `docs/fix-doc-drift` with these open; they block public launch until investigated. Earlier notes: the rule IDs and lines are **not retrievable from this session**; `app.codacy.com` is outside the environment's allowed network domains. Local reproduction of Codacy's usual engines on the changed files:
   - Semgrep open-source JavaScript/TypeScript rules: no security findings.
   - ESLint `eslint-plugin-security`: new lines flagged are `detect-non-literal-fs-filename` ×2 (`lib/db/scripts/migration-guard-rehearsal.ts:25,27`, temp-dir paths, CI-only script, no external input) and `detect-object-injection` (export helper, now rewritten without a lookup; an auth test; generated client).
   - Trivy was not run: downloading its binary was blocked by this session's safety policy.
