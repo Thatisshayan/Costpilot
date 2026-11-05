@@ -5,4 +5,4 @@ export function initSentry() {
     beforeSend(event) { delete event.request; delete event.user; delete event.extra; return event; },
   });
 }
-export function captureError(error: Error) { Sentry.captureException(error); }
+export function captureError(error: Error, _context?: Record<string, unknown>) { Sentry.captureException(error); }

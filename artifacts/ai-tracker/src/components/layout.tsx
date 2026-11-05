@@ -299,7 +299,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           )}
           {!isCollapsed && (
             <div className="px-4 py-1 mb-2 text-xs text-slate-600">
-              Last synced: {Math.floor((Date.now() - lastSyncRef.current) / 60000) < 1 ? "just now" : `${Math.floor((Date.now() - lastSyncRef.current) / 60000)}m ago`}
+              API last checked: {Math.floor((Date.now() - lastSyncRef.current) / 60000) < 1 ? "just now" : `${Math.floor((Date.now() - lastSyncRef.current) / 60000)}m ago`}
             </div>
           )}
 

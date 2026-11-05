@@ -29,5 +29,11 @@ jobs:
             lib/api-zod/src/generated
       - run: pnpm run build
       - run: pnpm run test
+      - name: Bundle Android application
+        env:
+          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
+          EXPO_NO_TELEMETRY: "1"
+          EXPO_OFFLINE: "1"
+        run: pnpm --filter mobile-app exec expo export --platform android --output-dir dist
       - name: Check committed generated contracts
         run: git diff --exit-code -- lib/api-client-react/src/generated lib/api-zod/src/generated
