@@ -65,6 +65,14 @@ Primary customers are development teams and businesses managing cloud and AI/API
 6. **Public beta evaluation.**
 7. **AI cost analytics and optimization.** Simulated AI, provider sync, payments and remediation stay disabled until each is approved.
 
+## Product development first (owner direction, 2026-11-05)
+
+Infrastructure spending and public launch are on hold until product milestones are met. The live product is a manual, multi-currency spend ledger shared across workspaces; no reachable screen shows fabricated data.
+
+- **Priorities** (P0 core completeness, P1 B2B cost management, P2 provider-integration readiness, P3 intelligence), with acceptance criteria and delivery batches, are maintained only in [the product backlog](../product/PRODUCT_BACKLOG.md).
+- **Evidence:** [product assessment](../../audits/2026-11-05_Claude_ProductAssessment_Audit.md) and [market research](../product/MARKET_RESEARCH.md).
+- **Proposals kept for later evaluation:** hosting and AWS designs.
+
 ## Remaining sequence
 
 1. The existing Pages web URL is approved. Select/provision an approved API host and confirm its URL and public operator identity. Configure matching server Clerk/webhook secrets, authorized domains/Native API, and persistent encryption-key custody privately. Run the status-only environment preflight; the missing contact input is resolved.

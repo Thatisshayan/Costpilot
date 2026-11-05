@@ -1,5 +1,7 @@
 # Premium UI/UX Implementation Guide - Costpilot
 
+> **Status (2026-11-05): historical proposal, not the live product.** The "premium" mobile and `artifacts/web-dashboard` screens described here are not routed or built; the live mobile home is a plain two-button screen and the hidden premium screens use fabricated figures. Current status and priorities: [product assessment](audits/2026-11-05_Claude_ProductAssessment_Audit.md) and [product backlog](docs/product/PRODUCT_BACKLOG.md).
+
 ## Overview
 
 This guide documents the comprehensive premium UI/UX transformation implemented for Costpilot, covering both mobile and desktop platforms with a cohesive design system, custom typography, and high-end visual aesthetics.
