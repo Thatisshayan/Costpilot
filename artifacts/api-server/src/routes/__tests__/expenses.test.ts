@@ -35,6 +35,7 @@ vi.mock("@workspace/db", () => ({
   db: {
     execute: () => Promise.resolve(),
     select: () => {
+      mockDbState.selectCalls = (mockDbState.selectCalls ?? 0) + 1;
       const chain: any = {};
       chain.from = () => chain;
       chain.leftJoin = () => chain;
@@ -45,9 +46,10 @@ vi.mock("@workspace/db", () => ({
       return chain;
     },
     insert: () => ({
-      values: () => ({
-        returning: () => thenable(mockDbState.insertResult),
-      }),
+      values: (values: any) => {
+        mockDbState.lastInsert = values;
+        return { returning: () => thenable(mockDbState.insertResult) };
+      },
     }),
     update: () => ({
       set: () => ({
@@ -56,7 +58,7 @@ vi.mock("@workspace/db", () => ({
         }),
       }),
     }),
-    delete: () => ({ where: () => Promise.resolve() }),
+    delete: () => ({ where: () => ({ returning: () => thenable(mockDbState.deleteResult ?? [{ id: 1 }]) }) }),
   },
   expensesTable: {},
   platformsTable: {},
@@ -115,6 +117,9 @@ describe("Expenses API", () => {
     mockDbState.selectResult = Promise.resolve([]);
     mockDbState.insertResult = Promise.resolve([]);
     mockDbState.updateResult = Promise.resolve([]);
+    mockDbState.deleteResult = undefined;
+    mockDbState.lastInsert = undefined;
+    mockDbState.selectCalls = 0;
   });
 
   describe("GET /", () => {
@@ -270,6 +275,54 @@ describe("Expenses API", () => {
       await handler(req, res);
       expect(res.statusCode).toBe(204);
     });
+
+    it("reports 404 when the scoped delete removed nothing", async () => {
+      mockDbState.selectResult = Promise.resolve([{ id: 1, userId: "user-1", workspaceId: null }]);
+      mockDbState.deleteResult = [];
+      const res = makeMockResponse();
+      await getHandler("/:id", "delete")(makeMockRequest({}, { id: "1" }), res);
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe("amount, currency and date validation", () => {
+    const create = async (body: any) => {
+      mockDbState.insertResult = Promise.resolve([{ id: 1, amount: "1.00", currency: "USD", createdAt: new Date() }]);
+      const res = makeMockResponse();
+      await getHandler("/", "post")(makeMockRequest(body), res);
+      return res;
+    };
+
+    it("normalizes currency codes to uppercase before storing", async () => {
+      const res = await create({ amount: 12.5, date: "2026-11-04", currency: " usd " });
+      expect(res.statusCode).toBe(201);
+      expect(mockDbState.lastInsert.currency).toBe("USD");
+      expect(mockDbState.lastInsert.amount).toBe("12.5");
+    });
+
+    it("keeps negative amounts (refunds/credits) within range", async () => {
+      expect((await create({ amount: -15.25, date: "2026-11-04" })).statusCode).toBe(201);
+    });
+
+    it.each([
+      [{ amount: 1.005, date: "2026-11-04" }, "decimal"],
+      [{ amount: 100000000, date: "2026-11-04" }, "between"],
+      [{ amount: 5, date: "2026-11-04", currency: "US$" }, "currency"],
+      [{ amount: 5, date: "2026-11-04", currency: "EURO" }, "currency"],
+      [{ amount: 5, date: "2026-02-30" }, "date"],
+      [{ amount: 5, date: "04/11/2026" }, "date"],
+    ])("rejects %j without writing", async (body, message) => {
+      const res = await create(body);
+      expect(res.statusCode).toBe(400);
+      expect(res.jsonData.error).toContain(message);
+      expect(mockDbState.lastInsert).toBeUndefined();
+    });
+
+    it("validates amounts on update", async () => {
+      const res = makeMockResponse();
+      await getHandler("/:id", "patch")(makeMockRequest({ amount: 0.001 }, { id: "1" }), res);
+      expect(res.statusCode).toBe(400);
+    });
   });
 
   describe("POST /import-batch", () => {
@@ -294,6 +347,41 @@ describe("Expenses API", () => {
       await handler(req, res);
       expect(res.statusCode).toBe(201);
       expect(res.jsonData.count).toBe(2);
+    });
+
+    it("checks shared-workspace rows once per workspace/reference within a request", async () => {
+      mockDbState.selectResult = Promise.resolve([{ id: 7, role: "owner", workspaceId: 5, userId: "user-1" }]);
+      mockDbState.insertResult = Promise.resolve(Array.from({ length: 50 }, (_, i) => ({ id: i })));
+      const transactions = Array.from({ length: 50 }, (_, i) => ({ amount: 1, date: "2026-11-04", workspaceId: 5, platformId: 7, description: `row ${i}` }));
+      const res = makeMockResponse();
+      await getHandler("/import-batch", "post")(makeMockRequest({ transactions }), res);
+      expect(res.statusCode).toBe(201);
+      // One membership lookup + one platform lookup, instead of 100.
+      expect(mockDbState.selectCalls).toBe(2);
+    });
+
+    it("rejects an import into a workspace where the user is a viewer", async () => {
+      mockDbState.selectResult = Promise.resolve([{ id: 1, role: "viewer", workspaceId: 5, userId: "user-1" }]);
+      const res = makeMockResponse();
+      await getHandler("/import-batch", "post")(makeMockRequest({ transactions: [{ amount: 1, date: "2026-11-04", workspaceId: 5 }] }), res);
+      expect(res.statusCode).toBe(403);
+      expect(mockDbState.lastInsert).toBeUndefined();
+    });
+
+    it("rejects an import into a workspace where the user is not a member", async () => {
+      mockDbState.selectResult = Promise.resolve([]);
+      const res = makeMockResponse();
+      await getHandler("/import-batch", "post")(makeMockRequest({ transactions: [{ amount: 1, date: "2026-11-04", workspaceId: 5 }] }), res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("rejects the whole batch when one row is invalid", async () => {
+      const res = makeMockResponse();
+      await getHandler("/import-batch", "post")(makeMockRequest({ transactions: [
+        { amount: 1, date: "2026-11-04" }, { amount: 1.234, date: "2026-11-04" },
+      ] }), res);
+      expect(res.statusCode).toBe(400);
+      expect(mockDbState.lastInsert).toBeUndefined();
     });
 
     it("should reject empty transactions array", async () => {

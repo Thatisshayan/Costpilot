@@ -13,9 +13,22 @@ export interface ExpenseInput {
   platformId?: number | null;
   /** @nullable */
   projectId?: number | null;
+  /**
+     * At most 2 decimal places. Negative values record refunds or credits.
+     * @minimum -99999999.99
+     * @maximum 99999999.99
+     */
   amount: number;
+  /**
+     * ISO 4217 code; stored uppercase.
+     * @pattern ^\s*[A-Za-z]{3}\s*$
+     */
   currency?: string;
   description?: string;
   category?: string;
+  /**
+     * Calendar date (YYYY-MM-DD).
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
   date: string;
 }

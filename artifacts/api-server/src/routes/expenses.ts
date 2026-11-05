@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-zod";
 import { getWorkspaceMember } from "../middlewares/authz";
 import { resourceScope } from "../lib/resource-scope";
+import { expenseFieldIssue, normalizeExpenseInput } from "../lib/money";
 import { z } from "zod";
 
 const ImportBatchBody = z.object({
@@ -148,7 +149,9 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const body = CreateExpenseBody.parse(req.body);
+  const body = CreateExpenseBody.parse(normalizeExpenseInput(req.body));
+  const fieldIssue = expenseFieldIssue(body);
+  if (fieldIssue) { res.status(400).json({ error: fieldIssue }); return; }
   const workspaceId = body.workspaceId ?? null;
   if (workspaceId !== null) {
     const membership = await getWorkspaceMember(workspaceId, req.userId!);
@@ -227,7 +230,9 @@ router.get("/:id", async (req, res) => {
 
 router.patch("/:id", async (req, res) => {
   const { id } = UpdateExpenseParams.parse({ id: Number(req.params.id) });
-  const body = UpdateExpenseBody.parse(req.body);
+  const body = UpdateExpenseBody.parse(normalizeExpenseInput(req.body));
+  const fieldIssue = expenseFieldIssue(body);
+  if (fieldIssue) { res.status(400).json({ error: fieldIssue }); return; }
   const [existing] = await db.select().from(expensesTable).where(eq(expensesTable.id, id));
   const authorization = existing && await authorizeExpense(existing, req.userId!, true);
   if (!existing || authorization === "not_found") {
@@ -277,24 +282,42 @@ router.delete("/:id", async (req, res) => {
     res.status(403).json({ error: "Workspace role cannot delete expenses" });
     return;
   }
-  await db.delete(expensesTable).where(and(eq(expensesTable.id, id), resourceScope(expensesTable, req.userId!, true)));
+  const deleted = await db.delete(expensesTable)
+    .where(and(eq(expensesTable.id, id), resourceScope(expensesTable, req.userId!, true)))
+    .returning({ id: expensesTable.id });
+  // Access can be revoked between the check above and the delete; never report success for a no-op.
+  if (deleted.length === 0) { res.status(404).json({ error: "Not found" }); return; }
   res.status(204).send();
 });
 
 router.post("/import-batch", async (req, res) => {
   const { transactions } = ImportBatchBody.parse(req.body);
   const formatted = [];
+  // Request-scoped caches: a 500-row import repeats the same few membership and
+  // reference checks. Every row is still checked; results are reused only within
+  // this request, so authorization semantics are unchanged.
+  const canWrite = new Map<number, Promise<boolean>>();
+  const referencesOk = new Map<string, Promise<boolean>>();
   for (const transaction of transactions) {
-    const parsed = CreateExpenseBody.parse(transaction);
+    const parsed = CreateExpenseBody.parse(normalizeExpenseInput(transaction));
+    const fieldIssue = expenseFieldIssue(parsed);
+    if (fieldIssue) { res.status(400).json({ error: fieldIssue }); return; }
     const workspaceId = parsed.workspaceId ?? null;
     if (workspaceId !== null) {
-      const membership = await getWorkspaceMember(workspaceId, req.userId!);
-      if (!membership || !WRITE_ROLES.has(membership.role)) {
+      if (!canWrite.has(workspaceId)) {
+        canWrite.set(workspaceId, getWorkspaceMember(workspaceId, req.userId!)
+          .then(membership => !!membership && WRITE_ROLES.has(membership.role)));
+      }
+      if (!(await canWrite.get(workspaceId))) {
         res.status(403).json({ error: "Workspace membership and write role required" });
         return;
       }
     }
-    if (!(await validateReferences(parsed, req.userId!, workspaceId))) {
+    const referenceKey = `${workspaceId}|${parsed.platformId ?? ""}|${parsed.projectId ?? ""}`;
+    if (!referencesOk.has(referenceKey)) {
+      referencesOk.set(referenceKey, validateReferences(parsed, req.userId!, workspaceId));
+    }
+    if (!(await referencesOk.get(referenceKey))) {
       res.status(400).json({ error: "Platform and project must belong to the selected scope" });
       return;
     }

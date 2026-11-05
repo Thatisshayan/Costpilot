@@ -95,6 +95,18 @@ try {
   assert.equal((await call("launch-a", `/workspaces/members/${revokedMember.id}`, "DELETE")).status, 200);
   assert.equal((await call("launch-f", "/workspaces/accept-invite", "POST", { token: revoked.token })).status, 400);
   assert.equal((await call("launch-f", `/expenses/${sharedExpense.id}`)).status, 404);
+  // Money rules: codes are normalized, the numeric(10,2) range/precision is
+  // enforced up front (no silent rounding or 500s), and refunds stay negative.
+  const lower = await call("launch-a", "/expenses", "POST", { amount: 99999999.99, currency: "usd", date: "2026-11-04" });
+  assert.equal(lower.status, 201);
+  const lowerRow = await lower.json() as { id: number; currency: string; amount: number };
+  assert.equal(lowerRow.currency, "USD");
+  assert.equal(lowerRow.amount, 99999999.99);
+  assert.equal((await call("launch-a", "/expenses", "POST", { amount: -4.5, currency: "EUR", date: "2026-11-04" })).status, 201);
+  for (const bad of [{ amount: 100000000 }, { amount: 1.005 }, { amount: 1, currency: "US$" }, { amount: 1, date: "2026-02-30" }]) {
+    assert.equal((await call("launch-a", "/expenses", "POST", { date: "2026-11-04", ...bad })).status, 400, JSON.stringify(bad));
+  }
+  assert.equal((await call("launch-a", `/expenses/${lowerRow.id}`, "PATCH", { amount: 0.001 })).status, 400);
   // Stored provider credentials survive unrelated edits and are never echoed.
   const platformResponse = await call("launch-a", "/platforms", "POST", { name: "Key holder", apiKey: "sk-rehearsal-secret" });
   assert.equal(platformResponse.status, 201);
