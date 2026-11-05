@@ -65,6 +65,14 @@ Primary customers are development teams and businesses managing cloud and AI/API
 6. **Public beta evaluation.**
 7. **AI cost analytics and optimization.** Simulated AI, provider sync, payments and remediation stay disabled until each is approved.
 
+## Product assessment and pre-infrastructure roadmap (2026-11-05)
+
+The live product is a manual, multi-currency spend ledger shared across workspaces; no reachable screen shows fabricated data. Owner direction is to finish product work before infrastructure spend. Priority order (details, evidence and estimates in the [product assessment](../../audits/2026-11-05_Claude_ProductAssessment_Audit.md)):
+
+- **P1 — usable by a team:** persistent workspace scope, honest onboarding, CSV import with dedupe, an expenses list with filters/pagination, a period dashboard by vendor/project per currency.
+- **P2 — recurring-cost control:** workspace-scoped subscriptions/renewals, budgets with period and threshold states, activity log, amount precision and integrity fixes.
+- **P3 — honesty and hygiene:** correct over-claiming copy; remove mock-backed preview code (deletion needs owner approval).
+
 ## Remaining sequence
 
 1. The existing Pages web URL is approved. Select/provision an approved API host and confirm its URL and public operator identity. Configure matching server Clerk/webhook secrets, authorized domains/Native API, and persistent encryption-key custody privately. Run the status-only environment preflight; the missing contact input is resolved.
