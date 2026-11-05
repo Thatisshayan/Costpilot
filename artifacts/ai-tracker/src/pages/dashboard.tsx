@@ -5,6 +5,7 @@ import { useGetSpendSummary, type SpendCurrency, type SpendGroup, type SpendSumm
 import { useWorkspace } from "@/context/workspace-context";
 import { apiErrorMessage } from "@/lib/api-error";
 import { formatMoney, formatSignedMoney, isNegative } from "@/lib/money-format";
+import { BudgetAlerts } from "@/components/budget-alerts";
 
 /** Last `count` months ending with the current UTC month, newest first, as YYYY-MM. */
 export function recentMonths(today: string, count = 12): string[] {
@@ -155,6 +156,8 @@ export default function Dashboard() {
           </select>
         </div>
       </header>
+
+      <BudgetAlerts />
 
       {query.isLoading && <p role="status" className="text-slate-300">Loading {monthLabel(month)}…</p>}
 
