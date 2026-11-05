@@ -357,6 +357,9 @@ try {
   const after = (await (await call("launch-a", `/budgets/status?workspaceId=${ws2.id}&month=2026-09`)).json() as StatusJson).budgets.find(b => b.budget.id === wsBudget.id)!;
   assert.deepEqual([after.remaining, after.percentUsed, after.thresholdReached, after.state], ["119.70", 40.2, null, "ok"]);
   assert.equal((await call("launch-a", `/budgets/${wsBudget.id}`, "PATCH", { currency: "EUR" })).status, 400);
+  assert.equal((await call("launch-a", "/budgets/99999999999", "DELETE")).status, 404, "an id beyond the integer range is not found, not a 500");
+  assert.equal((await call("launch-a", "/budgets?workspaceId=99999999999")).status, 400);
+  assert.equal((await createBudget("launch-a", { workspaceId: 99999999999, name: "Big", currency: "USD", amount: "1" })).status, 400);
 
   // Deleting a project deletes its budget instead of widening it to the whole workspace.
   const [temp] = await db.insert(projects).values({ userId: "launch-a", workspaceId: ws2.id, name: "Temporary" }).returning();

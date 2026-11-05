@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Eye, Info, Pencil, Trash2 } from "lucide-react";
@@ -35,7 +35,8 @@ function BudgetCard({ s, canWrite, onChanged }: { s: BudgetStatus; canWrite: boo
   const remove = useDeleteBudget();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [values, setValues] = useState<BudgetFormValues>({ name: budget.name, amount: budget.amount, currency: budget.currency, thresholds: budget.thresholds.join(", ") });
+  const initialValues: BudgetFormValues = { name: budget.name, amount: budget.amount, currency: budget.currency, thresholds: budget.thresholds.join(", ") };
+  const [values, setValues] = useState<BudgetFormValues>(initialValues);
   const [errors, setErrors] = useState<BudgetFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const style = STATE_STYLE[s.state];
@@ -74,7 +75,7 @@ function BudgetCard({ s, canWrite, onChanged }: { s: BudgetStatus; canWrite: boo
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-semibold text-white break-words">{budget.name}</h3>
-          <p className="text-xs text-slate-300">{budget.projectName ? `Project: ${budget.projectName}` : "Whole scope"} · {budget.currency} · monthly</p>
+          <p className="text-xs text-slate-300 break-words">{budget.projectName ? `Project: ${budget.projectName}` : "Whole scope"} · {budget.currency} · monthly</p>
         </div>
         <span className={`text-xs font-semibold ${style.text}`}>{style.label}{s.thresholdReached !== null && s.state !== "over" ? ` (${s.thresholdReached}%)` : ""}</span>
       </div>
@@ -132,7 +133,7 @@ function BudgetCard({ s, canWrite, onChanged }: { s: BudgetStatus; canWrite: boo
           </div>
           <div className="sm:col-span-3 flex gap-2">
             <button type="submit" disabled={update.isPending} className="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">Save</button>
-            <button type="button" onClick={() => { setEditing(false); setErrors({}); }} className="rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100">Cancel</button>
+            <button type="button" onClick={() => { setValues(initialValues); setEditing(false); setErrors({}); setServerError(null); }} className="rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100">Cancel</button>
           </div>
         </form>
       )}
@@ -164,7 +165,11 @@ function BudgetsForScope() {
   const [serverError, setServerError] = useState<string | null>(null);
   const scopeName = activeWorkspaceId === null ? "Personal" : activeWorkspace?.name ?? "Workspace";
   const report = query.data;
-  const currentMonth = month === "" && report ? report.period.month : months[0];
+  // Remember the server's current month, so the label and the list of earlier months stay
+  // correct after an earlier month is selected (the browser clock may differ).
+  const [serverMonth, setServerMonth] = useState<string | null>(null);
+  useEffect(() => { if (month === "" && report) setServerMonth(report.period.month); }, [month, report]);
+  const currentMonth = serverMonth ?? months[0];
   const refresh = () => cache.invalidateQueries({ queryKey: getGetBudgetStatusQueryKey() });
 
   const submit = async (event: React.FormEvent) => {
