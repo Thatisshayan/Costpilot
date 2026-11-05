@@ -12,6 +12,16 @@ export function getApiOrigin() {
   return API_ORIGIN;
 }
 
+declare const __DEV__: boolean | undefined;
+const isDevelopmentBuild = () => typeof __DEV__ !== "undefined" && __DEV__ === true;
+
+/** Release builds must never send a session token over plain HTTP. */
+export function assertSecureApiOrigin(origin: string, development = isDevelopmentBuild()) {
+  if (!development && new URL(origin).protocol !== "https:") {
+    throw new Error("Release builds require an HTTPS API origin");
+  }
+}
+
 export async function apiResponse(
   endpoint: string,
   options?: RequestInit & { params?: Record<string, string> }
@@ -25,6 +35,7 @@ export async function apiResponse(
       : `/api/${endpoint.replace(/^\/+/, "")}`;
   const url = new URL(path, `${API_ORIGIN}/`);
   if (url.origin !== new URL(API_ORIGIN).origin) throw new Error("API requests must use the configured origin");
+  assertSecureApiOrigin(API_ORIGIN);
   if (params) {
     url.search = new URLSearchParams(params).toString();
   }

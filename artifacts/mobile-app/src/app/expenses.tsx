@@ -17,6 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { apiFetch } from '@/lib/api';
+import { personalExpensesOnly } from '@/lib/personal-scope';
 
 type Expense = {
   id: number;
@@ -26,6 +27,7 @@ type Expense = {
   category: string;
   date: string;
   currency: string;
+  workspaceId?: number | null;
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -122,7 +124,7 @@ export default function ExpensesScreen() {
 
       const data = await apiFetch<Expense[]>('/expenses', {
       });
-      setExpenses(data);
+      setExpenses(personalExpensesOnly(data));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load expenses');
     } finally {

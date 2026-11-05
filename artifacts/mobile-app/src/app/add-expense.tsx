@@ -18,6 +18,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { apiFetch } from '@/lib/api';
+import { isPersonalExpense, SHARED_EXPENSE_MESSAGE } from '@/lib/personal-scope';
 
 const CATEGORIES = [
   'ai-tokens',
@@ -49,9 +50,10 @@ export default function AddExpenseScreen() {
   useEffect(() => {
     if (!id) return;
     let active = true;
-    apiFetch<{ amount: number; currency: string; description: string; category: string; date: string }>(`/expenses/${id}`)
+    apiFetch<{ amount: number; currency: string; description: string; category: string; date: string; workspaceId?: number | null }>(`/expenses/${id}`)
       .then(expense => {
         if (!active) return;
+        if (!isPersonalExpense(expense)) { setLoadError(SHARED_EXPENSE_MESSAGE); return; }
         setAmount(String(expense.amount)); setCurrency(expense.currency);
         setDescription(expense.description ?? ''); setCategory(expense.category); setDate(expense.date);
       }).catch(error => { if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load expense'); })
@@ -60,6 +62,7 @@ export default function AddExpenseScreen() {
   }, [id]);
 
   const handleSubmit = async () => {
+    if (loadError) return;
     if (!amount || !/^[A-Z]{3}$/.test(currency)) {
       Alert.alert('Missing Fields', 'Please enter an amount and a three-letter currency code.');
       return;

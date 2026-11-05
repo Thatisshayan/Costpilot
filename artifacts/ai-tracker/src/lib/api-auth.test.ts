@@ -52,6 +52,25 @@ describe("authenticated client requests", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("refuses to send a mobile session over plain HTTP in release builds", async () => {
+    vi.stubEnv("EXPO_PUBLIC_API_ORIGIN", "http://mobile-api.example.test");
+    vi.resetModules();
+    const { apiResponse, setApiAuthTokenGetter, assertSecureApiOrigin } = await import("../../../mobile-app/src/lib/api");
+    const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
+    const getter = vi.fn(async () => "mobile-session-token");
+    setApiAuthTokenGetter(getter);
+    await expect(apiResponse("/expenses")).rejects.toThrow("HTTPS");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getter).not.toHaveBeenCalled();
+    expect(() => assertSecureApiOrigin("http://192.168.1.5:8080", true)).not.toThrow();
+  });
+
+  it("keeps the native app to personal expenses", async () => {
+    const { personalExpensesOnly, isPersonalExpense } = await import("../../../mobile-app/src/lib/personal-scope");
+    expect(personalExpensesOnly([{ id: 1, workspaceId: null }, { id: 2, workspaceId: 7 }, { id: 3 }]).map(e => e.id)).toEqual([1, 3]);
+    expect(isPersonalExpense({ workspaceId: 7 })).toBe(false);
+  });
+
   it("does not attach a web session to a foreign API origin", async () => {
     const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
     setBaseUrl("https://web-api.example.test");
