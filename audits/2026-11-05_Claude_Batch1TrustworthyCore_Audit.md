@@ -57,7 +57,7 @@
 
 **Report:** 25 new issues: 1 critical and 19 high (Security), 5 medium (unused code, best practice, complexity).
 
-**Why the list is a reproduction:** Codacy's per-issue list is not readable from the agent environment (app.codacy.com is blocked, and the check run carries no annotations). The findings were reproduced locally with `eslint-plugin-security` 3.0.1 and the open-source Semgrep rules on the changed files. This is a **probable match, not a confirmed one**.
+**Why the list is a reproduction:** Codacy's per-issue list is not readable from the agent environment (app.codacy.com is blocked, and the check run carries no annotations). The findings were approximated locally with `eslint-plugin-security` 3.0.1 and the open-source Semgrep rules on the changed files. **That approximation does not match Codacy:** after `1a652c3` removed the locally reproduced product-code findings, Codacy still reported the same 25 issues (1 critical, 19 high). Codacy's 25 findings therefore remain **unidentified**.
 
 | Finding (local reproduction) | Where | Assessment | Action |
 |---|---|---|---|
@@ -67,7 +67,7 @@
 | `detect-non-literal-fs-filename`, `detect-unsafe-regex`, `detect-object-injection` | `scripts/mock-guard.mjs`, `scripts/__tests__/*`, `api-server/src/__tests__/openapi-contract.test.ts`, `ai-tracker/src/components/layout.test.tsx`, `e2e/narrow-viewport.mjs` | Build-time and test tooling over repository files only, never request data | Not changed; recorded |
 | Semgrep `spawn-shell-true` | `scripts/verify.mjs:12` | Pre-existing on `main` (shell only for Windows `.cmd` shims) | Not changed |
 
-**Status:** these findings stay recorded as **unconfirmed until the owner or someone with Codacy access compares them with the actual list**. None is classified as a false positive on Codacy's side. The 5 historical Codacy findings remain unresolved.
+**Status:** Codacy's 25 findings stay recorded as **unidentified and unresolved**. Someone with Codacy access, or `app.codacy.com` allowed in the agent environment, must list them before merge or before external access, as the owner decides. None is classified as a false positive on Codacy's side. The 5 historical Codacy findings remain unresolved.
 
 ## Limitations and follow-ups
 
