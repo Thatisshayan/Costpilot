@@ -45,4 +45,7 @@ RUN pnpm install --prod --frozen-lockfile
 
 EXPOSE 8080
 
+# Run as the image's unprivileged user; the app only reads its files and listens on 8080.
+USER node
+
 CMD ["pnpm", "--filter", "@workspace/api-server", "start"]

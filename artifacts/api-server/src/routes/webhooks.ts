@@ -78,6 +78,17 @@ router.post("/stripe", async (req, res) => {
   }
 });
 
+/**
+ * Constant-time shared-secret check. Both values are hashed first so the comparison takes
+ * the same time whatever the length or content of the presented header.
+ */
+export function secretsMatch(presented: unknown, expected: string | undefined): boolean {
+  if (typeof presented !== "string" || !expected) return false;
+  const a = crypto.createHash("sha256").update(presented).digest();
+  const b = crypto.createHash("sha256").update(expected).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
 // Incoming Provider Webhooks (e.g., from OpenAI, Anthropic)
 router.post("/incoming/:provider", async (req, res) => {
   const { provider } = req.params;
@@ -88,7 +99,7 @@ router.post("/incoming/:provider", async (req, res) => {
     return;
   }
 
-  if (secret !== process.env.WEBHOOK_SECRET) {
+  if (!secretsMatch(secret, process.env.WEBHOOK_SECRET)) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
