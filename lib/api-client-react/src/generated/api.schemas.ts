@@ -41,6 +41,145 @@ export interface CreateWorkspaceBody {
   slug?: string;
 }
 
+export type ExpenseFiltersEntryType = typeof ExpenseFiltersEntryType[keyof typeof ExpenseFiltersEntryType];
+
+
+export const ExpenseFiltersEntryType = {
+  expense: 'expense',
+  credit: 'credit',
+} as const;
+
+export interface ExpenseFilters {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  q?: string;
+  from?: string;
+  to?: string;
+  /** @pattern ^-?\d{1,8}(\.\d{1,2})?$ */
+  minAmount?: string;
+  /** @pattern ^-?\d{1,8}(\.\d{1,2})?$ */
+  maxAmount?: string;
+  /** @pattern ^(none|[1-9]\d*)$ */
+  platformId?: string;
+  /** @pattern ^(none|[1-9]\d*)$ */
+  projectId?: string;
+  /** @maxLength 100 */
+  category?: string;
+  /** @pattern ^[A-Z]{3}$ */
+  currency?: string;
+  entryType?: ExpenseFiltersEntryType;
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  /** Exact signed amount with 2 decimals */
+  net: string;
+  count: number;
+}
+
+export interface Expense {
+  id: number;
+  /** @nullable */
+  workspaceId?: number | null;
+  /** @nullable */
+  platformId?: number | null;
+  /** @nullable */
+  platformName?: string | null;
+  /** @nullable */
+  projectId?: number | null;
+  /** @nullable */
+  projectName?: string | null;
+  amount: number;
+  currency?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  category?: string | null;
+  date: string;
+  createdAt: string;
+}
+
+export interface ExpenseSearchResult {
+  items: Expense[];
+  total: number;
+  limit: number;
+  offset: number;
+  totals: CurrencyTotal[];
+}
+
+export interface SpendGroup {
+  /**
+     * Vendor or project id; null for unassigned
+     * @nullable
+     */
+  id?: number | null;
+  /**
+     * Null for unassigned
+     * @nullable
+     */
+  name: string | null;
+  net: string;
+  count: number;
+}
+
+export type SpendCurrencyTrendItem = {
+  month: string;
+  net: string;
+};
+
+export interface SpendCurrency {
+  currency: string;
+  net: string;
+  charges: string;
+  /** Sum of refunds/credits (zero or negative) */
+  credits: string;
+  count: number;
+  previousNet: string;
+  changeAmount: string;
+  /**
+     * Null when the previous net is zero or negative
+     * @nullable
+     */
+  changePercent: number | null;
+  byVendor: SpendGroup[];
+  byProject: SpendGroup[];
+  byCategory: SpendGroup[];
+  trend: SpendCurrencyTrendItem[];
+}
+
+export type SpendSummaryPeriod = {
+  month: string;
+  start: string;
+  end: string;
+  through: string;
+  isPartial: boolean;
+};
+
+export type SpendSummaryComparisonBasis = typeof SpendSummaryComparisonBasis[keyof typeof SpendSummaryComparisonBasis];
+
+
+export const SpendSummaryComparisonBasis = {
+  'full-month': 'full-month',
+  'same-days': 'same-days',
+} as const;
+
+export type SpendSummaryComparison = {
+  month: string;
+  start: string;
+  through: string;
+  basis: SpendSummaryComparisonBasis;
+};
+
+export interface SpendSummary {
+  /** @nullable */
+  workspaceId: number | null;
+  period: SpendSummaryPeriod;
+  comparison: SpendSummaryComparison;
+  currencies: SpendCurrency[];
+}
+
 export interface MessageResponse {
   message: string;
 }
@@ -286,28 +425,6 @@ export interface ProjectUpdate {
   description?: string;
   color?: string;
   status?: string;
-}
-
-export interface Expense {
-  id: number;
-  /** @nullable */
-  workspaceId?: number | null;
-  /** @nullable */
-  platformId?: number | null;
-  /** @nullable */
-  platformName?: string | null;
-  /** @nullable */
-  projectId?: number | null;
-  /** @nullable */
-  projectName?: string | null;
-  amount: number;
-  currency?: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  category?: string | null;
-  date: string;
-  createdAt: string;
 }
 
 export interface ExpenseInput {
@@ -618,6 +735,91 @@ export type ImportExpensesBatch201 = {
   count: number;
 };
 
+export type SearchExpensesParams = {
+  /** @minimum 1 */
+  workspaceId?: number;
+  /**
+   * Text in description, category, vendor or project name
+   * @minLength 1
+   * @maxLength 100
+   */
+  q?: string;
+  /** Earliest expense date (inclusive) */
+  from?: string;
+  /** Latest expense date (inclusive) */
+  to?: string;
+  /**
+   * Minimum signed amount (credits are negative)
+   * @pattern ^-?\d{1,8}(\.\d{1,2})?$
+   */
+  minAmount?: string;
+  /**
+   * Maximum signed amount
+   * @pattern ^-?\d{1,8}(\.\d{1,2})?$
+   */
+  maxAmount?: string;
+  /**
+   * Vendor id, or none for expenses without a vendor
+   * @pattern ^(none|[1-9]\d*)$
+   */
+  platformId?: string;
+  /**
+   * Project id, or none
+   * @pattern ^(none|[1-9]\d*)$
+   */
+  projectId?: string;
+  /**
+   * Exact category; empty string for uncategorised
+   * @maxLength 100
+   */
+  category?: string;
+  /** @pattern ^[A-Z]{3}$ */
+  currency?: string;
+  entryType?: SearchExpensesEntryType;
+  sort?: SearchExpensesSort;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /**
+   * @minimum 0
+   * @maximum 1000000
+   */
+  offset?: number;
+};
+
+export type SearchExpensesEntryType = typeof SearchExpensesEntryType[keyof typeof SearchExpensesEntryType];
+
+
+export const SearchExpensesEntryType = {
+  expense: 'expense',
+  credit: 'credit',
+} as const;
+
+export type SearchExpensesSort = typeof SearchExpensesSort[keyof typeof SearchExpensesSort];
+
+
+export const SearchExpensesSort = {
+  date_desc: 'date_desc',
+  date_asc: 'date_asc',
+  amount_desc: 'amount_desc',
+  amount_asc: 'amount_asc',
+} as const;
+
+export type GetSpendSummaryParams = {
+  /**
+   * Omit for Personal
+   * @minimum 1
+   */
+  workspaceId?: number;
+  /**
+   * YYYY-MM; defaults to the current month. Future months are rejected.
+   * @pattern ^\d{4}-(0[1-9]|1[0-2])$
+   */
+  month?: string;
+};
+
 export type UploadReceiptBody = {
   receipt?: Blob | File;
 };
@@ -662,6 +864,7 @@ export type GenerateExpenseExportBody = {
      * @nullable
      */
   workspaceId?: number | null;
+  filters?: ExpenseFilters;
 };
 
 export type UpdateWorkspaceBody = {

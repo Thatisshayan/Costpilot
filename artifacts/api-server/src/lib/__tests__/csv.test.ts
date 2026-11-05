@@ -13,6 +13,13 @@ describe("CSV cell safety", () => {
     expect(csvCell("-1+CMD()")).toBe('"\'-1+CMD()"');
     expect(csvCell(null)).toBe('""');
   });
+  it("keeps exact signed decimal strings (money) unescaped but still neutralizes look-alikes", () => {
+    expect(csvCell("-4.50")).toBe('"-4.50"');
+    expect(csvCell("1500.00")).toBe('"1500.00"');
+    for (const formula of ["-4.50+1", "-1.2.3", "-.5", "-", "- 4", "-4e3", "=1", "+4.50", "@SUM(A1)"]) {
+      expect(csvCell(formula)).toBe(`"'${formula}"`);
+    }
+  });
   it("neutralizes cells that start with a tab or carriage return", () => {
     expect(csvCell("\tfoo")).toBe('"\'\tfoo"');
     expect(csvCell("\rfoo")).toBe('"\'\rfoo"');

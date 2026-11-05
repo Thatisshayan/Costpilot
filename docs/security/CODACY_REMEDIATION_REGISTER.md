@@ -16,10 +16,10 @@ The owner exported the repository issue list from the Codacy dashboard: 345 find
 
 | Set | Result |
 |---|---|
-| **5 historical unresolved findings** (3 new high on PR #8, 2 on PR #9) | **Identified by `git blame`; this supersedes the PR #8 and PR #9 "unidentified" entries in `DEFERRED_WORK.md`.** PR #8: findings 24 and 99 (`0001_eager_makkari.sql` lines 36–37: Oracle `RAC_*` rule, Not Applicable) and 86 (`routes/exports.ts` export loop, **Deferred With Reason**: the 50,000-row cap is in the Batch 2 PR). PR #9: findings 119 and 179 (`scripts/secret-scan.mjs`: existsSync on a fixed report path and a log line; Verified False Positive). |
+| **5 historical unresolved findings** (3 new high on PR #8, 2 on PR #9) | **Identified by `git blame`; this supersedes the PR #8 and PR #9 "unidentified" entries in `DEFERRED_WORK.md`.** PR #8: findings 24 and 99 (`0001_eager_makkari.sql` lines 36–37: Oracle `RAC_*` rule, Not Applicable) and 86 (`routes/exports.ts` export loop, **Fixed** by the 50,000-row cap in PR #16). PR #9: findings 119 and 179 (`scripts/secret-scan.mjs`: existsSync on a fixed report path and a log line; Verified False Positive). |
 | **25 new findings on PR #14** (1 critical, 19 high, 5 medium) | **Accepted residual risk — internal development merges only.** See the next section. |
 | **1 new finding on PR #15** (1 high) | **Accepted residual risk — internal development merges only.** See the next section. |
-| **12 new findings on PR #16** (10 high, 2 medium) | **Accepted residual risk — internal development merges only.** See the next section. |
+| **New findings on PR #16** (12 at `188917c`: 10 high, 2 medium; 0 after retargeting to `main` at `fcfed09`; **4 high Security at `067a440`**, after the CodeRabbit fixes) | **Accepted residual risk — internal development merges only.** See the next section. |
 | **Repository backlog** | The 345 findings below |
 
 ### Unidentified PR findings: accepted residual risk
@@ -30,7 +30,7 @@ On 2026-11-05 the owner accepted these findings as residual risk **for merging i
 |---|---|---|---|
 | #14 Batch 1 trustworthy core | 25 new: 1 critical, 19 high, 5 medium | Accepted residual risk (internal merges only) | Codacy's PR issue list is not reachable from the agent environment (`app.codacy.com` and `api.codacy.com` are blocked; no Codacy connector). A local ESLint/Semgrep approximation did not reproduce the count. Rule, file and line are unknown. |
 | #15 Security remediation | 1 new: high | Accepted residual risk (internal merges only) | Same limitation. |
-| #16 Batch 2 monthly dashboard | 12 new: 10 high, 2 medium | Accepted residual risk (internal merges only) | Same limitation. |
+| #16 Batch 2 monthly dashboard | 12 new (10 high, 2 medium) at `188917c`; 0 at `fcfed09` against `main`; **4 new high (Security) at `067a440`** | Accepted residual risk (internal merges only); reported to the owner as newly appeared before merging | Same limitation. A manual review of the `fcfed09..067a440` changes found no new request input, SQL built from input (all values are bound parameters), HTML sink or unbounded regex. Not classified as false positives. |
 
 Codacy stays enabled and its reports are kept. **Before any production or external access** these must be identified and triaged like the backlog below. To get each list:
 
@@ -44,22 +44,21 @@ Codacy stays enabled and its reports are kept. **Before any production or extern
 | Severity | Fixed | Verified False Positive | Not Applicable | Deferred With Reason | Pending |
 |---|---|---|---|---|---|
 | Critical | 4 | 10 | 18 | 2 | 0 |
-| High | 10 | 20 | 42 | 83 | 0 |
+| High | 11 | 20 | 42 | 82 | 0 |
 | Medium | 0 | 0 | 137 | 19 | 0 |
-| **Total** | **14** | **30** | **197** | **104** | **0** (plus 38 unidentified PR findings, accepted residual risk above) |
+| **Total** | **15** | **30** | **197** | **103** | **0** (plus 38 unidentified PR findings, accepted residual risk above) |
 
 **Live-code findings.** No critical or high finding in reachable production code is left unexplained.
-- **Fixed in this PR:**
+- **Fixed in PR #15:**
   - credential decryption accepted truncated GCM tags;
   - the webhook secret comparison was not constant-time.
-- **In the Batch 2 PR:** the unbounded export size, which stays **Deferred With Reason** here until that PR merges.
+- **Fixed in PR #16 (Batch 2):** the unbounded export size (finding 86): exports are capped at 50,000 rows and return 413 above it.
 - **The rest** are verified false positives, each with the evidence below.
 
 **Deferred items** need an owner decision or a later PR:
 - package-version ranges (exact pinning);
 - code-quality refactors;
 - local-only docker-compose hardening;
-- the export cap (Batch 2);
 - two disabled modules: `notifications.ts` must restrict webhook URLs before it is ever enabled, and `encryption.ts` should be deleted.
 
 **Rules:** no Codacy rule was suppressed, and no finding was silenced by cosmetic code changes.
@@ -81,7 +80,7 @@ Codacy stays enabled and its reports are kept. **Before any production or extern
 - **R14** — Shared secret compared with `crypto.timingSafeEqual` over SHA-256 digests (`secretsMatch`). Test: `webhooks.test.ts`. Route is also blocked by the launch scope today. security PR (`agent/claude/security-remediation`)
 - **R15** — `fixture_value` is generated by `openssl rand -hex 32` in the same step, so it can only contain hex digits and cannot inject a workflow command.
 - **R16** — Local development compose file only (not deployed). A read-only root filesystem for postgres/redis needs tmpfs mappings for runtime directories; revisit if compose is ever used beyond local development.
-- **R17** — Not fixed in this PR. The 50,000-row export cap (413 with guidance) and its 50,001-row rehearsal case are in the Batch 2 PR (`agent/claude/batch2-monthly-dashboard`), which rewrites this handler; this row becomes Fixed when that PR merges.
+- **R17** — Fixed in PR #16 (Batch 2): exports are capped at `MAX_EXPORT_ROWS = 50_000` and return 413 with guidance to narrow the filters; the launch rehearsal checks that 50,001 rows return 413 and a narrowed export returns 200.
 - **R18** — Documentation style (duplicate headings); low priority, fix in the code-quality PR.
 - **R19** — Expo starter `reset-project.js`, never run by CI or the app; recommended for deletion (legacy inventory C).
 - **R20** — Genuine unused import; removed in the follow-up code-quality PR (the same file changes in PR #14).
@@ -152,7 +151,7 @@ Codacy stays enabled and its reports are kept. **Before any production or extern
 | 322 | High | Insecure Modules Libraries | `artifacts/api-server/package.json:42` | main | manifest | Deferred With Reason | R3 |
 | 49 | High | Insecure Modules Libraries | `artifacts/api-server/package.json:43` | main | manifest | Deferred With Reason | R3 |
 | 66 | High | Insecure Modules Libraries | `artifacts/api-server/package.json:45` | main | manifest | Deferred With Reason | R3 |
-| 86 | High | Do S | `artifacts/api-server/src/routes/exports.ts:60` | PR8 | reachable | Deferred With Reason | R17 |
+| 86 | High | Do S | `artifacts/api-server/src/routes/exports.ts:60` | PR8 | reachable | Fixed | R17 |
 | 332 | High | Insecure Modules Libraries | `artifacts/mobile-app/package.json:7` | main | manifest | Deferred With Reason | R3 |
 | 319 | High | Insecure Modules Libraries | `artifacts/mobile-app/package.json:8` | main | manifest | Deferred With Reason | R3 |
 | 302 | High | Insecure Modules Libraries | `artifacts/mobile-app/package.json:9` | main | manifest | Deferred With Reason | R3 |

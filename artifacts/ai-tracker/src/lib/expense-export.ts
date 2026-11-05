@@ -1,16 +1,18 @@
 import { authenticatedFetch } from "@workspace/api-client-react/custom-fetch";
+import type { ExpenseFilters } from "@workspace/api-client-react";
 
 export type ExportFormat = "csv" | "pdf";
 
 /**
  * Requests an expense export for exactly one scope (personal when workspaceId
- * is null) through the existing authenticated API export endpoint.
+ * is null) through the existing authenticated API export endpoint. Filters, when
+ * given, are the ones the expense list uses, so the file matches the list.
  */
-export async function requestExpenseExport(format: ExportFormat, workspaceId: number | null): Promise<{ blob: Blob; filename: string }> {
+export async function requestExpenseExport(format: ExportFormat, workspaceId: number | null, filters?: ExpenseFilters): Promise<{ blob: Blob; filename: string }> {
   const response = await authenticatedFetch("/api/exports/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ module: "expenses", format, workspaceId }),
+    body: JSON.stringify({ module: "expenses", format, workspaceId, ...(filters ? { filters } : {}) }),
   });
   if (!response.ok) {
     throw new Error(response.status === 403 ? "You do not have access to export this workspace." : `Export failed (HTTP ${response.status}).`);

@@ -391,6 +391,140 @@ export const ImportExpensesBatchResponse = zod.object({
 })
 
 
+/**
+ * Omit workspaceId for Personal expenses; a workspace id requires active membership (any role). Totals are per currency over all matching rows (not just the page) and never converted.
+ * @summary Search, filter, sort and page the expenses of one scope
+ */
+
+export const searchExpensesQueryQMax = 100;
+
+export const searchExpensesQueryMinAmountRegExp = new RegExp('^-?\\d{1,8}(\\.\\d{1,2})?$');
+export const searchExpensesQueryMaxAmountRegExp = new RegExp('^-?\\d{1,8}(\\.\\d{1,2})?$');
+export const searchExpensesQueryPlatformIdRegExp = new RegExp('^(none|[1-9]\\d*)$');
+export const searchExpensesQueryProjectIdRegExp = new RegExp('^(none|[1-9]\\d*)$');
+export const searchExpensesQueryCategoryMax = 100;
+
+export const searchExpensesQueryCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+export const searchExpensesQuerySortDefault = `date_desc`;
+export const searchExpensesQueryLimitDefault = 25;
+export const searchExpensesQueryLimitMax = 100;
+
+export const searchExpensesQueryOffsetDefault = 0;
+export const searchExpensesQueryOffsetMin = 0;
+export const searchExpensesQueryOffsetMax = 1000000;
+
+
+
+export const SearchExpensesQueryParams = zod.object({
+  "workspaceId": zod.coerce.number().int().min(1).optional(),
+  "q": zod.coerce.string().min(1).max(searchExpensesQueryQMax).optional().describe('Text in description, category, vendor or project name'),
+  "from": zod.date().optional().describe('Earliest expense date (inclusive)'),
+  "to": zod.date().optional().describe('Latest expense date (inclusive)'),
+  "minAmount": zod.coerce.string().regex(searchExpensesQueryMinAmountRegExp).optional().describe('Minimum signed amount (credits are negative)'),
+  "maxAmount": zod.coerce.string().regex(searchExpensesQueryMaxAmountRegExp).optional().describe('Maximum signed amount'),
+  "platformId": zod.coerce.string().regex(searchExpensesQueryPlatformIdRegExp).optional().describe('Vendor id, or none for expenses without a vendor'),
+  "projectId": zod.coerce.string().regex(searchExpensesQueryProjectIdRegExp).optional().describe('Project id, or none'),
+  "category": zod.coerce.string().max(searchExpensesQueryCategoryMax).optional().describe('Exact category; empty string for uncategorised'),
+  "currency": zod.coerce.string().regex(searchExpensesQueryCurrencyRegExp).optional(),
+  "entryType": zod.enum(['expense', 'credit']).optional(),
+  "sort": zod.enum(['date_desc', 'date_asc', 'amount_desc', 'amount_asc']).default(searchExpensesQuerySortDefault),
+  "limit": zod.coerce.number().int().min(1).max(searchExpensesQueryLimitMax).default(searchExpensesQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(searchExpensesQueryOffsetMin).max(searchExpensesQueryOffsetMax).default(searchExpensesQueryOffsetDefault)
+})
+
+export const SearchExpensesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "workspaceId": zod.int().nullish(),
+  "platformId": zod.int().nullish(),
+  "platformName": zod.string().nullish(),
+  "projectId": zod.int().nullish(),
+  "projectName": zod.string().nullish(),
+  "amount": zod.number(),
+  "currency": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "date": zod.string(),
+  "createdAt": zod.string()
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int(),
+  "totals": zod.array(zod.object({
+  "currency": zod.string(),
+  "net": zod.string().describe('Exact signed amount with 2 decimals'),
+  "count": zod.int()
+}))
+})
+
+
+/**
+ * Totals are computed in the database from stored expenses, per currency and never converted.
+ * net = charges (amounts >= 0) + credits (negative amounts). An expense counts in the month of its date.
+ * The current month runs to today (UTC) and is compared with the same days of the previous month;
+ * a complete month is compared with the complete previous month. changePercent is null when the
+ * previous net is zero or negative.
+ * @summary Monthly spend for one scope, per currency, with breakdowns and a comparison
+ */
+
+export const getSpendSummaryQueryMonthRegExp = new RegExp('^\\d{4}-(0[1-9]|1[0-2])$');
+
+
+export const GetSpendSummaryQueryParams = zod.object({
+  "workspaceId": zod.coerce.number().int().min(1).optional().describe('Omit for Personal'),
+  "month": zod.coerce.string().regex(getSpendSummaryQueryMonthRegExp).optional().describe('YYYY-MM; defaults to the current month. Future months are rejected.')
+})
+
+export const GetSpendSummaryResponse = zod.object({
+  "workspaceId": zod.int().nullable(),
+  "period": zod.object({
+  "month": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "through": zod.string(),
+  "isPartial": zod.boolean()
+}),
+  "comparison": zod.object({
+  "month": zod.string(),
+  "start": zod.string(),
+  "through": zod.string(),
+  "basis": zod.enum(['full-month', 'same-days'])
+}),
+  "currencies": zod.array(zod.object({
+  "currency": zod.string(),
+  "net": zod.string(),
+  "charges": zod.string(),
+  "credits": zod.string().describe('Sum of refunds/credits (zero or negative)'),
+  "count": zod.int(),
+  "previousNet": zod.string(),
+  "changeAmount": zod.string(),
+  "changePercent": zod.number().nullable().describe('Null when the previous net is zero or negative'),
+  "byVendor": zod.array(zod.object({
+  "id": zod.int().nullish().describe('Vendor or project id; null for unassigned'),
+  "name": zod.string().nullable().describe('Null for unassigned'),
+  "net": zod.string(),
+  "count": zod.int()
+})),
+  "byProject": zod.array(zod.object({
+  "id": zod.int().nullish().describe('Vendor or project id; null for unassigned'),
+  "name": zod.string().nullable().describe('Null for unassigned'),
+  "net": zod.string(),
+  "count": zod.int()
+})),
+  "byCategory": zod.array(zod.object({
+  "id": zod.int().nullish().describe('Vendor or project id; null for unassigned'),
+  "name": zod.string().nullable().describe('Null for unassigned'),
+  "net": zod.string(),
+  "count": zod.int()
+})),
+  "trend": zod.array(zod.object({
+  "month": zod.string(),
+  "net": zod.string()
+}))
+}))
+})
+
+
 export const ListSubscriptionsResponseItem = zod.object({
   "id": zod.int(),
   "platformId": zod.int(),
@@ -875,16 +1009,37 @@ export const ExportExpensesCsvResponse = zod.unknown()
 
 
 /**
- * Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Amounts are listed per row and never converted or totalled across currencies.
+ * Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Optional filters match GET /expenses/search. Amounts are exact 2-decimal values per row; the PDF adds net totals per currency, never converted.
  * @summary Export recorded expenses for one scope as CSV or PDF
  */
 
+export const generateExpenseExportBodyFiltersQMax = 100;
+
+export const generateExpenseExportBodyFiltersMinAmountRegExp = new RegExp('^-?\\d{1,8}(\\.\\d{1,2})?$');
+export const generateExpenseExportBodyFiltersMaxAmountRegExp = new RegExp('^-?\\d{1,8}(\\.\\d{1,2})?$');
+export const generateExpenseExportBodyFiltersPlatformIdRegExp = new RegExp('^(none|[1-9]\\d*)$');
+export const generateExpenseExportBodyFiltersProjectIdRegExp = new RegExp('^(none|[1-9]\\d*)$');
+export const generateExpenseExportBodyFiltersCategoryMax = 100;
+
+export const generateExpenseExportBodyFiltersCurrencyRegExp = new RegExp('^[A-Z]{3}$');
 
 
 export const GenerateExpenseExportBody = zod.object({
   "module": zod.enum(['expenses']),
   "format": zod.enum(['csv', 'pdf']),
-  "workspaceId": zod.int().min(1).nullish()
+  "workspaceId": zod.int().min(1).nullish(),
+  "filters": zod.object({
+  "q": zod.string().min(1).max(generateExpenseExportBodyFiltersQMax).optional(),
+  "from": zod.coerce.date().optional(),
+  "to": zod.coerce.date().optional(),
+  "minAmount": zod.string().regex(generateExpenseExportBodyFiltersMinAmountRegExp).optional(),
+  "maxAmount": zod.string().regex(generateExpenseExportBodyFiltersMaxAmountRegExp).optional(),
+  "platformId": zod.string().regex(generateExpenseExportBodyFiltersPlatformIdRegExp).optional(),
+  "projectId": zod.string().regex(generateExpenseExportBodyFiltersProjectIdRegExp).optional(),
+  "category": zod.string().max(generateExpenseExportBodyFiltersCategoryMax).optional(),
+  "currency": zod.string().regex(generateExpenseExportBodyFiltersCurrencyRegExp).optional(),
+  "entryType": zod.enum(['expense', 'credit']).optional()
+}).optional()
 })
 
 export const GenerateExpenseExportResponse = zod.unknown()

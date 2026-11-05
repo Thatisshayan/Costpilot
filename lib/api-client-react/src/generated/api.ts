@@ -42,9 +42,11 @@ import type {
   ExecuteRemediationBody,
   Expense,
   ExpenseInput,
+  ExpenseSearchResult,
   ExpenseUpdate,
   GenerateExpenseExportBody,
   GetIntelligenceActivity200Item,
+  GetSpendSummaryParams,
   GpuTelemetry,
   HealthStatus,
   ImportExpensesBatch201,
@@ -69,7 +71,9 @@ import type {
   ReceiptParseResult,
   RemediationAction,
   SavingsOpportunity,
+  SearchExpensesParams,
   SmartSuggestion,
+  SpendSummary,
   Subscription,
   SubscriptionInput,
   SubscriptionUpdate,
@@ -1675,6 +1679,228 @@ export const useImportExpensesBatch = <TError = ErrorType<void>,
       > => {
       return useMutation(getImportExpensesBatchMutationOptions(options), queryClient);
     }
+
+export const getSearchExpensesUrl = (params?: SearchExpensesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/expenses/search?${stringifiedParams}` : `/api/expenses/search`
+}
+
+/**
+ * Omit workspaceId for Personal expenses; a workspace id requires active membership (any role). Totals are per currency over all matching rows (not just the page) and never converted.
+ * @summary Search, filter, sort and page the expenses of one scope
+ */
+export const searchExpenses = async (params?: SearchExpensesParams, options?: Parameters<typeof customFetch>[1]): Promise<ExpenseSearchResult> => {
+
+  return customFetch<ExpenseSearchResult>(getSearchExpensesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchExpensesQueryKey = (params?: SearchExpensesParams,) => {
+    return [
+    `/api/expenses/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchExpensesQueryOptions = <TData = Awaited<ReturnType<typeof searchExpenses>>, TError = ErrorType<void>>(params?: SearchExpensesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchExpenses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchExpensesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchExpenses>>> = ({ signal }) => searchExpenses(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchExpenses>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SearchExpensesQueryResult = NonNullable<Awaited<ReturnType<typeof searchExpenses>>>
+export type SearchExpensesQueryError = ErrorType<void>
+
+
+export function useSearchExpenses<TData = Awaited<ReturnType<typeof searchExpenses>>, TError = ErrorType<void>>(
+ params: undefined |  SearchExpensesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchExpenses>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchExpenses>>,
+          TError,
+          Awaited<ReturnType<typeof searchExpenses>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSearchExpenses<TData = Awaited<ReturnType<typeof searchExpenses>>, TError = ErrorType<void>>(
+ params?: SearchExpensesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchExpenses>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchExpenses>>,
+          TError,
+          Awaited<ReturnType<typeof searchExpenses>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSearchExpenses<TData = Awaited<ReturnType<typeof searchExpenses>>, TError = ErrorType<void>>(
+ params?: SearchExpensesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchExpenses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Search, filter, sort and page the expenses of one scope
+ */
+
+export function useSearchExpenses<TData = Awaited<ReturnType<typeof searchExpenses>>, TError = ErrorType<void>>(
+ params?: SearchExpensesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchExpenses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSearchExpensesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSpendSummaryUrl = (params?: GetSpendSummaryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/spend/summary?${stringifiedParams}` : `/api/spend/summary`
+}
+
+/**
+ * Totals are computed in the database from stored expenses, per currency and never converted.
+ * net = charges (amounts >= 0) + credits (negative amounts). An expense counts in the month of its date.
+ * The current month runs to today (UTC) and is compared with the same days of the previous month;
+ * a complete month is compared with the complete previous month. changePercent is null when the
+ * previous net is zero or negative.
+ * @summary Monthly spend for one scope, per currency, with breakdowns and a comparison
+ */
+export const getSpendSummary = async (params?: GetSpendSummaryParams, options?: Parameters<typeof customFetch>[1]): Promise<SpendSummary> => {
+
+  return customFetch<SpendSummary>(getGetSpendSummaryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSpendSummaryQueryKey = (params?: GetSpendSummaryParams,) => {
+    return [
+    `/api/spend/summary`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSpendSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getSpendSummary>>, TError = ErrorType<void>>(params?: GetSpendSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSpendSummary>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSpendSummaryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSpendSummary>>> = ({ signal }) => getSpendSummary(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSpendSummary>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSpendSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getSpendSummary>>>
+export type GetSpendSummaryQueryError = ErrorType<void>
+
+
+export function useGetSpendSummary<TData = Awaited<ReturnType<typeof getSpendSummary>>, TError = ErrorType<void>>(
+ params: undefined |  GetSpendSummaryParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSpendSummary>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSpendSummary>>,
+          TError,
+          Awaited<ReturnType<typeof getSpendSummary>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSpendSummary<TData = Awaited<ReturnType<typeof getSpendSummary>>, TError = ErrorType<void>>(
+ params?: GetSpendSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSpendSummary>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSpendSummary>>,
+          TError,
+          Awaited<ReturnType<typeof getSpendSummary>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSpendSummary<TData = Awaited<ReturnType<typeof getSpendSummary>>, TError = ErrorType<void>>(
+ params?: GetSpendSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSpendSummary>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Monthly spend for one scope, per currency, with breakdowns and a comparison
+ */
+
+export function useGetSpendSummary<TData = Awaited<ReturnType<typeof getSpendSummary>>, TError = ErrorType<void>>(
+ params?: GetSpendSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSpendSummary>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSpendSummaryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListSubscriptionsUrl = () => {
 
@@ -4137,7 +4363,7 @@ export const getGenerateExpenseExportUrl = () => {
 }
 
 /**
- * Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Amounts are listed per row and never converted or totalled across currencies.
+ * Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Optional filters match GET /expenses/search. Amounts are exact 2-decimal values per row; the PDF adds net totals per currency, never converted.
  * @summary Export recorded expenses for one scope as CSV or PDF
  */
 export const generateExpenseExport = async (generateExpenseExportBody: GenerateExpenseExportBody, options?: Parameters<typeof customFetch>[1]): Promise<string | Blob> => {

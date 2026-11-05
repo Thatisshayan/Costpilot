@@ -17,7 +17,7 @@ const ws = vi.hoisted(() => ({
   },
 }));
 const api = vi.hoisted(() => ({
-  expenses: { data: [] as unknown[], isLoading: false, isError: false, error: null as unknown, refetch: vi.fn() },
+  expenses: { data: undefined as unknown, isLoading: false, isError: false, error: null as unknown, refetch: vi.fn() },
   platforms: { data: [] as unknown[], isLoading: false, isError: false, error: null as unknown, refetch: vi.fn() },
   members: { data: [] as unknown[], isLoading: false, isError: false, isSuccess: true, error: null, refetch: vi.fn() },
   createExpense: vi.fn(),
@@ -34,7 +34,9 @@ vi.mock("@/components/export-buttons", () => ({ ExportButtons: () => <span>expor
 vi.mock("@workspace/api-client-react", () => {
   const mutation = (fn?: (...a: unknown[]) => unknown) => () => ({ mutateAsync: fn ?? vi.fn(), isPending: false });
   return {
-    useListExpenses: () => api.expenses,
+    useSearchExpenses: () => api.expenses,
+    getSearchExpensesQueryKey: () => ["/api/expenses/search"],
+    getGetSpendSummaryQueryKey: () => ["/api/spend/summary"],
     useListPlatforms: () => api.platforms,
     useListProjects: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
     useListWorkspaceMembers: () => api.members,
@@ -74,7 +76,8 @@ beforeEach(() => {
   ws.value.activeWorkspaceId = 5;
   ws.value.activeWorkspace = { id: 5, name: "Acme", slug: "acme-1a2b3c4d", role: "viewer" };
   setRole("viewer");
-  api.expenses = { data: [expense], isLoading: false, isError: false, error: null, refetch: vi.fn() };
+  api.expenses = { data: { items: [expense], total: 1, limit: 25, offset: 0, totals: [{ currency: "EUR", net: "12.50", count: 1 }] }, isLoading: false, isError: false, error: null, refetch: vi.fn() };
+  window.history.replaceState(null, "", "/");
   api.platforms = { data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() };
   api.createExpense.mockReset();
 });
@@ -92,8 +95,13 @@ describe("role-appropriate actions", () => {
   it("gives writers visible, labelled row actions reachable by keyboard", () => {
     setRole("admin");
     render(<Expenses />);
-    const edit = screen.getByRole("button", { name: "Edit AWS on 2026-11-01" });
-    const del = screen.getByRole("button", { name: "Delete AWS on 2026-11-01" });
+    // The table (sm and up) and the stacked phone list both carry the same labelled actions.
+    for (const container of [screen.getByRole("table"), screen.getByRole("list", { name: "Expenses" })]) {
+      expect(within(container).getByRole("button", { name: "Edit AWS on 2026-11-01" })).toBeTruthy();
+    }
+    const table = screen.getByRole("table");
+    const edit = within(table).getByRole("button", { name: "Edit AWS on 2026-11-01" });
+    const del = within(table).getByRole("button", { name: "Delete AWS on 2026-11-01" });
     expect(edit.className).not.toMatch(/opacity-0/);
     expect(del.className).not.toMatch(/opacity-0/);
     expect(edit.tagName).toBe("BUTTON");
