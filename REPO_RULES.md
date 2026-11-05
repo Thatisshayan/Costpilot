@@ -1,7 +1,7 @@
 # Repository Rules
 
-Version: 1.0.1
-Effective: 2026-11-04
+Version: 1.0.2
+Effective: 2026-11-05
 Owner: Shayan
 Applies to: Every human contributor and every agent (Hermes, Codex, etc.) working in this repository.
 Purpose: Preserve project truth, prevent stale documentation, keep work recoverable, and guarantee that `main` is never red.
@@ -235,7 +235,7 @@ See `docs/governance/BRANCH_POLICY.md`.
 
 `.github/workflows/gate.yml` runs on PRs to `main` and on pushes to non-main branches.
 Jobs / checks:
-1. `secret-scan` — gitleaks is required. CI installs it; local verification fails closed when it is unavailable. No weaker grep fallback is accepted.
+1. `secret-scan` — gitleaks is required and fails closed: a missing scanner, an invalid commit range or any finding fails the gate. CI installs a pinned gitleaks release and verifies its SHA-256 before use. Every run scans (a) every commit introduced by the pull request (`base..head`) or push (`before..after`; a new branch or force-push scans everything not on `main`) and (b) the tracked files of the checked-out commit. A scheduled job scans the full history weekly. Exceptions are allowed only as exact gitleaks fingerprints in `.gitleaksignore`, each with a comment giving the evidence that it is not a credential and the owner's approval; rule-wide, path-wide or regex allowlists and weaker grep fallbacks are not accepted. Implementation: `scripts/secret-scan.mjs`.
 2. `doc-freshness` — README exists + link integrity; newest audit < 30 days; `docs/` md count ≥ baseline.
 3. `build` / `test` — repo-adaptive (Node / Python / Rust / static).
 4. `deploy-dry` — if a deploy target config is present (vercel/railway/eas/netlify), run its dry-run; otherwise the smoke build covers it.

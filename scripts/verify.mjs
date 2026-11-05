@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runSecretScan } from "./secret-scan.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(root);
@@ -14,15 +15,7 @@ function run(command, args, timeout = 300000) {
 const pm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 try {
   console.log("== secret-scan ==");
-  mkdirSync("audits/private", { recursive: true });
-  const scanReport = "audits/private/gitleaks-verification.json";
-  try { run("gitleaks", ["detect", "--no-banner", "--redact", "--report-format", "json", "--report-path", scanReport], 120000); }
-  catch (error) {
-    if (existsSync(scanReport)) for (const finding of JSON.parse(readFileSync(scanReport, "utf8"))) {
-      console.error(JSON.stringify({ rule: finding.RuleID, file: finding.File, line: finding.StartLine }));
-    }
-    throw error;
-  }
+  runSecretScan();
   console.log("== doc-freshness ==");
   const readme = readFileSync("README.md", "utf8");
   for (const match of readme.matchAll(/\]\(([^)]+)\)/g)) {
