@@ -305,6 +305,7 @@ paths:
     post:
       operationId: importExpensesBatch
       tags: [expenses]
+      deprecated: true  # superseded by POST /imports (row report, duplicate checks, undo); rows are attributed as imports
       summary: Create up to 500 expenses in one all-or-nothing request
       description: Every row is validated and authorized like a single create. Any invalid row rejects the whole batch.
       requestBody:
@@ -490,7 +491,7 @@ paths:
         "403":
           description: Workspace owner or admin role required
         "404":
-          description: Not found
+          description: Not found (including a malformed id)
     delete:
       operationId: deleteBudget
       tags: [budgets]
@@ -503,6 +504,105 @@ paths:
           description: Workspace owner or admin role required
         "404":
           description: Not found
+
+  /imports/preview:
+    post:
+      operationId: previewImport
+      tags: [imports]
+      summary: Validate mapped CSV rows without writing anything
+      description: |
+        Each row is checked for a real date, an exact signed amount (negative = refund/credit, at most
+        2 decimals), an ISO currency, and a vendor/project that exists in the target scope. Rows whose
+        external ID was already imported into the scope are skipped; rows identical to an existing
+        expense or an earlier row (same date, amount, currency, vendor, project and description) are
+        possible duplicates that are imported only when confirmed. Owners/admins only for a workspace.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+      responses:
+        "200":
+          description: Per-row report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportPreview"
+        "400":
+          description: Malformed request (for example more than 500 rows)
+        "403":
+          description: Workspace owner or admin role required
+
+  /imports:
+    get:
+      operationId: listImports
+      tags: [imports]
+      summary: The 50 most recent imports in one scope
+      parameters:
+        - { name: workspaceId, in: query, schema: { type: integer, minimum: 1 }, description: "Omit for Personal" }
+      responses:
+        "200":
+          description: Imports, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImportBatch"
+        "403":
+          description: Not an active member of the requested workspace
+    post:
+      operationId: createImport
+      tags: [imports]
+      summary: Import the valid rows (and confirmed possible duplicates) in one transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+      responses:
+        "200":
+          description: Nothing to import; the report explains why
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+        "201":
+          description: Imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+        "400":
+          description: Malformed request
+        "403":
+          description: Workspace owner or admin role required
+
+  /imports/{id}:
+    delete:
+      operationId: undoImport
+      tags: [imports]
+      summary: Undo an import by deleting the expenses it created
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Undone
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deletedCount]
+                properties:
+                  deletedCount: { type: integer }
+        "403":
+          description: Workspace owner or admin role required
+        "404":
+          description: Not found
+        "409":
+          description: Already undone
 
   /subscriptions:
     get:
@@ -1676,6 +1776,80 @@ components:
           items:
             $ref: "#/components/schemas/BudgetStatus"
 
+    ImportRow:
+      type: object
+      required: [rowNumber, date, amount, currency]
+      additionalProperties: false
+      description: "Over-long text is reported on its row (stored limits: description 500, category 100, vendor/project/transaction ID 200)."
+      properties:
+        rowNumber: { type: integer, minimum: 1, maximum: 1000000, description: "Line in the file, used in the report" }
+        date: { type: string, maxLength: 200, description: "YYYY-MM-DD" }
+        amount: { type: string, maxLength: 200, description: "Exact decimal; negative for refunds/credits" }
+        currency: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 2000 }
+        category: { type: string, maxLength: 2000 }
+        vendor: { type: string, maxLength: 2000, description: "Name of an existing vendor in the scope" }
+        project: { type: string, maxLength: 2000, description: "Name of an existing project in the scope" }
+        externalId: { type: string, maxLength: 2000, description: "The source's transaction ID; prevents importing it twice" }
+
+    ImportRequest:
+      type: object
+      required: [fileName, rows]
+      additionalProperties: false
+      properties:
+        workspaceId: { type: ["integer", "null"], minimum: 1, description: "Omit or null for Personal" }
+        fileName: { type: string, minLength: 1, maxLength: 200 }
+        rows: { type: array, minItems: 1, maxItems: 500, items: { $ref: "#/components/schemas/ImportRow" } }
+        confirmDuplicateRows: { type: array, maxItems: 500, items: { type: integer, minimum: 1 }, description: "Row numbers of possible duplicates to import anyway" }
+
+    ImportRowResult:
+      type: object
+      required: [rowNumber, status, messages]
+      properties:
+        rowNumber: { type: integer }
+        status: { type: string, enum: [valid, invalid, already_imported, possible_duplicate] }
+        messages: { type: array, items: { type: string } }
+
+    ImportCounts:
+      type: object
+      required: [valid, invalid, already_imported, possible_duplicate]
+      properties:
+        valid: { type: integer }
+        invalid: { type: integer }
+        already_imported: { type: integer }
+        possible_duplicate: { type: integer }
+
+    ImportPreview:
+      type: object
+      required: [rows, counts, importableCount]
+      properties:
+        rows: { type: array, items: { $ref: "#/components/schemas/ImportRowResult" } }
+        counts: { $ref: "#/components/schemas/ImportCounts" }
+        importableCount: { type: integer, description: "Rows that would be imported with the current confirmations" }
+
+    ImportBatch:
+      type: object
+      required: [id, workspaceId, fileName, rowCount, insertedCount, skippedCount, createdAt, undoneAt]
+      properties:
+        id: { type: integer }
+        workspaceId: { type: ["integer", "null"] }
+        fileName: { type: string }
+        rowCount: { type: integer }
+        insertedCount: { type: integer }
+        skippedCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        undoneAt: { type: ["string", "null"], format: date-time }
+
+    ImportResult:
+      type: object
+      required: [batch, insertedCount, skippedCount, rows, counts]
+      properties:
+        batch: { oneOf: [{ $ref: "#/components/schemas/ImportBatch" }, { type: "null" }] }
+        insertedCount: { type: integer }
+        skippedCount: { type: integer }
+        rows: { type: array, items: { $ref: "#/components/schemas/ImportRowResult" } }
+        counts: { $ref: "#/components/schemas/ImportCounts" }
+
     MessageResponse:
       type: object
       required: [message]
@@ -2003,6 +2177,10 @@ components:
           type: ["string", "null"]
         date:
           type: string
+        source:
+          type: string
+          enum: [manual, import]
+          description: "manual = entered in CostPilot; import = from a CSV import"
         createdAt:
           type: string
 

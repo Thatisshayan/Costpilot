@@ -54,12 +54,17 @@ import type {
   GetSpendSummaryParams,
   GpuTelemetry,
   HealthStatus,
+  ImportBatch,
   ImportExpensesBatch201,
   ImportExpensesBatchBody,
+  ImportPreview,
+  ImportRequest,
+  ImportResult,
   InvitePreview,
   InviteToWorkspaceBody,
   ListBudgetsParams,
   ListConnectedSources200Item,
+  ListImportsParams,
   MessageResponse,
   MonthlySpending,
   Platform,
@@ -87,6 +92,7 @@ import type {
   Tool,
   ToolInput,
   ToolUpdate,
+  UndoImport200,
   UpdateWorkspaceBody,
   UploadReceiptBody,
   ValidateDeploymentBody,
@@ -1607,6 +1613,7 @@ export const getImportExpensesBatchUrl = () => {
 
 /**
  * Every row is validated and authorized like a single create. Any invalid row rejects the whole batch.
+ * @deprecated
  * @summary Create up to 500 expenses in one all-or-nothing request
  */
 export const importExpensesBatch = async (importExpensesBatchBody: ImportExpensesBatchBody, options?: Parameters<typeof customFetch>[1]): Promise<ImportExpensesBatch201> => {
@@ -1673,6 +1680,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ImportExpensesBatchMutationVariables = {data: BodyType<ImportExpensesBatchBody>}
 
     /**
+ * @deprecated
  * @summary Create up to 500 expenses in one all-or-nothing request
  */
 export const useImportExpensesBatch = <TError = ErrorType<void>,
@@ -2371,6 +2379,369 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteBudgetMutationOptions(options), queryClient);
+    }
+
+export const getPreviewImportUrl = () => {
+
+
+
+
+  return `/api/imports/preview`
+}
+
+/**
+ * Each row is checked for a real date, an exact signed amount (negative = refund/credit, at most
+ * 2 decimals), an ISO currency, and a vendor/project that exists in the target scope. Rows whose
+ * external ID was already imported into the scope are skipped; rows identical to an existing
+ * expense or an earlier row (same date, amount, currency, vendor, project and description) are
+ * possible duplicates that are imported only when confirmed. Owners/admins only for a workspace.
+ * @summary Validate mapped CSV rows without writing anything
+ */
+export const previewImport = async (importRequest: ImportRequest, options?: Parameters<typeof customFetch>[1]): Promise<ImportPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ImportPreview>(getPreviewImportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(importRequest)
+  }
+);}
+
+
+
+
+
+export const getPreviewImportMutationKey = () => ['previewImport'] as const;
+
+export const getPreviewImportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewImport>>, TError,PreviewImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewImport>>, TError,PreviewImportMutationVariables, TContext> => {
+
+const mutationKey = getPreviewImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewImport>>, PreviewImportMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewImport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewImportMutationResult = NonNullable<Awaited<ReturnType<typeof previewImport>>>
+    export type PreviewImportMutationBody = BodyType<ImportRequest>
+    export type PreviewImportMutationError = ErrorType<void>
+    export type PreviewImportMutationVariables = {data: BodyType<ImportRequest>}
+
+    /**
+ * @summary Validate mapped CSV rows without writing anything
+ */
+export const usePreviewImport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewImport>>, TError,PreviewImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewImport>>,
+        TError,
+        PreviewImportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewImportMutationOptions(options), queryClient);
+    }
+
+export const getListImportsUrl = (params?: ListImportsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/imports?${stringifiedParams}` : `/api/imports`
+}
+
+/**
+ * @summary The 50 most recent imports in one scope
+ */
+export const listImports = async (params?: ListImportsParams, options?: Parameters<typeof customFetch>[1]): Promise<ImportBatch[]> => {
+
+  return customFetch<ImportBatch[]>(getListImportsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListImportsQueryKey = (params?: ListImportsParams,) => {
+    return [
+    `/api/imports`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListImportsQueryOptions = <TData = Awaited<ReturnType<typeof listImports>>, TError = ErrorType<void>>(params?: ListImportsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listImports>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListImportsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listImports>>> = ({ signal }) => listImports(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listImports>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListImportsQueryResult = NonNullable<Awaited<ReturnType<typeof listImports>>>
+export type ListImportsQueryError = ErrorType<void>
+
+
+export function useListImports<TData = Awaited<ReturnType<typeof listImports>>, TError = ErrorType<void>>(
+ params: undefined |  ListImportsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listImports>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listImports>>,
+          TError,
+          Awaited<ReturnType<typeof listImports>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListImports<TData = Awaited<ReturnType<typeof listImports>>, TError = ErrorType<void>>(
+ params?: ListImportsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listImports>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listImports>>,
+          TError,
+          Awaited<ReturnType<typeof listImports>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListImports<TData = Awaited<ReturnType<typeof listImports>>, TError = ErrorType<void>>(
+ params?: ListImportsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listImports>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary The 50 most recent imports in one scope
+ */
+
+export function useListImports<TData = Awaited<ReturnType<typeof listImports>>, TError = ErrorType<void>>(
+ params?: ListImportsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listImports>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListImportsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateImportUrl = () => {
+
+
+
+
+  return `/api/imports`
+}
+
+/**
+ * @summary Import the valid rows (and confirmed possible duplicates) in one transaction
+ */
+export const createImport = async (importRequest: ImportRequest, options?: Parameters<typeof customFetch>[1]): Promise<ImportResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ImportResult>(getCreateImportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(importRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateImportMutationKey = () => ['createImport'] as const;
+
+export const getCreateImportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createImport>>, TError,CreateImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createImport>>, TError,CreateImportMutationVariables, TContext> => {
+
+const mutationKey = getCreateImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createImport>>, CreateImportMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createImport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateImportMutationResult = NonNullable<Awaited<ReturnType<typeof createImport>>>
+    export type CreateImportMutationBody = BodyType<ImportRequest>
+    export type CreateImportMutationError = ErrorType<void>
+    export type CreateImportMutationVariables = {data: BodyType<ImportRequest>}
+
+    /**
+ * @summary Import the valid rows (and confirmed possible duplicates) in one transaction
+ */
+export const useCreateImport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createImport>>, TError,CreateImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createImport>>,
+        TError,
+        CreateImportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateImportMutationOptions(options), queryClient);
+    }
+
+export const getUndoImportUrl = (id: number,) => {
+
+
+
+
+  return `/api/imports/${id}`
+}
+
+/**
+ * @summary Undo an import by deleting the expenses it created
+ */
+export const undoImport = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<UndoImport200> => {
+
+  return customFetch<UndoImport200>(getUndoImportUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUndoImportMutationKey = () => ['undoImport'] as const;
+
+export const getUndoImportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof undoImport>>, TError,UndoImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof undoImport>>, TError,UndoImportMutationVariables, TContext> => {
+
+const mutationKey = getUndoImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof undoImport>>, UndoImportMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  undoImport(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UndoImportMutationResult = NonNullable<Awaited<ReturnType<typeof undoImport>>>
+
+    export type UndoImportMutationError = ErrorType<void>
+    export type UndoImportMutationVariables = {id: number}
+
+    /**
+ * @summary Undo an import by deleting the expenses it created
+ */
+export const useUndoImport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof undoImport>>, TError,UndoImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof undoImport>>,
+        TError,
+        UndoImportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUndoImportMutationOptions(options), queryClient);
     }
 
 export const getListSubscriptionsUrl = () => {

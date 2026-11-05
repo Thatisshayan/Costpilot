@@ -48,6 +48,9 @@ const fixtures = role => ({
         net: "-120.00", charges: "0.00", credits: "-120.00", count: 1, remaining: "620.00", percentUsed: -24, thresholdReached: null, state: "ok" },
     ],
   },
+  "/api/imports": [
+    { id: 3, workspaceId: 5, fileName: "aws-cost-and-usage-report-2026-10-with-a-very-long-file-name.csv", rowCount: 412, insertedCount: 398, skippedCount: 14, createdAt: "2026-11-02T10:00:00Z", undoneAt: null },
+  ],
   "/api/spend/summary": {
     workspaceId: 5,
     period: { month: "2026-11", start: "2026-11-01", end: "2026-11-30", through: "2026-11-05", isPartial: true },
@@ -83,7 +86,7 @@ try {
         else localStorage.setItem("costpilot.activeWorkspace.e2e-owner", String(id));
       }, scope);
       const page = await context.newPage();
-      for (const route of ["/", "/expenses", "/budgets", "/projects", "/vendors", "/collaboration", "/accept-invite?token=" + "a".repeat(64)]) {
+      for (const route of ["/", "/expenses", "/import", "/budgets", "/projects", "/vendors", "/collaboration", "/accept-invite?token=" + "a".repeat(64)]) {
         await page.goto(origin + route, { waitUntil: "networkidle" });
         await page.waitForTimeout(300);
         const { scrollWidth, innerWidth } = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));

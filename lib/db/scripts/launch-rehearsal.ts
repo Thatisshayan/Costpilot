@@ -309,7 +309,7 @@ try {
   const exportRes = await call("launch-c", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { from: "2026-09-01", to: "2026-09-30" } });
   assert.equal(exportRes.status, 200);
   const lines = (await exportRes.text()).trim().split("\n");
-  assert.equal(lines[0], "ID,Date,Type,Amount,Currency,Description,Category,Vendor,Project,Scope");
+  assert.equal(lines[0], "ID,Date,Type,Amount,Currency,Description,Category,Vendor,Project,Scope,Source");
   const sums = new Map<string, number>();
   for (const line of lines.slice(1)) {
     const cells = line.match(/"((?:[^"]|"")*)"/g)!.map(c => c.slice(1, -1));
@@ -386,6 +386,94 @@ try {
   assert.equal((await call("launch-a", `/projects/${temp.id}`, "DELETE")).status, 204);
   assert.equal((await call("launch-a", `/budgets/${tempBudget.id}`, "DELETE")).status, 404);
   assert.equal((await call("launch-a", `/budgets/${projectBudget.id}`, "DELETE")).status, 204);
+
+  // ---- Batch 3: CSV import with row report, duplicate protection, provenance and undo ----
+  type ImportJson = { batch: { id: number; insertedCount: number; skippedCount: number } | null; insertedCount: number; skippedCount: number;
+    rows: { rowNumber: number; status: string; messages: string[] }[]; counts: Record<string, number> };
+  const wsCount = async () => (await db.select({ n: sql<number>`count(*)::int` }).from(expenses).where(eq(expenses.workspaceId, ws2.id)))[0].n;
+  const file = (rows: Record<string, unknown>[], extra: Record<string, unknown> = {}) => ({ workspaceId: ws2.id, fileName: "june.csv", rows, ...extra });
+  const juneRows = [
+    { rowNumber: 2, date: "2026-06-03", amount: "10.00", currency: "USD", vendor: "AWS", externalId: "inv-1", description: "June compute" },
+    { rowNumber: 3, date: "2026-06-04", amount: "-2.50", currency: "usd", vendor: "openai", externalId: "inv-2", description: "Refund" },
+    { rowNumber: 4, date: "2026-06-05", amount: "5.25", currency: "USD", project: "Checkout", externalId: "inv-3" },
+    { rowNumber: 5, date: "2026-06-06", amount: "1", currency: "EUR", externalId: "inv-4" },
+    { rowNumber: 6, date: "2026-06-07", amount: "3.00", currency: "USD", externalId: "inv-5" },
+    { rowNumber: 7, date: "2026-06-08", amount: "4.00", currency: "USD", externalId: "inv-6", category: "SaaS subscription" },
+    { rowNumber: 8, date: "2026-06-09", amount: "6", currency: "JPY", externalId: "inv-7" },
+    { rowNumber: 9, date: "2026-06-10", amount: "abc", currency: "USD", externalId: "inv-8" },
+    { rowNumber: 10, date: "2026-06-31", amount: "1.00", currency: "USD", externalId: "inv-9" },
+    { rowNumber: 11, date: "2026-06-11", amount: "1.00", currency: "dollars", externalId: "inv-10" },
+    { rowNumber: 12, date: "2026-06-12", amount: "1.00", currency: "USD", vendor: "Personal-only vendor", externalId: "inv-11" },
+  ];
+  const before = await wsCount();
+  const preview = await (await call("launch-a", "/imports/preview", "POST", file(juneRows))).json() as ImportJson & { importableCount: number };
+  assert.deepEqual(preview.counts, { valid: 7, invalid: 4, already_imported: 0, possible_duplicate: 0 });
+  assert.deepEqual(preview.rows.filter(r => r.status === "invalid").map(r => r.rowNumber), [9, 10, 11, 12], "each invalid row is reported by its line number");
+  assert.match(preview.rows.find(r => r.rowNumber === 12)!.messages[0], /does not exist in this scope/, "a vendor from another scope is never used");
+  assert.equal(await wsCount(), before, "a preview writes nothing");
+  assert.equal((await call("launch-c", "/imports/preview", "POST", file(juneRows))).status, 403, "viewers cannot import");
+  assert.equal((await call("launch-b", "/imports", "POST", file(juneRows))).status, 403, "non-members cannot import");
+  assert.equal((await call("launch-a", "/imports", "POST", file(Array.from({ length: 501 }, (_, i) => ({ ...juneRows[0], rowNumber: i + 2, externalId: `x-${i}` }))))).status, 400, "more than 500 rows is rejected");
+
+  const importRes = await call("launch-a", "/imports", "POST", file(juneRows));
+  assert.equal(importRes.status, 201);
+  const first = await importRes.json() as ImportJson;
+  assert.deepEqual([first.insertedCount, first.skippedCount, first.batch!.insertedCount], [7, 4, 7]);
+  assert.equal(await wsCount(), before + 7);
+  type SearchPage = { items: { amount: number; source: string; platformName: string | null }[]; totals: { currency: string; net: string }[] };
+  const june = await (await call("launch-c", `/expenses/search?workspaceId=${ws2.id}&from=2026-06-01&to=2026-06-30`)).json() as SearchPage;
+  assert.deepEqual(june.totals.map(t => [t.currency, t.net]), [["EUR", "1.00"], ["JPY", "6.00"], ["USD", "19.75"]], "imported refunds reduce the net; currencies stay separate");
+  assert(june.items.every(i => i.source === "import"), "imported rows are attributed");
+  const juneSummary = (await (await call("launch-a", `/spend/summary?workspaceId=${ws2.id}&month=2026-06`)).json() as { currencies: Cur[] }).currencies;
+  assert.equal(juneSummary.find(c => c.currency === "USD")!.net, "19.75", "the dashboard agrees with the imported rows");
+
+  const again = await call("launch-a", "/imports", "POST", file(juneRows));
+  assert.equal(again.status, 200);
+  const second = await again.json() as ImportJson;
+  assert.deepEqual([second.batch, second.insertedCount, second.counts.already_imported], [null, 0, 7], "re-importing the same file creates no rows");
+  assert.equal(await wsCount(), before + 7);
+
+  // Possible duplicates (no external id) are imported only when confirmed.
+  const lookalike = [{ rowNumber: 2, date: "2026-06-07", amount: "3.00", currency: "USD" }, { rowNumber: 3, date: "2026-06-20", amount: "8.00", currency: "USD" }, { rowNumber: 4, date: "2026-06-20", amount: "8.00", currency: "USD" }];
+  const dupPreview = await (await call("launch-a", "/imports/preview", "POST", file(lookalike))).json() as ImportJson;
+  assert.deepEqual(dupPreview.rows.map(r => r.status), ["possible_duplicate", "valid", "possible_duplicate"], "matches an existing expense, then an earlier row in the file");
+  const unconfirmed = await (await call("launch-a", "/imports", "POST", file(lookalike))).json() as ImportJson;
+  assert.equal(unconfirmed.insertedCount, 1, "unconfirmed look-alikes are not imported");
+  const confirmedRes = await (await call("launch-a", "/imports", "POST", file([{ ...lookalike[0], rowNumber: 2 }], { confirmDuplicateRows: [2] }))).json() as ImportJson;
+  assert.equal(confirmedRes.insertedCount, 1, "two identical charges can both be kept when confirmed");
+
+  // Two simultaneous imports of the same file without transaction IDs cannot both insert it.
+  const raceFile = file([{ rowNumber: 2, date: "2026-05-02", amount: "7.77", currency: "USD", description: "race" }, { rowNumber: 3, date: "2026-05-03", amount: "8.88", currency: "USD", description: "race" }]);
+  const raced = await Promise.all([1, 2, 3].map(() => call("launch-a", "/imports", "POST", raceFile).then(r => r.json() as Promise<ImportJson>)));
+  assert.deepEqual(raced.map(r => r.insertedCount).sort(), [0, 0, 2], "the scope lock lets exactly one concurrent import insert the rows");
+  // A NUL byte (typical of a UTF-16 export) is reported on its row instead of failing the import.
+  const nul = await (await call("launch-a", "/imports/preview", "POST", file([{ rowNumber: 2, date: "2026-05-04", amount: "1.00", currency: "USD", description: "bad\u0000cell" }]))).json() as ImportJson;
+  assert.equal(nul.rows[0].status, "invalid");
+  assert.equal((await call("launch-a", "/imports", "POST", { ...file([{ rowNumber: 2, date: "2026-05-04", amount: "1.00", currency: "USD" }]), fileName: "a\u0000.csv" })).status, 400);
+
+  // Personal scope has its own repeat-import protection (NULL workspace partial index).
+  const personalFile = { fileName: "mine.csv", rows: [{ rowNumber: 2, date: "2026-06-03", amount: "10.00", currency: "USD", externalId: "inv-1" }] };
+  assert.equal(((await (await call("launch-b", "/imports", "POST", personalFile)).json()) as ImportJson).insertedCount, 1, "the same external id is independent per scope");
+  assert.equal(((await (await call("launch-b", "/imports", "POST", personalFile)).json()) as ImportJson).insertedCount, 0, "and cannot be imported twice into Personal");
+  assert.equal(await wsCount(), before + 11, "Personal imports never write workspace rows");
+
+  // Batches are listed for members and undone only by owners/admins, exactly once.
+  const importList = await (await call("launch-c", `/imports?workspaceId=${ws2.id}`)).json() as { id: number; insertedCount: number; undoneAt: string | null }[];
+  assert(importList.some(b => b.id === first.batch!.id));
+  assert.equal((await call("launch-b", `/imports?workspaceId=${ws2.id}`)).status, 403);
+  assert.equal((await call("launch-c", `/imports/${first.batch!.id}`, "DELETE")).status, 403);
+  assert.equal((await call("launch-a", "/imports/99999999999", "DELETE")).status, 404, "an id beyond the integer range is not found, not a 500");
+  assert.equal((await call("launch-a", "/imports?workspaceId=99999999999")).status, 400);
+  assert.equal((await call("launch-b", `/imports/${first.batch!.id}`, "DELETE")).status, 404);
+  const undo = await call("launch-a", `/imports/${first.batch!.id}`, "DELETE");
+  assert.equal(undo.status, 200);
+  assert.deepEqual(await undo.json(), { deletedCount: 7 });
+  assert.equal((await call("launch-a", `/imports/${first.batch!.id}`, "DELETE")).status, 409, "an import is undone once");
+  assert.equal(await wsCount(), before + 4, "undo removes exactly that batch's rows");
+
+  // Exports name the source of every row.
+  const juneExport = await (await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { from: "2026-06-01", to: "2026-06-30" } })).text();
+  assert(juneExport.trim().split("\n").slice(1).every(line => line.endsWith('"CSV import"')), "imported rows are labelled in exports");
 
   // Export size is capped so one request cannot build an unbounded file (Codacy DoS finding).
   await db.execute(sql`INSERT INTO expenses (user_id, amount, currency, date)

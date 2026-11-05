@@ -55,6 +55,7 @@ router.post("/generate", async (req, res) => {
         category: expensesTable.category,
         platformName: platformsTable.name,
         projectName: projectsTable.name,
+        source: expensesTable.source,
       })
       .from(expensesTable)
       .leftJoin(platformsTable, vendorJoin)
@@ -72,11 +73,12 @@ router.post("/generate", async (req, res) => {
 
     if (format === "csv") {
       // Amount keeps its sign; Type states it explicitly so credits are never read as spending.
-      // Amount is the exact stored 2-decimal value; Scope names the workspace for every row.
-      let csv = "ID,Date,Type,Amount,Currency,Description,Category,Vendor,Project,Scope\n";
+      // Amount is the exact stored 2-decimal value; Scope names the workspace for every row;
+      // Source says whether the row was entered in the app or imported from a CSV file.
+      let csv = "ID,Date,Type,Amount,Currency,Description,Category,Vendor,Project,Scope,Source\n";
       for (const e of userExpenses) {
         const amount = fromCents(toCents(e.amount));
-        csv += [e.id, e.date, amount.startsWith("-") ? "Refund/credit" : "Expense", amount, e.currency, e.description, e.category, e.platformName, e.projectName, scopeName].map(csvCell).join(",") + "\n";
+        csv += [e.id, e.date, amount.startsWith("-") ? "Refund/credit" : "Expense", amount, e.currency, e.description, e.category, e.platformName, e.projectName, scopeName, e.source === "import" ? "CSV import" : "Manual"].map(csvCell).join(",") + "\n";
       }
 
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
