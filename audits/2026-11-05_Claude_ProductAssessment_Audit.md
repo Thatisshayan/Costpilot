@@ -99,7 +99,7 @@
    - an `external_id` for duplicate prevention;
    - import history. All three are prerequisites for any provider integration.
 7. **Trust:**
-   - an activity log;
+   - an activity log: an append-only record of actor, changed fields and prior and new values (`updatedAt` alone does not show who changed what);
    - `updatedAt` fields;
    - accurate exports.
 8. **Data precision:** `numeric(10,2)` cannot hold sub-cent AI API costs.

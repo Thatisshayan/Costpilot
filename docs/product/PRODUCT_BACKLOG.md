@@ -298,7 +298,7 @@ This document is the **single source of truth for product priorities**. `LAUNCH_
 | P1-03 | Cost categories per workspace | 2 (fixed list) | P0-04 | Editable category list; reporting by category | CRUD isolation; reassignment | S–M |
 | P1-04 | Subscriptions and renewals per workspace ⚑D10 | 4/5 | `resourceScope` port, date types | Interval, seats, currency, owner, renewal date; 30/60/90-day renewal view; renewal-linked expenses | Isolation; date maths; no user-only scoping | M |
 | P1-05 | Reports by vendor/provider/project/category | 7 | P0-06, P1-03 | Saved report definitions; CSV/PDF; no mock fallback | Report totals equal ledger | M |
-| P1-06 | Activity log | 6 | P0-16 | Who changed which expense, budget, member or vendor, and when; viewable by owner/admin | Every write path logs; isolation | S–M |
+| P1-06 | Activity log | 6 | P0-16 | Append-only event table per workspace: actor, action, entity, changed fields with prior and new values, timestamp, for expenses, budgets, members and vendors; viewable by owner/admin (`updated_at` alone is not enough) | Every write path writes one event; prior and new values correct; isolation | S–M |
 | P1-07 | Allocation rules (light) | 6 | P0-07 | Default project per vendor; unallocated spend shown explicitly | Rule application on import and create | M |
 | P1-08 | Optional reporting currency ⚑D4 | 6 | D4, FX source | Converted views labelled with rate, source and date; originals untouched | Conversion exactness; missing rate shows as missing | M |
 
