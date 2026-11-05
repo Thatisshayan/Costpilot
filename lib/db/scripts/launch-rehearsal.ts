@@ -146,6 +146,10 @@ try {
   assert.equal(personalCsv.status, 200);
   assert.match(personalCsv.headers.get("content-type") ?? "", /^text\/csv/);
   assert.match(personalCsv.headers.get("content-disposition") ?? "", /filename="costpilot-expenses-personal-\d{4}-\d{2}-\d{2}\.csv"/);
+  // Exports are never rendered by the browser: download-only, typed, and not MIME-sniffed
+  // (Codacy "XSS: res.send(csv)" disposition evidence).
+  assert.equal(personalCsv.headers.get("x-content-type-options"), "nosniff");
+  assert.match(personalCsv.headers.get("content-disposition") ?? "", /^attachment;/);
   const personalText = await personalCsv.text();
   assert(personalText.includes("personal fixture") && !personalText.includes("shared fixture"));
   assert(personalText.startsWith('ID,Date,Type,Amount'), "CSV states the entry type explicitly");

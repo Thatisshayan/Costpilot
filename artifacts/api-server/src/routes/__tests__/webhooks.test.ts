@@ -226,4 +226,18 @@ describe("Webhook Signature Verification Logic", () => {
 
     expect(secretWithoutPrefix).toBe("abc123");
   });
+
+  describe("secretsMatch (Codacy: timing-unsafe secret comparison)", () => {
+    it("accepts only the exact secret, in constant time", async () => {
+      const { secretsMatch } = await import("../webhooks");
+      expect(secretsMatch("expected-secret", "expected-secret")).toBe(true);
+      expect(secretsMatch("expected-secreT", "expected-secret")).toBe(false);
+      expect(secretsMatch("short", "expected-secret")).toBe(false);
+      expect(secretsMatch("", "expected-secret")).toBe(false);
+      expect(secretsMatch(["expected-secret"], "expected-secret")).toBe(false);
+      expect(secretsMatch(undefined, "expected-secret")).toBe(false);
+      expect(secretsMatch("anything", undefined)).toBe(false);
+      expect(secretsMatch("", "")).toBe(false);
+    });
+  });
 });
