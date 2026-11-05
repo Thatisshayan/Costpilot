@@ -5,7 +5,21 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * The caller's role in this workspace (list and create responses).
+ */
+export type WorkspaceRole = typeof WorkspaceRole[keyof typeof WorkspaceRole];
+
+
+export const WorkspaceRole = {
+  owner: 'owner',
+  admin: 'admin',
+  viewer: 'viewer',
+} as const;
+
 export interface Workspace {
+  /** The caller's role in this workspace (list and create responses). */
+  role?: WorkspaceRole;
   id: number;
   name: string;
   slug: string;
@@ -15,8 +29,28 @@ export interface Workspace {
 }
 
 export interface CreateWorkspaceBody {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
   name: string;
-  slug: string;
+  /**
+     * Ignored. The server generates a unique identifier; display names need not be unique.
+     * @deprecated
+     */
+  slug?: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export interface InvitePreview {
+  workspaceName: string;
+  workspaceSlug: string;
+  email: string;
+  status: string;
+  expiresAt: string;
 }
 
 export type WorkspaceInvitationRole = typeof WorkspaceInvitationRole[keyof typeof WorkspaceInvitationRole];
@@ -53,12 +87,24 @@ export const WorkspaceMemberRole = {
   viewer: 'viewer',
 } as const;
 
+export type WorkspaceMemberStatus = typeof WorkspaceMemberStatus[keyof typeof WorkspaceMemberStatus];
+
+
+export const WorkspaceMemberStatus = {
+  active: 'active',
+  pending: 'pending',
+  expired: 'expired',
+} as const;
+
 export interface WorkspaceMember {
   id: number;
   workspaceId: number;
   userId: string;
   email: string;
   role: WorkspaceMemberRole;
+  status?: WorkspaceMemberStatus;
+  /** @nullable */
+  joinedAt?: string | null;
   createdAt: string;
 }
 
@@ -560,6 +606,18 @@ export interface AiAudit {
   createdAt?: string;
 }
 
+export type ImportExpensesBatchBody = {
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  transactions: ExpenseInput[];
+};
+
+export type ImportExpensesBatch201 = {
+  count: number;
+};
+
 export type UploadReceiptBody = {
   receipt?: Blob | File;
 };
@@ -623,6 +681,16 @@ export const InviteToWorkspaceBodyRole = {
 export type InviteToWorkspaceBody = {
   email: string;
   role: InviteToWorkspaceBodyRole;
+};
+
+export type AcceptInviteBody = {
+  /** @pattern ^[a-f0-9]{64}$ */
+  token: string;
+};
+
+export type AcceptInvite200 = {
+  message: string;
+  member: WorkspaceMember;
 };
 
 export type ValidateDeploymentBody = {

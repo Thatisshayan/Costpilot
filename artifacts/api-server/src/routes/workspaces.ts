@@ -14,6 +14,16 @@ import { CreateWorkspaceBody, UpdateWorkspaceBody, InviteToWorkspaceBody } from 
 
 const router = Router();
 
+export function workspaceSlug(name: string, suffix = crypto.randomBytes(4).toString("hex")): string {
+  const base = name.normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return `${base || "workspace"}-${suffix}`;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  const err = error as { code?: string; cause?: { code?: string } } | null;
+  return err?.code === "23505" || err?.cause?.code === "23505";
+}
+
 // List Workspaces
 router.get("/", async (req, res) => {
   const userId = req.userId!;
@@ -26,6 +36,7 @@ router.get("/", async (req, res) => {
       ownerId: workspacesTable.ownerId,
       onboarded: workspacesTable.onboarded,
       createdAt: workspacesTable.createdAt,
+      role: workspaceMembersTable.role,
     })
     .from(workspacesTable)
     .innerJoin(workspaceMembersTable, eq(workspacesTable.id, workspaceMembersTable.workspaceId))
@@ -35,17 +46,31 @@ router.get("/", async (req, res) => {
 });
 
 // Create Workspace
+// Display names need not be unique: unrelated customers may both use "Acme".
+// The slug is an internal unique identifier generated here; any client value is ignored.
 router.post("/", async (req, res) => {
   const userId = req.userId!;
-  const { name, slug } = CreateWorkspaceBody.parse(req.body);
+  const { name: rawName } = CreateWorkspaceBody.parse(req.body);
+  const name = rawName.trim();
+  if (!name || name.length > 80) {
+    res.status(400).json({ error: "Bad Request", message: "Workspace name must be 1 to 80 characters." });
+    return;
+  }
 
-  const workspace = await db.transaction(async tx => {
-    const [created] = await tx.insert(workspacesTable).values({ name, slug, ownerId: userId }).returning();
-    await tx.insert(workspaceMembersTable).values({ workspaceId: created.id, userId, role: "owner", email: req.userEmail || userId });
-    return created;
-  });
-
-  res.status(201).json(workspace);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const workspace = await db.transaction(async tx => {
+        const [created] = await tx.insert(workspacesTable).values({ name, slug: workspaceSlug(name), ownerId: userId }).returning();
+        await tx.insert(workspaceMembersTable).values({ workspaceId: created.id, userId, role: "owner", email: req.userEmail || userId });
+        return created;
+      });
+      res.status(201).json({ ...workspace, role: "owner" });
+      return;
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+    }
+  }
+  res.status(503).json({ error: "Service Unavailable", message: "Could not allocate a workspace identifier. Please try again." });
 });
 
 // List Members
@@ -303,11 +328,26 @@ router.patch("/:id", requireWorkspaceMember(["owner", "admin"]), async (req, res
     return;
   }
 
-  const [updatedWorkspace] = await db
-    .update(workspacesTable)
-    .set(updateValues)
-    .where(eq(workspacesTable.id, workspaceId))
-    .returning();
+  if (typeof updateValues.name === "string") {
+    updateValues.name = updateValues.name.trim();
+    if (!updateValues.name || updateValues.name.length > 80) {
+      res.status(400).json({ error: "Bad Request", message: "Workspace name must be 1 to 80 characters." });
+      return;
+    }
+  }
+
+  let updatedWorkspace;
+  try {
+    [updatedWorkspace] = await db
+      .update(workspacesTable)
+      .set(updateValues)
+      .where(eq(workspacesTable.id, workspaceId))
+      .returning();
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error;
+    res.status(409).json({ error: "Conflict", message: "That workspace identifier is already in use." });
+    return;
+  }
 
   if (!updatedWorkspace) {
     res.status(404).json({ error: "Workspace not found" });
