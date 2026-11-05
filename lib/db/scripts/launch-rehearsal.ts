@@ -282,7 +282,7 @@ try {
   assert.equal((await call("launch-b", `/expenses/search?workspaceId=${ws2.id}`)).status, 403);
   const bOwn = await (await call("launch-b", "/expenses/search?from=2026-09-01&to=2026-09-30")).json() as Page;
   assert.deepEqual(bOwn.items.map(i => i.amount), [999.99], "Personal search never returns workspace or other-account rows");
-  for (const bad of ["from=2026-02-30", "minAmount=1.234", "limit=101", "sort=evil", "from=2026-09-30&to=2026-09-01", "nope=1"]) {
+  for (const bad of ["from=2026-02-30", "minAmount=1.234", "limit=101", "sort=evil", "from=2026-09-30&to=2026-09-01", "minAmount=10&maxAmount=9.99", "offset=1000001", "nope=1"]) {
     assert.equal((await call("launch-a", `/expenses/search?${bad}`)).status, 400, `rejects ${bad}`);
   }
 
@@ -299,6 +299,7 @@ try {
   }
   assert.deepEqual([...sums].sort(), [["EUR", 5000], ["JPY", 150000], ["USD", 8030]], "export totals equal the summary (in cents)");
   assert.equal((await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { evil: 1 } })).status, 400);
+  assert.equal((await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { minAmount: "10", maxAmount: "9.99" } })).status, 400, "an impossible amount range is rejected, not exported empty");
 
   // Export size is capped so one request cannot build an unbounded file (Codacy DoS finding).
   await db.execute(sql`INSERT INTO expenses (user_id, amount, currency, date)

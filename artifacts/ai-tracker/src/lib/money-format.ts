@@ -13,7 +13,10 @@ function fractionDigits(currency: string): number {
 export function formatMoney(amount: string | number, currency: string, locale?: string): string {
   const value = typeof amount === "number" ? amount : Number(amount);
   if (!Number.isFinite(value)) return `${amount} ${currency}`;
-  const digits = fractionDigits(currency);
+  // Use the currency's minor units, but never hide recorded cents: a JPY amount stored as
+  // 1500.49 is shown as ¥1,500.49, not rounded to ¥1,500.
+  const hasCents = Math.round(Math.abs(value) * 100) % 100 !== 0;
+  const digits = Math.max(fractionDigits(currency), hasCents ? 2 : 0);
   try {
     return new Intl.NumberFormat(locale, { style: "currency", currency, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
   } catch {

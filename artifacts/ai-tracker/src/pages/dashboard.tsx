@@ -37,7 +37,7 @@ export function comparisonText(summary: Pick<SpendSummary, "period" | "compariso
 function Change({ c }: { c: SpendCurrency }) {
   const amount = Number(c.changeAmount);
   const Icon = amount > 0 ? ArrowUpRight : amount < 0 ? ArrowDownRight : Minus;
-  if (Number(c.previousNet) === 0 && Number(c.net) === 0) return <p className="text-xs text-slate-400">No spend in either period.</p>;
+  if (Number(c.previousNet) === 0 && Number(c.net) === 0) return <p className="text-xs text-slate-400">Net is zero in both periods.</p>;
   return (
     <p className="text-xs text-slate-300 flex items-center gap-1 flex-wrap">
       <Icon size={14} aria-hidden />

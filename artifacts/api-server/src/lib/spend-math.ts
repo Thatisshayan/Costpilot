@@ -45,22 +45,29 @@ export function isCalendarDate(value: string): boolean {
   const m = DATE.exec(value);
   if (!m) return false;
   const [y, mo, d] = m.slice(1).map(Number);
-  const date = new Date(Date.UTC(y, mo - 1, d));
+  const date = utcDate(y, mo - 1, d);
   return date.getUTCFullYear() === y && date.getUTCMonth() === mo - 1 && date.getUTCDate() === d;
 }
 
+/** Like Date.UTC, but years 0-99 are not mapped to 1900-1999. */
+function utcDate(year: number, monthIndex: number, day: number): Date {
+  const date = new Date(0);
+  date.setUTCFullYear(year, monthIndex, day);
+  return date;
+}
+
 function daysInMonth(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return utcDate(year, month, 0).getUTCDate();
 }
 
 function iso(year: number, month: number, day: number): string {
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 export function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
   const index = y * 12 + (m - 1) + delta;
-  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+  return `${String(Math.floor(index / 12)).padStart(4, "0")}-${String((index % 12) + 1).padStart(2, "0")}`;
 }
 
 export type Period = { month: string; start: string; end: string; through: string; isPartial: boolean };
