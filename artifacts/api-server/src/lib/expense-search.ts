@@ -17,7 +17,8 @@ function amountOrder(v: { minAmount?: string; maxAmount?: string }): boolean {
 }
 
 export const FilterFields = {
-  q: z.string().trim().min(1).max(100).optional(),
+  // Blank or whitespace-only search text means "no text filter".
+  q: z.preprocess(v => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().trim().max(100).optional()),
   from: date.optional(),
   to: date.optional(),
   minAmount: money.optional(),

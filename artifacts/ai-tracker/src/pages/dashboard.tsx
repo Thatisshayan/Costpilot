@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Info, Minus } from "lucide-react";
 import { useGetSpendSummary, type SpendCurrency, type SpendGroup, type SpendSummary } from "@workspace/api-client-react";
@@ -126,14 +126,23 @@ export default function Dashboard() {
   const { activeWorkspaceId, activeWorkspace, canWrite } = useWorkspace();
   const today = new Date().toISOString().slice(0, 10);
   const months = useMemo(() => recentMonths(today), [today]);
-  const [month, setMonth] = useState(months[0]);
+  // "" asks the server for its current month, so a browser clock ahead of the server near a
+  // month boundary never requests a month the server considers in the future.
+  const [month, setMonth] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
-  const params = { month, ...(activeWorkspaceId !== null ? { workspaceId: activeWorkspaceId } : {}) };
+  const params = { ...(month ? { month } : {}), ...(activeWorkspaceId !== null ? { workspaceId: activeWorkspaceId } : {}) };
   const query = useGetSpendSummary(params);
   const summary = query.data;
   const currencies = summary?.currencies ?? [];
   const active = currencies.find(c => c.currency === selectedCurrency) ?? currencies[0];
   const scopeName = activeWorkspaceId === null ? "Personal" : activeWorkspace?.name ?? "Workspace";
+  // Remember the server's month so the list stays anchored to it after a past month is chosen.
+  // With month "" the summary refetches on window focus, so a new month is picked up.
+  const [serverMonth, setServerMonth] = useState<string | null>(null);
+  const defaultMonth = month === "" ? summary?.period.month : undefined;
+  useEffect(() => { if (defaultMonth) setServerMonth(defaultMonth); }, [defaultMonth]);
+  const currentMonth = defaultMonth ?? serverMonth ?? months[0];
+  const shownMonth = month || currentMonth;
   const range = summary ? `from=${summary.period.start}&to=${summary.period.through}` : "";
 
   return (
@@ -151,12 +160,13 @@ export default function Dashboard() {
             onChange={e => { setMonth(e.target.value); setSelectedCurrency(null); }}
             className="bg-white/[0.03] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           >
-            {months.map((m, i) => <option key={m} value={m} className="bg-zinc-950">{monthLabel(m)}{i === 0 ? " (month to date)" : ""}</option>)}
+            <option value="" className="bg-zinc-950">{monthLabel(currentMonth)} (month to date)</option>
+            {recentMonths(currentMonth).slice(1).map(m => <option key={m} value={m} className="bg-zinc-950">{monthLabel(m)}</option>)}
           </select>
         </div>
       </header>
 
-      {query.isLoading && <p role="status" className="text-slate-300">Loading {monthLabel(month)}…</p>}
+      {query.isLoading && <p role="status" className="text-slate-300">Loading {monthLabel(shownMonth)}…</p>}
 
       {query.isError && (
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100">
@@ -179,7 +189,7 @@ export default function Dashboard() {
 
           {currencies.length === 0 ? (
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center space-y-3">
-              <p className="text-slate-100 font-medium">No expenses recorded for {monthLabel(month)} in {scopeName}.</p>
+              <p className="text-slate-100 font-medium">No expenses recorded for {monthLabel(shownMonth)} in {scopeName}.</p>
               <div className="flex flex-wrap justify-center gap-3 text-sm">
                 {canWrite && <Link href="/expenses" className="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 font-semibold text-white">Add an expense</Link>}
                 <Link href="/expenses" className="rounded-xl bg-white/5 hover:bg-white/10 px-4 py-2 font-semibold text-slate-100">View all expenses</Link>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EMPTY_QUERY, MAX_PAGE, hasActiveFilters, parseExpenseQuery, serializeExpenseQuery, toExportFilters, toSearchParams, validateExpenseQuery,
+  EMPTY_QUERY, MAX_PAGE, activeFilterCount, hasActiveFilters, parseExpenseQuery, serializeExpenseQuery, toExportFilters, toSearchParams, validateExpenseQuery,
 } from "./expense-query";
 
 describe("expense query string", () => {
@@ -42,6 +42,14 @@ describe("API parameters", () => {
   it("exports the same filters without sort or paging", () => {
     expect(toExportFilters({ ...EMPTY_QUERY, sort: "amount_asc", page: 4 })).toBeUndefined();
     expect(toExportFilters({ ...EMPTY_QUERY, from: "2026-09-01", category: "" })).toEqual({ from: "2026-09-01", category: "" });
+  });
+});
+
+describe("active filter count", () => {
+  it("counts filters other than search text, including uncategorised and a non-default sort", () => {
+    expect(activeFilterCount(EMPTY_QUERY)).toBe(0);
+    expect(activeFilterCount({ ...EMPTY_QUERY, q: "aws" })).toBe(0);
+    expect(activeFilterCount(parseExpenseQuery("?from=2026-09-01&category=&entryType=credit&sort=amount_asc&page=4"))).toBe(4);
   });
 });
 
