@@ -82,6 +82,10 @@ export async function authenticatedFetch(
   init: RequestInit = {},
 ): Promise<Response> {
   const request = applyBaseUrl(input);
+  const allowedOrigin = _baseUrl || (typeof location !== "undefined" ? location.origin : undefined);
+  if (allowedOrigin && new URL(resolveUrl(request), allowedOrigin).origin !== new URL(allowedOrigin).origin) {
+    throw new Error("API requests must use the configured origin");
+  }
   const headers = mergeHeaders(isRequest(request) ? request.headers : undefined, init.headers);
   if (_authTokenGetter && !headers.has("authorization")) {
     const token = await _authTokenGetter();

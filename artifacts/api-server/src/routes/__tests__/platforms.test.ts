@@ -5,6 +5,7 @@ const { mockDbState, mockAuth, mockKms } = vi.hoisted(() => {
     selectResult: Promise.resolve([]),
     insertResult: Promise.resolve([]),
     updateResult: Promise.resolve([]),
+    deleteResult: Promise.resolve([{ id: 1 }]),
   };
 
   return {
@@ -50,7 +51,7 @@ vi.mock("@workspace/db", () => ({
         }),
       }),
     }),
-    delete: () => ({ where: () => Promise.resolve() }),
+    delete: () => ({ where: () => ({ returning: () => thenable(mockDbState.deleteResult) }) }),
   },
   platformsTable: {},
 }));
@@ -271,6 +272,13 @@ describe("Platforms API", () => {
   });
 
   describe("DELETE /:id", () => {
+    it("reports a missing or denied delete rather than success", async () => {
+      mockDbState.deleteResult = Promise.resolve([]);
+      const res = makeMockResponse();
+      await getHandler("/:id", "delete")(makeMockRequest({}, { id: "999" }), res);
+      expect(res.statusCode).toBe(404);
+      mockDbState.deleteResult = Promise.resolve([{ id: 1 }]);
+    });
     it("should delete a platform and return 204", async () => {
       const handler = getHandler("/:id", "delete");
       expect(handler).toBeDefined();

@@ -52,4 +52,12 @@ describe("authenticated client requests", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("does not attach a web session to a foreign API origin", async () => {
+    const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
+    setBaseUrl("https://web-api.example.test");
+    setAuthTokenGetter(async () => "web-session-token");
+    await expect(authenticatedFetch("https://foreign.example.test/api/expenses")).rejects.toThrow("configured origin");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
 });
