@@ -849,7 +849,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WorkspaceMember"
+                $ref: "#/components/schemas/WorkspaceInvitation"
 
   /webhooks:
     get:
@@ -1085,6 +1085,26 @@ components:
         slug:
           type: string
 
+    WorkspaceInvitation:
+      type: object
+      required: [id, email, role, token, status, inviteUrl]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, viewer]
+        token:
+          type: string
+          description: Private one-time bearer capability. Share only with intended recipients.
+        status:
+          type: string
+          enum: [pending]
+        inviteUrl:
+          type: string
     WorkspaceMember:
       type: object
       required: [id, workspaceId, userId, email, role, createdAt]

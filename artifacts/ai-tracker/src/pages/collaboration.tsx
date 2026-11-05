@@ -115,7 +115,7 @@ export default function Collaboration() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { data: workspaces } = useListWorkspaces();
 
-  const { data: liveMembers, isLoading } = useListWorkspaceMembers(activeWorkspaceId ?? 0);
+  const { data: liveMembers, isLoading } = useListWorkspaceMembers(activeWorkspaceId ?? 0, { query: { enabled: activeWorkspaceId !== null } });
   const inviteMutation = useInviteToWorkspace();
   const updateWorkspace = useUpdateWorkspace();
   const removeMemberMutation = useRemoveMember();
@@ -166,6 +166,7 @@ export default function Collaboration() {
     for (const email of emails) {
       try {
         const invite = await inviteMutation.mutateAsync({ id: activeWorkspaceId, data: { email, role: inviteRole } });
+        if (!("token" in invite) || typeof invite.token !== "string") throw new Error("Invitation token missing");
         const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         setInviteLinks(links => [...links, new URL(`${base}/accept-invite?token=${encodeURIComponent(invite.token ?? "")}`, window.location.origin).toString()]);
         successCount++;

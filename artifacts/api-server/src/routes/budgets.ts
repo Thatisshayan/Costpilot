@@ -55,7 +55,7 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(201).json({ ...policy, thresholdAmount: Number(policy.thresholdAmount) });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      res.status(400).json({ error: "Validation error", details: err.errors });
+      res.status(400).json({ error: "Validation error", details: err.issues });
       return;
     }
     logger.error(err, "Failed to create budget policy");
@@ -128,7 +128,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     res.json({ ...policy, thresholdAmount: Number(policy.thresholdAmount) });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      res.status(400).json({ error: "Validation error", details: err.errors });
+      res.status(400).json({ error: "Validation error", details: err.issues });
       return;
     }
     logger.error(err, "Failed to update budget policy");
