@@ -31,14 +31,15 @@ export const errorHandler = (
   }
 
   const isProduction = process.env.NODE_ENV === "production";
-  const statusCode = err.statusCode || 500;
+  const isCorsRejection = !err.statusCode && typeof err.message === "string" && err.message.startsWith("CORS: origin");
+  const statusCode = isCorsRejection ? 403 : err.statusCode || 500;
   if (statusCode >= 500) captureError(err);
   
   // Obfuscate 500 errors or database leaks in production
   let message = err.message || "Internal Server Error";
   let errorName = err.name || "InternalServerError";
 
-  if (statusCode === 500 && isProduction) {
+  if (statusCode >= 500 && isProduction) {
     message = "An unexpected error occurred. Please try again later.";
     errorName = "InternalServerError";
   }

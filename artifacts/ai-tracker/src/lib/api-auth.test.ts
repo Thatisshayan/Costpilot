@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { authenticatedFetch, setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react/custom-fetch";
+import { authenticatedFetch, customFetch, setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react/custom-fetch";
 
 describe("authenticated client requests", () => {
   afterEach(() => {
@@ -69,6 +69,16 @@ describe("authenticated client requests", () => {
     const { personalExpensesOnly, isPersonalExpense } = await import("../../../mobile-app/src/lib/personal-scope");
     expect(personalExpensesOnly([{ id: 1, workspaceId: null }, { id: 2, workspaceId: 7 }, { id: 3 }]).map(e => e.id)).toEqual([1, 3]);
     expect(isPersonalExpense({ workspaceId: 7 })).toBe(false);
+  });
+
+  it("generated hooks (customFetch) never send the web session to a foreign origin", async () => {
+    const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
+    setBaseUrl("https://web-api.example.test");
+    const getter = vi.fn(async () => "web-session-token");
+    setAuthTokenGetter(getter);
+    await expect(customFetch("https://foreign.example.test/api/expenses")).rejects.toThrow("configured origin");
+    expect(getter).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("does not attach a web session to a foreign API origin", async () => {

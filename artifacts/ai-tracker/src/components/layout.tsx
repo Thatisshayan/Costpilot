@@ -62,14 +62,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useHealthCheck } from "@/hooks/use-health-check";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, shortcut: "âŒ˜D" },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, shortcut: "⌘D" },
   { name: "Projects", href: "/projects", icon: Building },
-  { name: "Expenses", href: "/expenses", icon: DollarSign, shortcut: "âŒ˜E" },
-  { name: "Subscriptions", href: "/subscriptions", icon: Repeat, shortcut: "âŒ˜S" },
+  { name: "Expenses", href: "/expenses", icon: DollarSign, shortcut: "⌘E" },
+  { name: "Subscriptions", href: "/subscriptions", icon: Repeat, shortcut: "⌘S" },
   { name: "API Usage", href: "/api-usage", icon: TrendingUp },
   { name: "Trials", href: "/trials", icon: CalendarCheck },
   { name: "Vendors", href: "/vendors", icon: Building },
-  { name: "Budgets", href: "/budgets", icon: PiggyBank, shortcut: "âŒ˜B" },
+  { name: "Budgets", href: "/budgets", icon: PiggyBank, shortcut: "⌘B" },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "ROI Tracking", href: "/roi", icon: BarChart4 },
   { name: "Approvals", href: "/approvals", icon: CheckSquare },
@@ -233,7 +233,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Quick search... (âŒ˜K)"
+                  placeholder="Quick search... (⌘K)"
                   className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-8 pr-3 text-xs text-white/80 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.04] transition-all"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {

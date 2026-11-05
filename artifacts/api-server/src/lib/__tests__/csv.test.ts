@@ -13,4 +13,9 @@ describe("CSV cell safety", () => {
     expect(csvCell("-1+CMD()")).toBe('"\'-1+CMD()"');
     expect(csvCell(null)).toBe('""');
   });
+  it("neutralizes cells that start with a tab or carriage return", () => {
+    expect(csvCell("\tfoo")).toBe('"\'\tfoo"');
+    expect(csvCell("\rfoo")).toBe('"\'\rfoo"');
+    expect(csvCell("plain text")).toBe('"plain text"');
+  });
 });
