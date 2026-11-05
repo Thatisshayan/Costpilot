@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import type { ExpenseFilters } from "@workspace/api-client-react";
 import { requestExpenseExport, saveBlob, type ExportFormat } from "@/lib/expense-export";
 
-/** CSV/PDF export of the active scope's recorded expenses. */
-export function ExportButtons({ workspaceId }: { workspaceId: number | null }) {
+/** CSV/PDF export of the active scope's recorded expenses, limited to the given filters. */
+export function ExportButtons({ workspaceId, filters }: { workspaceId: number | null; filters?: ExpenseFilters }) {
   const [pending, setPending] = useState<ExportFormat | null>(null);
 
   const run = async (format: ExportFormat) => {
     setPending(format);
     try {
-      const { blob, filename } = await requestExpenseExport(format, workspaceId);
+      const { blob, filename } = await requestExpenseExport(format, workspaceId, filters);
       saveBlob(blob, filename);
       toast.success(`Downloaded ${filename}`);
     } catch (error) {

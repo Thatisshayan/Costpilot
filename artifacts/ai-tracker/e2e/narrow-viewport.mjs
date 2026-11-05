@@ -29,6 +29,27 @@ const fixtures = role => ({
     { id: 2, workspaceId: 5, userId: "pending-x", email: "new.member@example-company.test", role: "viewer", status: "pending", createdAt: "2026-11-02" },
   ],
   "/api/healthz": { status: "ok" },
+  "/api/expenses/search": {
+    items: [
+      { id: 1, workspaceId: 5, amount: 18234.55, currency: "USD", date: "2026-11-03", createdAt: "2026-11-03T00:00:00Z", platformId: 1, platformName: "Amazon Web Services", projectId: 1, projectName: "Checkout service", category: "Compute", description: long },
+      { id: 2, workspaceId: 5, amount: -120, currency: "EUR", date: "2026-11-02", createdAt: "2026-11-02T00:00:00Z", platformName: "OpenAI", projectName: null, category: "AI / LLM API", description: "Credit" },
+      { id: 4, workspaceId: 5, amount: 1500, currency: "JPY", date: "2026-11-01", createdAt: "2026-11-01T00:00:00Z", platformName: null, projectName: null, category: "SaaS subscription", description: null },
+    ],
+    total: 63, limit: 25, offset: 0,
+    totals: [{ currency: "EUR", net: "-120.00", count: 1 }, { currency: "JPY", net: "1500.00", count: 1 }, { currency: "USD", net: "18234.55", count: 61 }],
+  },
+  "/api/spend/summary": {
+    workspaceId: 5,
+    period: { month: "2026-11", start: "2026-11-01", end: "2026-11-30", through: "2026-11-05", isPartial: true },
+    comparison: { month: "2026-10", start: "2026-10-01", through: "2026-10-05", basis: "same-days" },
+    currencies: [{
+      currency: "USD", net: "18234.55", charges: "18234.55", credits: "0.00", count: 61, previousNet: "0.00", changeAmount: "18234.55", changePercent: null,
+      byVendor: [{ id: 1, name: "Amazon Web Services", net: "18234.55", count: 61 }],
+      byProject: [{ id: 1, name: "Checkout service with a deliberately long project name for wrapping", net: "18234.55", count: 61 }],
+      byCategory: [{ name: "Compute", net: "18234.55", count: 61 }],
+      trend: ["2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11"].map(month => ({ month, net: month === "2026-11" ? "18234.55" : "0.00" })),
+    }],
+  },
 });
 
 const server = await createServer({ configFile: path.join(here, "vite.e2e.config.ts"), logLevel: "error" });
