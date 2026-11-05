@@ -734,6 +734,47 @@ paths:
               schema:
                 type: string
 
+  /exports/generate:
+    post:
+      operationId: generateExpenseExport
+      tags: [exports]
+      summary: Export recorded expenses for one scope as CSV or PDF
+      description: Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Amounts are listed per row and never converted or totalled across currencies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [module, format]
+              properties:
+                module:
+                  type: string
+                  enum: [expenses]
+                format:
+                  type: string
+                  enum: [csv, pdf]
+                workspaceId:
+                  type: integer
+                  minimum: 1
+                  nullable: true
+      responses:
+        "200":
+          description: Export file (Content-Disposition carries the filename)
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid request body
+        "403":
+          description: Not an active member of the requested workspace
+
   /workspaces:
     get:
       operationId: listWorkspaces

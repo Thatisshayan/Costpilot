@@ -3,6 +3,7 @@ import {
   CreateWebhookBody as _CreateWebhookBodyVal,
   CreateWorkspaceBody as _CreateWorkspaceBodyVal,
   ExecuteRemediationBody as _ExecuteRemediationBodyVal,
+  GenerateExpenseExportBody as _GenerateExpenseExportBodyVal,
   InviteToWorkspaceBody as _InviteToWorkspaceBodyVal,
   PostIntelligenceQueryBody as _PostIntelligenceQueryBodyVal,
   PostTelemetryLlmRouteBody as _PostTelemetryLlmRouteBodyVal,
@@ -14,6 +15,7 @@ import {
 import type { CreateWebhookBody as _CreateWebhookBodyType } from "./generated/types/createWebhookBody";
 import type { CreateWorkspaceBody as _CreateWorkspaceBodyType } from "./generated/types/createWorkspaceBody";
 import type { ExecuteRemediationBody as _ExecuteRemediationBodyType } from "./generated/types/executeRemediationBody";
+import type { GenerateExpenseExportBody as _GenerateExpenseExportBodyType } from "./generated/types/generateExpenseExportBody";
 import type { InviteToWorkspaceBody as _InviteToWorkspaceBodyType } from "./generated/types/inviteToWorkspaceBody";
 import type { PostIntelligenceQueryBody as _PostIntelligenceQueryBodyType } from "./generated/types/postIntelligenceQueryBody";
 import type { PostTelemetryLlmRouteBody as _PostTelemetryLlmRouteBodyType } from "./generated/types/postTelemetryLlmRouteBody";
@@ -32,6 +34,9 @@ export type CreateWorkspaceBody = _CreateWorkspaceBodyType;
 
 export const ExecuteRemediationBody = _ExecuteRemediationBodyVal;
 export type ExecuteRemediationBody = _ExecuteRemediationBodyType;
+
+export const GenerateExpenseExportBody = _GenerateExpenseExportBodyVal;
+export type GenerateExpenseExportBody = _GenerateExpenseExportBodyType;
 
 export const InviteToWorkspaceBody = _InviteToWorkspaceBodyVal;
 export type InviteToWorkspaceBody = _InviteToWorkspaceBodyType;

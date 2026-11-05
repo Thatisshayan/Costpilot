@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ArrowUpRight, Plus, Pencil, Trash2, Calendar, Folder, Scan, Loader2, FileSpreadsheet } from "lucide-react";
 import { formatCurrency } from "../lib/currency";
+import { ExportButtons } from "@/components/export-buttons";
 
 import { Link } from "wouter";
 import {
@@ -158,6 +159,7 @@ export default function Expenses() {
           <p className="text-sm text-slate-400 mt-1">Track your granular API costs and tool purchases.</p>
         </div>
         <div className="flex items-center gap-3">
+          <ExportButtons workspaceId={activeWorkspaceId} />
           <button
             onClick={openAdd}
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"

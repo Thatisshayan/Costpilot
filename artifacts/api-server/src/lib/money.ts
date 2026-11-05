@@ -7,9 +7,10 @@ const CURRENCY = /^[A-Z]{3}$/;
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** Trim and uppercase a currency code before validation (e.g. " usd" -> "USD"). */
-export function normalizeExpenseInput<T>(raw: T): T {
+export function normalizeExpenseInput(raw: unknown): unknown {
   if (raw && typeof raw === "object" && typeof (raw as { currency?: unknown }).currency === "string") {
-    return { ...raw, currency: (raw as { currency: string }).currency.trim().toUpperCase() };
+    const input = raw as Record<string, unknown> & { currency: string };
+    return { ...input, currency: input.currency.trim().toUpperCase() };
   }
   return raw;
 }

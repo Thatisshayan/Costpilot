@@ -129,6 +129,21 @@ try {
   assert.equal((await call("launch-a", `/projects/${project.id}`, "DELETE")).status, 204);
   assert.equal((await call("launch-a", `/projects/${project.id}`, "DELETE")).status, 404);
   assert.equal((await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", dateRange: "ignored" })).status, 400);
+  // Exports cover exactly one scope: personal by default, or one readable workspace.
+  const personalCsv = await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv" });
+  assert.equal(personalCsv.status, 200);
+  assert.match(personalCsv.headers.get("content-type") ?? "", /^text\/csv/);
+  assert.match(personalCsv.headers.get("content-disposition") ?? "", /filename="costpilot-expenses-personal-\d{4}-\d{2}-\d{2}\.csv"/);
+  const personalText = await personalCsv.text();
+  assert(personalText.includes("personal fixture") && !personalText.includes("shared fixture"));
+  const sharedCsv = await call("launch-viewer", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: workspace.id });
+  assert.equal(sharedCsv.status, 200);
+  const sharedText = await sharedCsv.text();
+  assert(sharedText.includes("shared fixture") && !sharedText.includes("personal fixture"));
+  assert.equal((await call("launch-b", "/exports/generate", "POST", { module: "expenses", format: "pdf", workspaceId: workspace.id })).status, 403);
+  const sharedPdf = await call("launch-viewer", "/exports/generate", "POST", { module: "expenses", format: "pdf", workspaceId: workspace.id });
+  assert.equal(sharedPdf.headers.get("content-type"), "application/pdf");
+  assert((await sharedPdf.arrayBuffer()).byteLength > 100);
   const inviteCreations = await Promise.all(Array.from({ length: 2 }, () =>
     call("launch-a", `/workspaces/${workspace.id}/invite`, "POST", { email: "concurrent@example.test", role: "viewer" })));
   assert.deepEqual(inviteCreations.map(response => response.status).sort(), [201, 409]);

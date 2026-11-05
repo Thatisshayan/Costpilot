@@ -4,21 +4,36 @@ import { Router } from "express";
 import { logger } from "../lib/logger";
 import { z } from "zod";
 import { db, expensesTable, platformsTable } from "@workspace/db";
-import { eq, desc, sql, and, gte } from "drizzle-orm";
+import { eq, desc, sql, and, isNull } from "drizzle-orm";
+import { getWorkspaceMember } from "../middlewares/authz";
 import PDFDocument from "pdfkit";
 
 const router = Router();
 
+// Mirrors OpenAPI GenerateExpenseExportBody; kept local because .strict() (unknown
+// keys such as dateRange -> 400) is not emitted by the generated schema.
 const GenerateExportBody = z.object({
   module: z.literal("expenses"),
   format: z.enum(["csv", "pdf"]),
+  // Omitted/null exports personal records; a workspace id exports that workspace only.
+  workspaceId: z.number().int().positive().nullable().optional(),
 }).strict();
 
 // Generate Premium PDF/CSV Export
 router.post("/generate", async (req, res) => {
   try {
-    const { module, format } = GenerateExportBody.parse(req.body);
+    const { module, format, workspaceId = null } = GenerateExportBody.parse(req.body);
     const userId = req.userId!;
+    // Any active member (including viewers) may export a workspace they can read.
+    if (workspaceId !== null && !(await getWorkspaceMember(workspaceId, userId))) {
+      res.status(403).json({ error: "Workspace membership required" });
+      return;
+    }
+    const scopeFilter = workspaceId === null
+      ? and(isNull(expensesTable.workspaceId), eq(expensesTable.userId, userId))
+      : eq(expensesTable.workspaceId, workspaceId);
+    const scopeLabel = workspaceId === null ? "personal" : `workspace-${workspaceId}`;
+    const stamp = new Date().toISOString().slice(0, 10);
 
     logger.info({ module, format }, "Generating export");
 
@@ -34,7 +49,7 @@ router.post("/generate", async (req, res) => {
       })
       .from(expensesTable)
       .leftJoin(platformsTable, and(eq(expensesTable.platformId, platformsTable.id), sql`((${expensesTable.workspaceId} IS NULL AND ${platformsTable.workspaceId} IS NULL AND ${expensesTable.userId} = ${platformsTable.userId}) OR ${expensesTable.workspaceId} = ${platformsTable.workspaceId})`))
-      .where(resourceScope(expensesTable, userId))
+      .where(and(resourceScope(expensesTable, userId), scopeFilter))
       .orderBy(desc(expensesTable.date));
 
     if (format === "csv") {
@@ -43,23 +58,25 @@ router.post("/generate", async (req, res) => {
         csv += [e.id, e.date, Number(e.amount), e.currency, e.description, e.category, e.platformName].map(csvCell).join(",") + "\n";
       }
 
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename=${module}-export.csv`);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="costpilot-${module}-${scopeLabel}-${stamp}.csv"`);
       res.status(200).send(csv);
       return;
     }
 
     if (format === "pdf") {
       const doc = new PDFDocument({ margin: 50 });
-      const filename = `${module}-report.pdf`;
+      const filename = `costpilot-${module}-${scopeLabel}-${stamp}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
       doc.pipe(res);
 
       doc.fontSize(20).text("CostPilot - Export Report", { align: "center" });
       doc.moveDown();
       doc.fontSize(12).text(`Module: ${module}`);
+      doc.fontSize(12).text(`Scope: ${workspaceId === null ? "Personal" : `Workspace ${workspaceId}`}`);
+      doc.fontSize(10).text("Recorded amounts as entered, per row. Currencies are not converted or totalled.");
       doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`);
       doc.moveDown();
 

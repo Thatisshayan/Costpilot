@@ -581,6 +581,31 @@ export type ListConnectedSources200Item = {
   lastSync?: string;
 };
 
+export type GenerateExpenseExportBodyModule = typeof GenerateExpenseExportBodyModule[keyof typeof GenerateExpenseExportBodyModule];
+
+
+export const GenerateExpenseExportBodyModule = {
+  expenses: 'expenses',
+} as const;
+
+export type GenerateExpenseExportBodyFormat = typeof GenerateExpenseExportBodyFormat[keyof typeof GenerateExpenseExportBodyFormat];
+
+
+export const GenerateExpenseExportBodyFormat = {
+  csv: 'csv',
+  pdf: 'pdf',
+} as const;
+
+export type GenerateExpenseExportBody = {
+  module: GenerateExpenseExportBodyModule;
+  format: GenerateExpenseExportBodyFormat;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  workspaceId?: number | null;
+};
+
 export type UpdateWorkspaceBody = {
   name?: string;
   slug?: string;

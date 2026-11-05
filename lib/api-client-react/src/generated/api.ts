@@ -41,6 +41,7 @@ import type {
   Expense,
   ExpenseInput,
   ExpenseUpdate,
+  GenerateExpenseExportBody,
   GetIntelligenceActivity200Item,
   GpuTelemetry,
   HealthStatus,
@@ -4031,6 +4032,95 @@ export function useExportExpensesCsv<TData = Awaited<ReturnType<typeof exportExp
 
 
 
+
+export const getGenerateExpenseExportUrl = () => {
+
+
+
+
+  return `/api/exports/generate`
+}
+
+/**
+ * Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Amounts are listed per row and never converted or totalled across currencies.
+ * @summary Export recorded expenses for one scope as CSV or PDF
+ */
+export const generateExpenseExport = async (generateExpenseExportBody: GenerateExpenseExportBody, options?: Parameters<typeof customFetch>[1]): Promise<string | Blob> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<string | Blob>(getGenerateExpenseExportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(generateExpenseExportBody)
+  }
+);}
+
+
+
+
+
+export const getGenerateExpenseExportMutationKey = () => ['generateExpenseExport'] as const;
+
+export const getGenerateExpenseExportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateExpenseExport>>, TError,GenerateExpenseExportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateExpenseExport>>, TError,GenerateExpenseExportMutationVariables, TContext> => {
+
+const mutationKey = getGenerateExpenseExportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateExpenseExport>>, GenerateExpenseExportMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateExpenseExport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateExpenseExportMutationResult = NonNullable<Awaited<ReturnType<typeof generateExpenseExport>>>
+    export type GenerateExpenseExportMutationBody = BodyType<GenerateExpenseExportBody>
+    export type GenerateExpenseExportMutationError = ErrorType<void>
+    export type GenerateExpenseExportMutationVariables = {data: BodyType<GenerateExpenseExportBody>}
+
+    /**
+ * @summary Export recorded expenses for one scope as CSV or PDF
+ */
+export const useGenerateExpenseExport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateExpenseExport>>, TError,GenerateExpenseExportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateExpenseExport>>,
+        TError,
+        GenerateExpenseExportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateExpenseExportMutationOptions(options), queryClient);
+    }
 
 export const getListWorkspacesUrl = () => {
 

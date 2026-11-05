@@ -843,6 +843,22 @@ export const ExportExpensesCsvResponse = zod.unknown()
 
 
 /**
+ * Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Amounts are listed per row and never converted or totalled across currencies.
+ * @summary Export recorded expenses for one scope as CSV or PDF
+ */
+
+
+
+export const GenerateExpenseExportBody = zod.object({
+  "module": zod.enum(['expenses']),
+  "format": zod.enum(['csv', 'pdf']),
+  "workspaceId": zod.int().min(1).nullish()
+})
+
+export const GenerateExpenseExportResponse = zod.unknown()
+
+
+/**
  * @summary List all workspaces the user belongs to
  */
 export const ListWorkspacesResponseItem = zod.object({
