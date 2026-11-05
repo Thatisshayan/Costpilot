@@ -90,10 +90,10 @@ export default function ApiDocs() {
               <div className="bg-black/60 rounded-2xl p-6 font-mono text-sm border border-white/5 overflow-x-auto">
                 <div className="text-slate-500 mb-2"># Example Request</div>
                 <div className="text-indigo-400">curl <span className="text-slate-300">-X GET</span> "https://api.costpilot.ai/v1/spend/summary" \</div>
-                <div className="pl-6 text-indigo-400">-H <span className="text-emerald-400">"Authorization: Bearer YOUR_API_KEY"</span></div>
+                <div className="pl-6 text-indigo-400">-H <span className="text-emerald-400">"Authorization: Bearer $COSTPILOT_API_KEY"</span></div>
               </div>
               <button 
-                onClick={() => handleCopy('curl -X GET "https://api.costpilot.ai/v1/spend/summary" -H "Authorization: Bearer YOUR_API_KEY"', 'Code snippet')}
+                onClick={() => handleCopy('curl -X GET "https://api.costpilot.ai/v1/spend/summary" -H "Authorization: Bearer $COSTPILOT_API_KEY"', 'Code snippet')}
                 className="absolute top-4 right-4 p-2 rounded-lg bg-white/5 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
               >
                 {copied === 'Code snippet' ? <CheckCircle2 size={16} /> : <Copy size={16} />}

@@ -1,5 +1,23 @@
-# Confirmed false positives - CI stub secrets and test fixtures, not real credentials.
-.github/workflows/ci-api-server.yml:generic-api-key:65
-.github/workflows/ci-api-server.yml:generic-api-key:68
-artifacts/ai-tracker/src/pages/api-docs.tsx:curl-auth-header:92
-artifacts/api-server/src/routes/__tests__/webhooks-auth.test.ts:generic-api-key:81
+# gitleaks exceptions: exact fingerprints only (REPO_RULES Appendix B).
+# Each entry is commit-specific, so the same file/line in any new commit is
+# still scanned. Approved by Shayan on 2026-11-05.
+
+# Literal placeholder "replace_me_with_64_hex_characters" (33 chars, not hex,
+# rejected by the 64-hex env schema); removed in 4890e34.
+9594a5014781b7d21fc31a34ea4d7adfc9fa3b1d:.env.example:generic-api-key:13
+9594a5014781b7d21fc31a34ea4d7adfc9fa3b1d:.env.template:generic-api-key:13
+
+# CI stub values beginning "stub" for JWT_SECRET / WEBHOOK_SECRET in a test
+# workflow; later replaced by generated per-run values. (Narrowed from
+# path-wide entries.)
+42217fe2b9588e022b44277f01c1f5a91e2a376f:.github/workflows/ci-api-server.yml:generic-api-key:65
+42217fe2b9588e022b44277f01c1f5a91e2a376f:.github/workflows/ci-api-server.yml:generic-api-key:68
+
+# Test fixture "whsec_test_secret_key_12345" in a webhook-signature unit test;
+# the current file no longer matches. (Narrowed from a path-wide entry.)
+8b2ce69807782cf577e38eaa6c61b9769bc3545c:artifacts/api-server/src/routes/__tests__/webhooks-auth.test.ts:generic-api-key:81
+
+# Documentation placeholder "Bearer YOUR_API_KEY" on a preview page; the
+# current file now uses "$COSTPILOT_API_KEY", which does not match.
+# (Narrowed from a path-wide entry.)
+994c89eae8a130c19d83792629aa1de71571fd6c:artifacts/ai-tracker/src/pages/api-docs.tsx:curl-auth-header:92
