@@ -85,26 +85,22 @@ router.post("/:id/invite", requireWorkspaceMember(["owner", "admin"]), async (re
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  const [invite] = await db
-    .insert(workspaceInvitesTable)
-    .values({
-      workspaceId,
-      email,
-      role,
-      token,
-      invitedBy: req.userId!,
-      expiresAt,
-    })
-    .returning();
-
-  await db.insert(workspaceMembersTable).values({
-    workspaceId,
-    userId: "pending-" + token.slice(0, 8),
-    email,
-    role,
-    status: "pending",
-    inviteToken: token,
+  const invite = await db.transaction(async tx => {
+    // Serialize invite creation per workspace, including the duplicate check.
+    await tx.select({ id: workspacesTable.id }).from(workspacesTable)
+      .where(eq(workspacesTable.id, workspaceId)).for("update");
+    const [pending] = await tx.select({ id: workspaceMembersTable.id }).from(workspaceMembersTable)
+      .where(and(eq(workspaceMembersTable.workspaceId, workspaceId), eq(workspaceMembersTable.email, email))).limit(1);
+    if (pending) return null;
+    const [created] = await tx.insert(workspaceInvitesTable).values({
+      workspaceId, email, role, token, invitedBy: req.userId!, expiresAt,
+    }).returning();
+    await tx.insert(workspaceMembersTable).values({
+      workspaceId, userId: "pending-" + token, email, role, status: "pending", inviteToken: token,
+    });
+    return created;
   });
+  if (!invite) { res.status(409).json({ error: "User is already a member of this workspace" }); return; }
 
   res.status(201).json({
     id: invite.id,

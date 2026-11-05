@@ -68,7 +68,8 @@ router.patch("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const { id } = DeleteProjectParams.parse({ id: Number(req.params.id) });
-  await db.delete(projectsTable).where(and(eq(projectsTable.id, id), resourceScope(projectsTable, req.userId!, req.method !== "GET")));
+  const [deleted] = await db.delete(projectsTable).where(and(eq(projectsTable.id, id), resourceScope(projectsTable, req.userId!, true))).returning({ id: projectsTable.id });
+  if (!deleted) { res.status(404).json({ error: "Not found" }); return; }
   res.status(204).send();
 });
 

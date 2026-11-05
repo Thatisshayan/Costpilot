@@ -12,16 +12,15 @@ const router = Router();
 const GenerateExportBody = z.object({
   module: z.literal("expenses"),
   format: z.enum(["csv", "pdf"]),
-  dateRange: z.string().optional(),
-});
+}).strict();
 
 // Generate Premium PDF/CSV Export
 router.post("/generate", async (req, res) => {
   try {
-    const { module, format, dateRange } = GenerateExportBody.parse(req.body);
+    const { module, format } = GenerateExportBody.parse(req.body);
     const userId = req.userId!;
 
-    logger.info({ module, format, dateRange }, "Generating export");
+    logger.info({ module, format }, "Generating export");
 
     const userExpenses = await db
       .select({
@@ -62,9 +61,6 @@ router.post("/generate", async (req, res) => {
       doc.moveDown();
       doc.fontSize(12).text(`Module: ${module}`);
       doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`);
-      if (dateRange) {
-        doc.fontSize(12).text(`Date Range: ${dateRange}`);
-      }
       doc.moveDown();
 
       doc.fontSize(14).text("Expenses", { underline: true });

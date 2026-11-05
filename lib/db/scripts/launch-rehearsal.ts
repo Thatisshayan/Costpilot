@@ -49,6 +49,17 @@ try {
   const item = await created.json();
   assert.equal((await call("launch-a", `/expenses/${item.id}`, "PATCH", { amount: 8 })).status, 200);
   assert.equal((await call("launch-a", `/expenses/${item.id}`, "DELETE")).status, 204);
+  const projectResponse = await call("launch-a", "/projects", "POST", { name: "Shared project", workspaceId: workspace.id });
+  assert.equal(projectResponse.status, 201);
+  const project = await projectResponse.json();
+  assert.equal((await call("launch-viewer", `/projects/${project.id}`, "DELETE")).status, 404);
+  assert.equal((await call("launch-a", `/projects/${project.id}`)).status, 200);
+  assert.equal((await call("launch-a", `/projects/${project.id}`, "DELETE")).status, 204);
+  assert.equal((await call("launch-a", `/projects/${project.id}`, "DELETE")).status, 404);
+  assert.equal((await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", dateRange: "ignored" })).status, 400);
+  const inviteCreations = await Promise.all(Array.from({ length: 2 }, () =>
+    call("launch-a", `/workspaces/${workspace.id}/invite`, "POST", { email: "concurrent@example.test", role: "viewer" })));
+  assert.deepEqual(inviteCreations.map(response => response.status).sort(), [201, 409]);
   await db.update(members).set({ status: "expired" }).where(and(eq(members.workspaceId, workspace.id), eq(members.userId, "launch-viewer")));
   assert.equal((await call("launch-viewer", `/expenses/${sharedExpense.id}`)).status, 404);
   const visible = await (await call("launch-viewer", "/expenses")).json();

@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,42 +31,60 @@ const CATEGORIES = [
 
 export default function AddExpenseScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const editing = !!id;
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(!!id);
   const safeAreaInsets = useSafeAreaInsets();
   const theme = useTheme();
 
   const [amount, setAmount] = useState('');
-  const [platform, setPlatform] = useState('');
+  const [currency, setCurrency] = useState('USD');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState([new Date().getFullYear(), String(new Date().getMonth() + 1).padStart(2, '0'), String(new Date().getDate()).padStart(2, '0')].join('-'));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    apiFetch<{ amount: number; currency: string; description: string; category: string; date: string }>(`/expenses/${id}`)
+      .then(expense => {
+        if (!active) return;
+        setAmount(String(expense.amount)); setCurrency(expense.currency);
+        setDescription(expense.description ?? ''); setCategory(expense.category); setDate(expense.date);
+      }).catch(error => { if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load expense'); })
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [id]);
+
   const handleSubmit = async () => {
-    if (!amount || !platform) {
-      Alert.alert('Missing Fields', 'Please enter an amount and platform name.');
+    if (!amount || !/^[A-Z]{3}$/.test(currency)) {
+      Alert.alert('Missing Fields', 'Please enter an amount and a three-letter currency code.');
       return;
     }
 
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    const parsedAmount = Number(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid positive number.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await apiFetch('/expenses', {
-        method: 'POST',
+      await apiFetch(editing ? `/expenses/${id}` : '/expenses', {
+        method: editing ? 'PATCH' : 'POST',
         body: JSON.stringify({
           amount: parsedAmount,
-          description: description || `${platform} expense`,
+          description: description || "Expense",
+          currency,
           category,
           date,
         }),
       });
 
-      Alert.alert('Success', 'Expense added successfully.', [
+      Alert.alert('Success', editing ? 'Expense updated successfully.' : 'Expense added successfully.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err) {
@@ -76,6 +94,8 @@ export default function AddExpenseScreen() {
     }
   };
 
+  if (isLoading) return <ThemedView style={styles.screen}><ActivityIndicator accessibilityLabel="Loading expense" /></ThemedView>;
+  if (loadError) return <ThemedView style={styles.screen}><ThemedText>{loadError}</ThemedText><Pressable onPress={() => router.back()}><ThemedText>Back</ThemedText></Pressable></ThemedView>;
   return (
     <ThemedView style={styles.screen}>
       <View
@@ -97,7 +117,7 @@ export default function AddExpenseScreen() {
           >
             <ThemedText style={styles.backButtonText}>Cancel</ThemedText>
           </Pressable>
-          <ThemedText style={styles.headerTitle}>Add Expense</ThemedText>
+          <ThemedText style={styles.headerTitle}>{editing ? "Edit Expense" : "Add Expense"}</ThemedText>
           <View style={styles.headerSpacer} />
         </View>
       </View>
@@ -134,7 +154,7 @@ export default function AddExpenseScreen() {
           </ThemedView>
 
           <ThemedView style={styles.fieldGroup}>
-            <ThemedText style={styles.label}>Platform</ThemedText>
+            <ThemedText style={styles.label}>Currency</ThemedText>
             <TextInput
               style={[
                 styles.input,
@@ -144,10 +164,11 @@ export default function AddExpenseScreen() {
                   borderColor: theme.backgroundSelected,
                 },
               ]}
-              placeholder="e.g. AWS, Azure, GCP"
+              placeholder="e.g. USD, CAD, EUR"
               placeholderTextColor="#9499C3"
-              value={platform}
-              onChangeText={setPlatform}
+              value={currency}
+              onChangeText={value => setCurrency(value.toUpperCase())}
+              maxLength={3}
               autoCapitalize="characters"
             />
           </ThemedView>
@@ -256,7 +277,7 @@ export default function AddExpenseScreen() {
               <ActivityIndicator color="#0B0C10" size="small" />
             ) : (
               <ThemedText style={styles.submitButtonText}>
-                Add Expense
+                {editing ? "Save Expense" : "Add Expense"}
               </ThemedText>
             )}
           </Pressable>

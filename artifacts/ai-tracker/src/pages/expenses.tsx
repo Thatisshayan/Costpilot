@@ -57,7 +57,7 @@ const emptyForm = (): FormState => ({
   currency: "USD",
   description: "",
   category: "API Usage",
-  date: new Date().toISOString().slice(0, 10),
+  date: format(new Date(), "yyyy-MM-dd"),
 });
 
 export default function Expenses() {

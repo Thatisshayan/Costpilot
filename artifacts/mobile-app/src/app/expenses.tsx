@@ -1,7 +1,8 @@
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -43,7 +44,7 @@ function getPlatformColor(name: string): string {
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+  const date = new Date(`${dateStr}T12:00:00`);
   return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -51,7 +52,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function ExpenseCard({ item }: { item: Expense }) {
+function ExpenseCard({ item, onEdit, onDelete }: { item: Expense; onEdit: () => void; onDelete: () => void }) {
   const theme = useTheme();
   const platformColor = getPlatformColor(item.platformName ?? "General");
 
@@ -74,6 +75,10 @@ function ExpenseCard({ item }: { item: Expense }) {
       <ThemedText style={styles.expenseAmount}>
         {item.currency} {item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </ThemedText>
+      <View style={{ gap: 12 }}>
+        <Pressable accessibilityLabel={`Edit ${item.description}`} onPress={onEdit}><ThemedText>Edit</ThemedText></Pressable>
+        <Pressable accessibilityLabel={`Delete ${item.description}`} onPress={onDelete}><ThemedText>Delete</ThemedText></Pressable>
+      </View>
     </ThemedView>
   );
 }
@@ -126,9 +131,17 @@ export default function ExpensesScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchExpenses();
-  }, []);
+  useFocusEffect(useCallback(() => { void fetchExpenses(); }, [fetchExpenses]));
+
+  const deleteExpense = (item: Expense) => {
+    Alert.alert('Delete expense?', 'This permanently removes the expense.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try { await apiFetch(`/expenses/${item.id}`, { method: 'DELETE' }); await fetchExpenses(true); }
+        catch (error) { Alert.alert('Delete failed', error instanceof Error ? error.message : 'Please try again.'); }
+      } },
+    ]);
+  };
 
   const handleRefresh = () => {
     fetchExpenses(true);
@@ -173,7 +186,7 @@ export default function ExpensesScreen() {
         ]}
       >
         <ThemedView style={styles.headerRow}>
-          <ThemedText style={styles.headerTitle}>Expenses</ThemedText>
+          <ThemedText style={styles.headerTitle}>Personal Expenses</ThemedText>
           <Pressable
             style={({ pressed }) => [
               styles.addButton,
@@ -189,7 +202,7 @@ export default function ExpensesScreen() {
       <FlatList
         data={expenses}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <ExpenseCard item={item} />}
+        renderItem={({ item }) => <ExpenseCard item={item} onEdit={() => router.push({ pathname: "/add-expense", params: { id: String(item.id) } })} onDelete={() => deleteExpense(item)} />}
         contentContainerStyle={[
           styles.listContent,
           contentPlatformStyle,

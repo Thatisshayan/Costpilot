@@ -29,6 +29,8 @@ jobs:
             lib/api-zod/src/generated
       - run: pnpm run build
       - run: pnpm run test
+      - name: Verify native lint tooling
+        run: pnpm --filter mobile-app exec eslint src/hooks/use-theme.ts src/components/app-tabs.web.tsx
       - name: Bundle Android application
         env:
           EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}

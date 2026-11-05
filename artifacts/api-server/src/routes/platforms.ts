@@ -126,7 +126,8 @@ router.patch("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const { id } = DeletePlatformParams.parse({ id: Number(req.params.id) });
-  await db.delete(platformsTable).where(and(eq(platformsTable.id, id), resourceScope(platformsTable, req.userId!, req.method !== "GET")));
+  const [deleted] = await db.delete(platformsTable).where(and(eq(platformsTable.id, id), resourceScope(platformsTable, req.userId!, true))).returning({ id: platformsTable.id });
+  if (!deleted) { res.status(404).json({ error: "Not found" }); return; }
   res.status(204).send();
 });
 

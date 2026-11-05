@@ -23,6 +23,7 @@ export async function apiResponse(
       ? endpoint
       : `/api/${endpoint.replace(/^\/+/, "")}`;
   const url = new URL(path, `${API_ORIGIN}/`);
+  if (url.origin !== new URL(API_ORIGIN).origin) throw new Error("API requests must use the configured origin");
   if (params) {
     url.search = new URLSearchParams(params).toString();
   }

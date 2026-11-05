@@ -192,7 +192,7 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
+        <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#66FCF1" />
@@ -206,7 +206,7 @@ export default function HomeScreen() {
   if (error) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
+        <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.centered}>
             <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
@@ -226,7 +226,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B0C10" />
+      <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safeArea}>
 
         {/* Header */}
