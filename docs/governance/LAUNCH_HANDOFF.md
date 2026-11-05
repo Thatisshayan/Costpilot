@@ -58,3 +58,24 @@ Shayan approved the existing GitHub Pages URL and confirmed **the API host is no
 ## Prepared API deployment definition
 
 Both `railway.json` and `railway.staging.json` now define the API service using Railway's actual config-as-code schema: Node 22 Dockerfile, `/api/healthz`, failure restart policy and shutdown draining. The previous staging file incorrectly modeled multi-service provisioning, used unsupported `NODE_ENV=staging`, and probed `/api/health`; those settings are corrected. Files were validated against the [official Railway schema](https://railway.com/railway.schema.json). This service configuration does **not** create PostgreSQL/Redis or configure secrets. The core release requires PostgreSQL 16; Redis is not required by the enabled core routes. Configure `NODE_ENV=production` even for staging (to exercise production auth restrictions), the server variables above, and the approved origin privately in the host. Choose the reviewed branch/commit explicitly and apply migrations only after backup/preflight and approval. No automatic migration hook is configured.
+
+## Restart checkpoint — user-requested machine restart
+
+All implementation and configuration preparation through **b457c746de0ad8387bc4813a6d45e12800283b51** is committed and pushed to `origin/docs/fix-doc-drift`; [PR #7](https://github.com/Thatisshayan/Costpilot/pull/7) is open. This checkpoint document is committed immediately afterward. Resume from the remote branch head, not an earlier audit commit. The tracked working tree was clean before this checkpoint.
+
+CI snapshot for b457c74 at checkpoint time:
+
+- **Passed:** [API/DB CI 41948997466](https://github.com/Thatisshayan/Costpilot/actions/runs/41948997466), [governance 41948997432](https://github.com/Thatisshayan/Costpilot/actions/runs/41948997432).
+- **Still running, not claimed passed:** [launch rehearsal 41948997567](https://github.com/Thatisshayan/Costpilot/actions/runs/41948997567), [CI 41948997608](https://github.com/Thatisshayan/Costpilot/actions/runs/41948997608), [contracts/native/Pages verification 41948994358](https://github.com/Thatisshayan/Costpilot/actions/runs/41948994358), [push governance 41948994357](https://github.com/Thatisshayan/Costpilot/actions/runs/41948994357). They run on GitHub independently of the machine restart. The checkpoint commit also triggers fresh checks; inspect those on resume.
+
+Immediate resume actions:
+
+1. Read this document and REPO_RULES.md; inspect the remote branch/PR and latest CI. Fix any failed checks before merge. Code discovery graph project: `D-AgentDevWork-repos-Costpilot`.
+2. Preserve ignored client/server environment files, user `.claude` configuration and `audits/private/` diagnostics. No secret/key values are in this handoff. The supplied Clerk test key is configured locally and in the GitHub public build variable.
+3. User decisions: existing GitHub Pages URL is approved; privacy/support contact is **Obsidianmedia.yt@gmail.com**; **API host is not set up yet**. The public operator name, hosting/region/budget decision, server webhook/encryption configuration and live acceptance are outstanding.
+4. Latest status-only preflight: database/server Clerk key/allowed origins/client public keys/contact present; **API origins, Clerk webhook secret and encryption master key missing or invalid**. Presence checks do not prove real connectivity or matching Clerk configuration. Do not invent an API URL, rotate an existing encryption key blindly, or provision paid infrastructure without approval.
+5. Once an approved API/PostgreSQL host exists, configure the variables in the table above, apply migrations with the runbook approvals, and perform actual web/device/CORS/webhook/monitoring checks. Public release remains blocked until these pass and Shayan approves.
+
+Local Windows Node is 25; target CI/Docker is Node 22.13+. Existing installed modules are older; use CI evidence or an isolated Node 22 setup instead of silently replacing the user's module tree. A working cached pnpm 9 CLI was `C:/Users/AgentDev/AppData/Local/npm-cache/_npx/8959f4e966f464e2/node_modules/pnpm/bin/pnpm.cjs` if needed; re-check availability after restart. Local Docker/PostgreSQL were unhealthy/unavailable, while disposable remote rehearsals passed at prior checkpoints. Do not treat that as production evidence.
+
+No merge, release, production migration, infrastructure provisioning or paid provider call occurred. Work is checkpointed for the user's restart; do not assume background local processes survive it.
