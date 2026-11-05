@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Switch, Route, Router as WouterRouter, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -14,9 +15,9 @@ import Collaboration from "@/pages/collaboration";
 import AcceptInvite from "@/pages/accept-invite";
 import Terms from "@/pages/terms";
 import PrivacyPolicy from "@/pages/privacy-policy";
-const queryClient = new QueryClient();
 function Unavailable() { return <main className="p-8"><h1>Feature unavailable</h1><p>This preview feature is not part of the current release.</p><Link href="/">Return to expenses overview</Link></main>; }
 export default function App() {
+  const [queryClient] = useState(() => new QueryClient());
   return <ThemeProvider defaultTheme="dark" storageKey="ai-tracker-theme"><QueryClientProvider client={queryClient}>
     <TooltipProvider><WorkspaceProvider><ErrorBoundary><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Layout><Switch>

@@ -16,7 +16,7 @@ vi.mock("@workspace/db", () => ({
   },
 }));
 
-vi.mock("@clerk/clerk-sdk-node", () => ({
+vi.mock("@clerk/backend", () => ({
   verifyToken: mockVerifyToken,
 }));
 

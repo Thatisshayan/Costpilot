@@ -188,7 +188,7 @@ export default function ExpensesScreen() {
 
       <FlatList
         data={expenses}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => <ExpenseCard item={item} />}
         contentContainerStyle={[
           styles.listContent,

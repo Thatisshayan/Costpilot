@@ -3,9 +3,8 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "@clerk/clerk-expo": "^2.20.0",
     "@expo/ui": "~56.0.15",
-    "expo": "~56.0.8",
+    "expo": "~56.0.24",
     "expo-constants": "~56.0.16",
     "expo-device": "~56.0.4",
     "expo-font": "~56.0.5",
@@ -28,13 +27,16 @@
     "react-native-screens": "4.25.2",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.8.3",
-    "expo-auth-session": "~56.0.13"
+    "expo-auth-session": "~56.0.13",
+    "@clerk/expo": "^4.15.0",
+    "@expo/metro-runtime": "~56.0.21"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
     "eslint": "^9.39.4",
     "eslint-config-expo": "~56.0.4",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "@react-native/metro-config": "0.85.3"
   },
   "scripts": {
     "start": "expo start",

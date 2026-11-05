@@ -1,5 +1,5 @@
-import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
-import { tokenCache } from '@clerk/clerk-expo/token-cache';
+import { ClerkProvider, useAuth } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
 import { DarkTheme, DefaultTheme, Redirect, ThemeProvider, useSegments } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useFonts } from 'expo-font';
@@ -16,9 +16,9 @@ SplashScreen.preventAutoHideAsync();
 
 function AuthenticatedTabs() {
   const colorScheme = useColorScheme();
-  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const segments = useSegments();
-  const [authReady, setAuthReady] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState<string | null | undefined>(undefined);
   const [loaded, error] = useFonts({
     'Clash Display': require('../../assets/fonts/ClashDisplay-Regular.ttf'),
     'Plus Jakarta Sans': require('../../assets/fonts/PlusJakartaSans[wght].ttf'),
@@ -38,11 +38,11 @@ function AuthenticatedTabs() {
 
   useEffect(() => {
     setApiAuthTokenGetter(() => isSignedIn ? getToken() : null);
-    setAuthReady(true);
+    setRegisteredUser(userId ?? null);
     return () => setApiAuthTokenGetter(null);
-  }, [getToken, isSignedIn]);
+  }, [getToken, isSignedIn, userId]);
 
-  if (!loaded || !isLoaded || !authReady) {
+  if (!loaded || !isLoaded || registeredUser !== (userId ?? null)) {
     return null;
   }
 
@@ -55,7 +55,7 @@ function AuthenticatedTabs() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
-      <AppTabs />
+      <AppTabs key={userId ?? "signed-out"} />
     </ThemeProvider>
   );
 }

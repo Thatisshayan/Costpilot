@@ -62,7 +62,7 @@ catalog:
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
   tsx: ^4.21.0
-  vite: ^7.3.2
+  vite: ^7.3.7
   wouter: ^3.3.5
   zod: ^4.6.6
 
@@ -77,6 +77,27 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # Compatible security fixes; no cross-major overrides in this batch.
+  "qs@>=6.0.0 <6.16.1": "6.16.1"
+  "@xmldom/xmldom@>=0.8.0 <0.8.15": "0.8.15"
+  "@xmldom/xmldom@>=0.9.0 <0.9.12": "0.9.12"
+  "brace-expansion@>=1.0.0 <1.1.21": "1.1.21"
+  "brace-expansion@>=5.0.0 <5.0.12": "5.0.12"
+  "body-parser@>=2.0.0 <2.4.0": "2.4.0"
+  "browserslist@>=4.0.0 <4.28.7": "4.28.7"
+  "compression@>=1.0.0 <1.8.2": "1.8.2"
+  "fast-copy@>=4.0.0 <4.1.0": "4.1.0"
+  "fast-uri@>=3.0.0 <3.1.9": "3.1.9"
+  "form-data@>=4.0.0 <4.0.6": "4.0.6"
+  "ip-address@>=10.0.0 <10.7.4": "10.7.4"
+  "js-cookie@>=3.0.0 <3.0.7": "3.0.7"
+  "js-yaml@>=4.0.0 <4.3.2": "4.3.2"
+  "nanoid@>=3.0.0 <3.3.18": "3.3.18"
+  "node-forge@>=1.0.0 <1.4.1": "1.4.1"
+  "postcss@>=8.0.0 <8.5.23": "8.5.23"
+  "postcss-selector-parser@>=6.0.0 <6.1.5": "6.1.5"
+  "source-map-js@>=1.0.0 <1.2.2": "1.2.2"
+  "baseline-browser-mapping@>=2.0.0 <2.11.0": "2.11.0"
   # Same-major security patches: GHSA-jqcg-44mw-7w3h,
   # GHSA-pqg4-j6r4-53mv and GHSA-cg2g-xh64-v4q7.
   "proxy-addr@>=2.0.0 <2.0.8": "2.0.8"

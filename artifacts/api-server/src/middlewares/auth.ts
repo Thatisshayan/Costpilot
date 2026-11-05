@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyToken as clerkVerifyToken } from "@clerk/clerk-sdk-node";
+import { verifyToken as clerkVerifyToken } from "@clerk/backend";
 import { getWorkspaceMember } from "./authz";
 
 // Exported configuration object to facilitate robust unit testing/mocking across package boundaries
@@ -53,6 +53,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     const decoded = await authConfig.verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY,
       jwtKey: process.env.CLERK_JWT_KEY,
+      authorizedParties: process.env.ALLOWED_ORIGINS?.split(",").map(origin => origin.trim()).filter(Boolean),
     });
 
     if (decoded && decoded.sub) {

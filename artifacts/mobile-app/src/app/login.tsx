@@ -1,283 +1,69 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { useSignIn, useAuth, useClerk } from '@clerk/clerk-expo';
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from "react";
+import { Pressable, ScrollView, TextInput, ActivityIndicator } from "react-native";
+import { useRouter } from "expo-router";
+import { useAuth, useClerk } from "@clerk/expo";
+import { useSignIn } from "@clerk/expo/legacy";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-
-const BRAND_TEAL = '#66FCF1';
-
+type Challenge = "email_code" | "totp" | "phone_code" | "backup_code" | null;
 export default function LoginScreen() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
-  const safeAreaInsets = useSafeAreaInsets();
-  const theme = useTheme();
   const { isLoaded, signIn, setActive } = useSignIn();
-  const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
-
-  const handleSignIn = async () => {
-    if (!isLoaded) return;
-    setIsLoading(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [useEmailCode, setUseEmailCode] = useState(false);
+  const [challenge, setChallenge] = useState<Challenge>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const inputStyle = { padding: 14, borderWidth: 1, borderColor: "#9499C3", borderRadius: 8, color: "#ffffff", backgroundColor: "#202437" };
+  async function submit() {
+    if (!isLoaded || busy) return;
+    setBusy(true); setError("");
     try {
-      const attempt = await signIn.create({ identifier: email.trim(), password });
-      if (attempt.status !== 'complete' || !attempt.createdSessionId) {
-        throw new Error('This sign-in needs an additional verification step. Use the web app to complete it.');
+      const attempt = challenge === "email_code"
+        ? await signIn.attemptFirstFactor({ strategy: "email_code", code })
+        : challenge ? await signIn.attemptSecondFactor({ strategy: challenge, code })
+        : await signIn.create({ identifier: email.trim(), ...(useEmailCode ? {} : { password }) });
+      if (attempt.status === "needs_first_factor" && useEmailCode) {
+        const factor = attempt.supportedFirstFactors?.find(f => f.strategy === "email_code");
+        if (!factor || factor.strategy !== "email_code") throw new Error("Email-code sign-in is not enabled for this account.");
+        await signIn.prepareFirstFactor({ strategy: "email_code", emailAddressId: factor.emailAddressId });
+        setChallenge("email_code"); setCode(""); return;
       }
+      if (attempt.status === "needs_second_factor") {
+        if (attempt.supportedSecondFactors?.some(f => f.strategy === "totp")) { setChallenge("totp"); setCode(""); return; }
+        const phone = attempt.supportedSecondFactors?.find(f => f.strategy === "phone_code");
+        if (phone && phone.strategy === "phone_code") {
+          await signIn.prepareSecondFactor({ strategy: "phone_code", phoneNumberId: phone.phoneNumberId });
+          setChallenge("phone_code"); setCode(""); return;
+        }
+        throw new Error("This account requires a verification method not currently supported on this screen.");
+      }
+      if (attempt.status !== "complete" || !attempt.createdSessionId) throw new Error("Sign-in requires another verification step.");
       await setActive({ session: attempt.createdSessionId });
-      router.replace('/');
-    } catch (error) {
-      Alert.alert('Sign in failed', error instanceof Error ? error.message : 'Check your credentials and try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
-
+      setPassword(""); setCode(""); router.replace("/");
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Sign-in failed. Please try again."); }
+    finally { setBusy(false); }
+  }
   if (isSignedIn) return <ThemedView style={{ flex: 1, padding: 32, paddingTop: 80 }}><ThemedText>Signed in</ThemedText><Pressable accessibilityRole="button" onPress={() => signOut()}><ThemedText>Sign out</ThemedText></Pressable></ThemedView>;
-  return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}
-    >
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.brandingSection}>
-          <ThemedView style={styles.logoContainer}>
-            <ThemedText style={styles.logoText}>CostPilot</ThemedText>
-          </ThemedView>
-          <ThemedText style={styles.tagline}>
-            Track your recorded costs,{'\n'}optimize your spend.
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedView style={styles.featureList}>
-          <ThemedView style={styles.featureItem}>
-            <ThemedText style={styles.featureIcon}>📊</ThemedText>
-            <ThemedView style={styles.featureContent}>
-              <ThemedText style={styles.featureTitle}>
-                Expense Tracking
-              </ThemedText>
-              <ThemedText style={styles.featureSubtitle}>
-                Manage the expenses you record.
-              </ThemedText>
-            </ThemedView>
-          </ThemedView>
-
-          <ThemedView style={styles.featureItem}>
-            <ThemedText style={styles.featureIcon}>🔔</ThemedText>
-            <ThemedView style={styles.featureContent}>
-              <ThemedText style={styles.featureTitle}>
-                Your records
-              </ThemedText>
-              <ThemedText style={styles.featureSubtitle}>
-                Get notified when spend exceeds budgets
-              </ThemedText>
-            </ThemedView>
-          </ThemedView>
-
-          <ThemedView style={styles.featureItem}>
-            <ThemedText style={styles.featureIcon}>📈</ThemedText>
-            <ThemedView style={styles.featureContent}>
-              <ThemedText style={styles.featureTitle}>
-                AI Insights
-              </ThemedText>
-              <ThemedText style={styles.featureSubtitle}>
-                Automated recommendations to reduce costs
-              </ThemedText>
-            </ThemedView>
-          </ThemedView>
-        </ThemedView>
-
-        <ThemedView style={styles.actionsSection}>
-          <TextInput
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            placeholder="Email address"
-            placeholderTextColor="#9499C3"
-            value={email}
-            onChangeText={setEmail}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-          />
-          <TextInput
-            autoCapitalize="none"
-            autoComplete="password"
-            placeholder="Password"
-            placeholderTextColor="#9499C3"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-          />
-          <Pressable
-            style={({ pressed }) => [
-              styles.signInButton,
-              pressed && styles.signInButtonPressed,
-            ]}
-            onPress={handleSignIn}
-            disabled={isLoading || !isLoaded || !email.trim() || !password}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#0B0C10" size="small" />
-            ) : (
-              <ThemedText style={styles.signInButtonText}>
-                Sign in with Clerk
-              </ThemedText>
-            )}
-          </Pressable>
-
-          <ThemedText style={styles.skipButtonText}>Sign in to continue to your workspace.</ThemedText>
-        </ThemedView>
-      </ThemedView>
-    </ScrollView>
-  );
+  return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, paddingTop: 64, paddingBottom: 100, gap: 18 }}>
+    <ThemedText style={{ fontSize: 28 }}>Sign in to CostPilot</ThemedText>
+    {error ? <ThemedText accessibilityRole="alert">{error}</ThemedText> : null}
+    {challenge ? <>
+      <ThemedText>{challenge === "totp" ? "Enter your authenticator code" : challenge === "backup_code" ? "Enter a backup code" : "Enter the sign-in code sent to your account"}</ThemedText>
+      <TextInput accessibilityLabel="Verification code" value={code} onChangeText={setCode} autoCapitalize="none" style={inputStyle} />
+      {challenge !== "email_code" && <Pressable accessibilityRole="button" onPress={() => { setChallenge("backup_code"); setCode(""); }}><ThemedText>Use a backup code</ThemedText></Pressable>}
+    </> : <>
+      <TextInput accessibilityLabel="Email address" placeholder="Email address" placeholderTextColor="#9499C3" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" style={inputStyle} />
+      {!useEmailCode && <TextInput accessibilityLabel="Password" placeholder="Password" placeholderTextColor="#9499C3" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" style={inputStyle} />}
+      <Pressable accessibilityRole="button" onPress={() => setUseEmailCode(value => !value)}><ThemedText>{useEmailCode ? "Use a password" : "Use an email code"}</ThemedText></Pressable>
+    </>}
+    <Pressable accessibilityRole="button" disabled={busy || !isLoaded} onPress={submit} style={{ backgroundColor: "#3139a8", borderRadius: 8, padding: 16 }}><ThemedText>{challenge ? "Verify code" : useEmailCode ? "Send sign-in code" : "Sign in"}</ThemedText></Pressable>
+    {busy && <ActivityIndicator accessibilityLabel="Signing in" />}
+    {challenge && <Pressable accessibilityRole="button" onPress={() => { setChallenge(null); setCode(""); setError(""); }}><ThemedText>Start over</ThemedText></Pressable>}
+  </ScrollView>;
 }
-
-const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  container: {
-    flex: 1,
-    maxWidth: 800,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
-    justifyContent: 'space-between',
-  },
-  brandingSection: {
-    alignItems: 'center',
-    marginTop: Spacing.six,
-    gap: Spacing.three,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: BRAND_TEAL,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.two,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0B0C10',
-    letterSpacing: 0.5,
-  },
-  tagline: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 26,
-    color: BRAND_TEAL,
-  },
-  featureList: {
-    gap: Spacing.four,
-    paddingVertical: Spacing.five,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  featureIcon: {
-    fontSize: 28,
-  },
-  featureContent: {
-    flex: 1,
-    gap: Spacing.half,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  featureSubtitle: {
-    fontSize: 13,
-    color: '#9499C3',
-    lineHeight: 18,
-  },
-  actionsSection: {
-    gap: Spacing.three,
-    paddingBottom: Spacing.five,
-  },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    backgroundColor: '#151720',
-  },
-  signInButton: {
-    backgroundColor: BRAND_TEAL,
-    borderRadius: 14,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: BRAND_TEAL,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  signInButtonPressed: {
-    opacity: 0.8,
-  },
-  signInButtonText: {
-    color: '#0B0C10',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  skipButton: {
-    borderRadius: 14,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#222530',
-  },
-  skipButtonPressed: {
-    opacity: 0.7,
-  },
-  skipButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9499C3',
-  },
-});

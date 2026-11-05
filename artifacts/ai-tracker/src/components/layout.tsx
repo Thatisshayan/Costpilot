@@ -1,5 +1,5 @@
 import { launchPaths } from "@/lib/launch-scope";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
