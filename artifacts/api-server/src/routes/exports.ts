@@ -53,9 +53,11 @@ router.post("/generate", async (req, res) => {
       .orderBy(desc(expensesTable.date));
 
     if (format === "csv") {
-      let csv = "ID,Date,Amount,Currency,Description,Category,Platform\n";
+      // Amount keeps its sign; Type states it explicitly so credits are never read as spending.
+      let csv = "ID,Date,Type,Amount,Currency,Description,Category,Platform\n";
       for (const e of userExpenses) {
-        csv += [e.id, e.date, Number(e.amount), e.currency, e.description, e.category, e.platformName].map(csvCell).join(",") + "\n";
+        const amount = Number(e.amount);
+        csv += [e.id, e.date, amount < 0 ? "Refund/credit" : "Expense", amount, e.currency, e.description, e.category, e.platformName].map(csvCell).join(",") + "\n";
       }
 
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -88,7 +90,7 @@ router.post("/generate", async (req, res) => {
       } else {
         for (const e of userExpenses) {
           doc.fontSize(10).text(
-            `${e.date} | ${e.platformName || "General"} | ${e.description || "N/A"} | ${Number(e.amount).toFixed(2)} ${e.currency || "USD"}`
+            `${e.date} | ${e.platformName || "General"} | ${e.description || "N/A"} | ${Number(e.amount).toFixed(2)} ${e.currency || "USD"}${Number(e.amount) < 0 ? " (refund/credit)" : ""}`
           );
         }
       }

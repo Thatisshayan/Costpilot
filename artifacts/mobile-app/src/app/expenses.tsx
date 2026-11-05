@@ -18,6 +18,7 @@ import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { apiFetch } from '@/lib/api';
 import { personalExpensesOnly } from '@/lib/personal-scope';
+import { formatEntryAmount } from '@/lib/entry-type';
 
 type Expense = {
   id: number;
@@ -75,7 +76,7 @@ function ExpenseCard({ item, onEdit, onDelete }: { item: Expense; onEdit: () => 
         </View>
       </View>
       <ThemedText style={styles.expenseAmount}>
-        {item.currency} {item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {formatEntryAmount(item.amount, item.currency)}
       </ThemedText>
       <View style={{ gap: 12 }}>
         <Pressable accessibilityLabel={`Edit ${item.description}`} onPress={onEdit}><ThemedText>Edit</ThemedText></Pressable>

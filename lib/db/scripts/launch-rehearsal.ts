@@ -81,6 +81,18 @@ try {
   assert.equal(viewerRow.role, "viewer");
   assert.equal((await call("launch-f", "/workspaces/accept-invite", "POST", { token: adminToken })).status, 400);
   assert.equal((await call("launch-f", "/workspaces/accept-invite", "POST", { token: "f".repeat(64) })).status, 400);
+  // An invite stored under the old plaintext scheme can no longer be looked up
+  // or redeemed: lookups hash the presented token, and no preimage is known.
+  const legacyToken = randomBytes(32).toString("hex");
+  await db.insert(invites).values({ workspaceId: workspace.id, email: "legacy@example.test", token: legacyToken, invitedBy: "launch-a", role: "admin", expiresAt: new Date(Date.now() + 60000) });
+  await db.insert(members).values({ workspaceId: workspace.id, userId: `pending-${legacyToken}`, email: "legacy@example.test", role: "admin", status: "pending", inviteToken: legacyToken });
+  assert.equal((await call("launch-f", `/workspaces/invite/${legacyToken}`)).status, 404);
+  assert.equal((await call("launch-f", "/workspaces/accept-invite", "POST", { token: legacyToken })).status, 400);
+  assert(!(await (await call("launch-viewer", `/workspaces/${workspace.id}/members`)).text()).includes(legacyToken), "legacy pending rows stay hidden from viewers");
+  const [legacyRow] = await db.select().from(members).where(eq(members.email, "legacy@example.test"));
+  assert.equal((await call("launch-a", `/workspaces/members/${legacyRow.id}`, "DELETE")).status, 200);
+  const [legacyInvite] = await db.select().from(invites).where(eq(invites.email, "legacy@example.test"));
+  assert.equal(legacyInvite.status, "expired", "revoking a legacy pending member expires its invite");
   // The new admin can manage viewer invites but cannot remove another admin.
   assert.equal((await call("launch-e", invitePath, "POST", { email: "by-admin@example.test", role: "viewer" })).status, 201);
   assert((await (await call("launch-e", `/workspaces/${workspace.id}/members`)).json() as { status: string }[]).some(m => m.status === "pending"));
@@ -136,6 +148,8 @@ try {
   assert.match(personalCsv.headers.get("content-disposition") ?? "", /filename="costpilot-expenses-personal-\d{4}-\d{2}-\d{2}\.csv"/);
   const personalText = await personalCsv.text();
   assert(personalText.includes("personal fixture") && !personalText.includes("shared fixture"));
+  assert(personalText.startsWith('ID,Date,Type,Amount'), "CSV states the entry type explicitly");
+  assert(/"Refund\/credit","-4\.5","EUR"/.test(personalText), "refunds export with an explicit type and a signed amount");
   const sharedCsv = await call("launch-viewer", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: workspace.id });
   assert.equal(sharedCsv.status, 200);
   const sharedText = await sharedCsv.text();

@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { ArrowUpRight, Plus, Pencil, Trash2, Calendar, Folder, Scan, Loader2, FileSpreadsheet } from "lucide-react";
 import { formatCurrency } from "../lib/currency";
 import { ExportButtons } from "@/components/export-buttons";
+import { ENTRY_TYPE_LABEL, entryTypeOf, formatEntryAmount, signedAmount, type EntryType } from "@/lib/entry-type";
 
 import { Link } from "wouter";
 import {
@@ -44,6 +45,7 @@ type Expense = {
 type FormState = {
   platformId: string;
   projectId: string;
+  entryType: EntryType;
   amount: string;
   currency: string;
   description: string;
@@ -54,6 +56,7 @@ type FormState = {
 const emptyForm = (): FormState => ({
   platformId: "",
   projectId: "",
+  entryType: "expense",
   amount: "",
   currency: "USD",
   description: "",
@@ -97,7 +100,8 @@ export default function Expenses() {
     setForm({
       platformId: e.platformId ? String(e.platformId) : "",
       projectId: e.projectId ? String(e.projectId) : "",
-      amount: String(e.amount),
+      entryType: entryTypeOf(e.amount),
+      amount: String(Math.abs(e.amount)),
       currency: e.currency ?? "USD",
       description: e.description ?? "",
       category: e.category ?? "API Usage",
@@ -111,10 +115,15 @@ export default function Expenses() {
       toast.error("Amount and date are required.");
       return;
     }
+    const magnitude = Number(form.amount);
+    if (!Number.isFinite(magnitude) || magnitude <= 0) {
+      toast.error("Enter a positive amount; choose Refund / credit for money returned.");
+      return;
+    }
     const payload = {
       platformId: form.platformId ? Number(form.platformId) : null,
       projectId: form.projectId ? Number(form.projectId) : null,
-      amount: Number(form.amount),
+      amount: signedAmount(magnitude, form.entryType),
       currency: form.currency || "USD",
       description: form.description,
       category: form.category,
@@ -222,8 +231,8 @@ export default function Expenses() {
                     <td className="py-4 text-slate-400 font-medium">
                       {format(new Date(expense.date + "T12:00:00"), "MMM d, yyyy")}
                     </td>
-                    <td className="py-4 text-right pr-2 font-mono font-semibold text-white text-base">
-                      {`${expense.amount.toFixed(2)} ${expense.currency ?? "USD"}`}
+                    <td className={`py-4 text-right pr-2 font-mono font-semibold text-base ${expense.amount < 0 ? "text-emerald-400" : "text-white"}`}>
+                      {formatEntryAmount(expense.amount, expense.currency ?? "USD")}
                     </td>
                     <td className="py-4 pr-2">
                       <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -294,11 +303,25 @@ export default function Expenses() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount ($) *</label>
+                <label htmlFor="expense-entry-type" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Type</label>
+                <select
+                  id="expense-entry-type"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                  value={form.entryType}
+                  onChange={(e) => setForm({ ...form, entryType: e.target.value as EntryType })}
+                >
+                  {(Object.keys(ENTRY_TYPE_LABEL) as EntryType[]).map(type => (
+                    <option key={type} value={type}>{ENTRY_TYPE_LABEL[type]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount *</label>
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
                   placeholder="0.00"
                   value={form.amount}
