@@ -138,6 +138,35 @@ describe("server-side search parameters", () => {
     await waitFor(() => expect(window.location.search).toBe(""));
   });
 
+  it("folds the filters beyond search behind a phone toggle that counts active ones", () => {
+    window.history.replaceState(null, "", "/expenses?q=aws&currency=USD&entryType=credit");
+    render(<Expenses />);
+    const toggle = screen.getByRole("button", { name: /more filters/i });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.textContent).toContain("2 active");
+    const panel = document.getElementById(toggle.getAttribute("aria-controls")!)!;
+    expect(panel.className).toBe("hidden sm:contents");
+    expect(within(panel).getByLabelText("Currency")).toBeTruthy();
+    expect(within(panel).queryByLabelText("Search")).toBeNull();
+    fireEvent.click(toggle);
+    expect(screen.getByRole("button", { name: /hide filters/i }).getAttribute("aria-expanded")).toBe("true");
+    expect(panel.className).toBe("contents");
+  });
+
+  it("keeps the phone filters open while one of them is invalid", () => {
+    window.history.replaceState(null, "", "/expenses?minAmount=abc");
+    render(<Expenses />);
+    const toggle = screen.getByRole("button", { name: /hide filters/i });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect((toggle as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    // Fixing the value leaves the panel open so the field does not disappear while typing.
+    fireEvent.change(screen.getByLabelText(/min/i), { target: { value: "5" } });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect((toggle as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("resets filters when the workspace scope changes", async () => {
     window.history.replaceState(null, "", "/expenses?currency=USD");
     const view = render(<Expenses />);

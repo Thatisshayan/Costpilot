@@ -14,12 +14,13 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, Folder, AlertTriangle, Eye, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Folder, AlertTriangle, Eye, ChevronLeft, ChevronRight, X, SlidersHorizontal } from "lucide-react";
 import { ExportButtons } from "@/components/export-buttons";
 import { ENTRY_TYPE_LABEL, entryTypeOf, signedAmount, type EntryType } from "@/lib/entry-type";
 import { formatMoney } from "@/lib/money-format";
 import {
   PAGE_SIZE,
+  activeFilterCount,
   hasActiveFilters,
   parseExpenseQuery,
   serializeExpenseQuery,
@@ -153,6 +154,12 @@ export default function Expenses() {
   const firstShown = total === 0 ? 0 : (query.page - 1) * PAGE_SIZE + 1;
   const lastShown = Math.min(total, (query.page - 1) * PAGE_SIZE + expenses.length);
   const filtered = hasActiveFilters(query);
+  const moreFilterCount = activeFilterCount(query);
+  // On phones the filters beyond search fold away; they stay open while any of them is invalid.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // An invalid filter opens the panel and keeps it open after it is fixed, so the field does not vanish.
+  useEffect(() => { if (!filtersValid) setFiltersOpen(true); }, [filtersValid]);
+  const showMoreFilters = filtersOpen || !filtersValid;
 
   // A page beyond the end (e.g. after deleting the last row) moves to the last page.
   useEffect(() => {
@@ -343,85 +350,92 @@ export default function Expenses() {
             <input id="filter-q" type="search" className={filterInput} placeholder="Description, vendor, project or category"
               value={qInput} maxLength={100} onChange={e => setQInput(e.target.value)} />
           </div>
-          <div>
-            <label htmlFor="filter-from" className={filterLabel}>From date</label>
-            <input id="filter-from" type="date" className={filterInput} value={query.from ?? ""}
-              aria-invalid={filterErrors.from ? true : undefined} aria-describedby={errorId("from")}
-              onChange={e => setQuery({ from: e.target.value || undefined })} />
-            {filterErrors.from && <p id="filter-from-error" className="mt-1 text-xs text-red-300">{filterErrors.from}</p>}
-          </div>
-          <div>
-            <label htmlFor="filter-to" className={filterLabel}>To date</label>
-            <input id="filter-to" type="date" className={filterInput} value={query.to ?? ""}
-              aria-invalid={filterErrors.to ? true : undefined} aria-describedby={errorId("to")}
-              onChange={e => setQuery({ to: e.target.value || undefined })} />
-            {filterErrors.to && <p id="filter-to-error" className="mt-1 text-xs text-red-300">{filterErrors.to}</p>}
-          </div>
-          <div>
-            <label htmlFor="filter-vendor" className={filterLabel}>Vendor</label>
-            <select id="filter-vendor" className={filterInput} value={query.platformId ?? ALL}
-              onChange={e => setQuery({ platformId: e.target.value === ALL ? undefined : e.target.value })}>
-              <option value={ALL} className="bg-zinc-950">All vendors</option>
-              <option value="none" className="bg-zinc-950">No vendor</option>
-              {platforms.map(p => <option key={p.id} value={String(p.id)} className="bg-zinc-950">{p.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="filter-project" className={filterLabel}>Project</label>
-            <select id="filter-project" className={filterInput} value={query.projectId ?? ALL}
-              onChange={e => setQuery({ projectId: e.target.value === ALL ? undefined : e.target.value })}>
-              <option value={ALL} className="bg-zinc-950">All projects</option>
-              <option value="none" className="bg-zinc-950">No project</option>
-              {projects.map(p => <option key={p.id} value={String(p.id)} className="bg-zinc-950">{p.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="filter-category" className={filterLabel}>Category</label>
-            <select id="filter-category" className={filterInput}
-              value={query.category === undefined ? ALL : query.category === "" ? UNCATEGORISED : query.category}
-              onChange={e => setQuery({ category: e.target.value === ALL ? undefined : e.target.value === UNCATEGORISED ? "" : e.target.value })}>
-              <option value={ALL} className="bg-zinc-950">All categories</option>
-              <option value={UNCATEGORISED} className="bg-zinc-950">Uncategorised</option>
-              {categoryOptions(query.category || null).map(c => <option key={c} value={c} className="bg-zinc-950">{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="filter-currency" className={filterLabel}>Currency</label>
-            <select id="filter-currency" className={filterInput} value={query.currency ?? ALL}
-              onChange={e => setQuery({ currency: e.target.value === ALL ? undefined : e.target.value })}>
-              <option value={ALL} className="bg-zinc-950">All currencies</option>
-              {currencyOptions(query.currency).map(code => <option key={code} value={code} className="bg-zinc-950">{code}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="filter-type" className={filterLabel}>Type</label>
-            <select id="filter-type" className={filterInput} value={query.entryType ?? ALL}
-              onChange={e => setQuery({ entryType: e.target.value === ALL ? undefined : (e.target.value as ExpenseQuery["entryType"]) })}>
-              <option value={ALL} className="bg-zinc-950">Expenses and refunds</option>
-              <option value="expense" className="bg-zinc-950">Expenses only</option>
-              <option value="credit" className="bg-zinc-950">Refunds/credits only</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="filter-min" className={filterLabel}>Minimum amount</label>
-            <input id="filter-min" inputMode="decimal" className={filterInput} placeholder="e.g. 10" value={query.minAmount ?? ""}
-              aria-invalid={filterErrors.minAmount ? true : undefined} aria-describedby={errorId("minAmount")}
-              onChange={e => setQuery({ minAmount: e.target.value.trim() || undefined })} />
-            {filterErrors.minAmount && <p id="filter-minAmount-error" className="mt-1 text-xs text-red-300">{filterErrors.minAmount}</p>}
-          </div>
-          <div>
-            <label htmlFor="filter-max" className={filterLabel}>Maximum amount</label>
-            <input id="filter-max" inputMode="decimal" className={filterInput} placeholder="e.g. 500" value={query.maxAmount ?? ""}
-              aria-invalid={filterErrors.maxAmount ? true : undefined} aria-describedby={errorId("maxAmount")}
-              onChange={e => setQuery({ maxAmount: e.target.value.trim() || undefined })} />
-            {filterErrors.maxAmount && <p id="filter-maxAmount-error" className="mt-1 text-xs text-red-300">{filterErrors.maxAmount}</p>}
-          </div>
-          <div>
-            <label htmlFor="filter-sort" className={filterLabel}>Sort by</label>
-            <select id="filter-sort" className={filterInput} value={query.sort}
-              onChange={e => setQuery({ sort: e.target.value as Sort })}>
-              {(Object.keys(SORT_LABEL) as Sort[]).map(s => <option key={s} value={s} className="bg-zinc-950">{SORT_LABEL[s]}</option>)}
-            </select>
+          <button type="button" className="sm:hidden inline-flex items-center justify-between gap-2 w-full rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-sm font-semibold text-white"
+            aria-expanded={showMoreFilters} aria-controls="more-expense-filters" disabled={!filtersValid} onClick={() => setFiltersOpen(open => !open)}>
+            <span className="inline-flex items-center gap-2"><SlidersHorizontal size={14} aria-hidden /> {showMoreFilters ? "Hide filters" : "More filters"}</span>
+            {moreFilterCount > 0 && <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs text-indigo-200">{moreFilterCount} active</span>}
+          </button>
+          <div id="more-expense-filters" data-open={showMoreFilters} className={showMoreFilters ? "contents" : "hidden sm:contents"}>
+            <div>
+              <label htmlFor="filter-from" className={filterLabel}>From date</label>
+              <input id="filter-from" type="date" className={filterInput} value={query.from ?? ""}
+                aria-invalid={filterErrors.from ? true : undefined} aria-describedby={errorId("from")}
+                onChange={e => setQuery({ from: e.target.value || undefined })} />
+              {filterErrors.from && <p id="filter-from-error" className="mt-1 text-xs text-red-300">{filterErrors.from}</p>}
+            </div>
+            <div>
+              <label htmlFor="filter-to" className={filterLabel}>To date</label>
+              <input id="filter-to" type="date" className={filterInput} value={query.to ?? ""}
+                aria-invalid={filterErrors.to ? true : undefined} aria-describedby={errorId("to")}
+                onChange={e => setQuery({ to: e.target.value || undefined })} />
+              {filterErrors.to && <p id="filter-to-error" className="mt-1 text-xs text-red-300">{filterErrors.to}</p>}
+            </div>
+            <div>
+              <label htmlFor="filter-vendor" className={filterLabel}>Vendor</label>
+              <select id="filter-vendor" className={filterInput} value={query.platformId ?? ALL}
+                onChange={e => setQuery({ platformId: e.target.value === ALL ? undefined : e.target.value })}>
+                <option value={ALL} className="bg-zinc-950">All vendors</option>
+                <option value="none" className="bg-zinc-950">No vendor</option>
+                {platforms.map(p => <option key={p.id} value={String(p.id)} className="bg-zinc-950">{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="filter-project" className={filterLabel}>Project</label>
+              <select id="filter-project" className={filterInput} value={query.projectId ?? ALL}
+                onChange={e => setQuery({ projectId: e.target.value === ALL ? undefined : e.target.value })}>
+                <option value={ALL} className="bg-zinc-950">All projects</option>
+                <option value="none" className="bg-zinc-950">No project</option>
+                {projects.map(p => <option key={p.id} value={String(p.id)} className="bg-zinc-950">{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="filter-category" className={filterLabel}>Category</label>
+              <select id="filter-category" className={filterInput}
+                value={query.category === undefined ? ALL : query.category === "" ? UNCATEGORISED : query.category}
+                onChange={e => setQuery({ category: e.target.value === ALL ? undefined : e.target.value === UNCATEGORISED ? "" : e.target.value })}>
+                <option value={ALL} className="bg-zinc-950">All categories</option>
+                <option value={UNCATEGORISED} className="bg-zinc-950">Uncategorised</option>
+                {categoryOptions(query.category || null).map(c => <option key={c} value={c} className="bg-zinc-950">{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="filter-currency" className={filterLabel}>Currency</label>
+              <select id="filter-currency" className={filterInput} value={query.currency ?? ALL}
+                onChange={e => setQuery({ currency: e.target.value === ALL ? undefined : e.target.value })}>
+                <option value={ALL} className="bg-zinc-950">All currencies</option>
+                {currencyOptions(query.currency).map(code => <option key={code} value={code} className="bg-zinc-950">{code}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="filter-type" className={filterLabel}>Type</label>
+              <select id="filter-type" className={filterInput} value={query.entryType ?? ALL}
+                onChange={e => setQuery({ entryType: e.target.value === ALL ? undefined : (e.target.value as ExpenseQuery["entryType"]) })}>
+                <option value={ALL} className="bg-zinc-950">Expenses and refunds</option>
+                <option value="expense" className="bg-zinc-950">Expenses only</option>
+                <option value="credit" className="bg-zinc-950">Refunds/credits only</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="filter-min" className={filterLabel}>Minimum amount</label>
+              <input id="filter-min" inputMode="decimal" className={filterInput} placeholder="e.g. 10" value={query.minAmount ?? ""}
+                aria-invalid={filterErrors.minAmount ? true : undefined} aria-describedby={errorId("minAmount")}
+                onChange={e => setQuery({ minAmount: e.target.value.trim() || undefined })} />
+              {filterErrors.minAmount && <p id="filter-minAmount-error" className="mt-1 text-xs text-red-300">{filterErrors.minAmount}</p>}
+            </div>
+            <div>
+              <label htmlFor="filter-max" className={filterLabel}>Maximum amount</label>
+              <input id="filter-max" inputMode="decimal" className={filterInput} placeholder="e.g. 500" value={query.maxAmount ?? ""}
+                aria-invalid={filterErrors.maxAmount ? true : undefined} aria-describedby={errorId("maxAmount")}
+                onChange={e => setQuery({ maxAmount: e.target.value.trim() || undefined })} />
+              {filterErrors.maxAmount && <p id="filter-maxAmount-error" className="mt-1 text-xs text-red-300">{filterErrors.maxAmount}</p>}
+            </div>
+            <div>
+              <label htmlFor="filter-sort" className={filterLabel}>Sort by</label>
+              <select id="filter-sort" className={filterInput} value={query.sort}
+                onChange={e => setQuery({ sort: e.target.value as Sort })}>
+                {(Object.keys(SORT_LABEL) as Sort[]).map(s => <option key={s} value={s} className="bg-zinc-950">{SORT_LABEL[s]}</option>)}
+              </select>
+            </div>
           </div>
         </form>
         <p className="mt-3 text-xs text-slate-400">Amount filters compare the signed amount: refunds and credits are negative.</p>
