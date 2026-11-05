@@ -5,6 +5,7 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { ExpenseSource } from './expenseSource';
 
 export interface Expense {
   id: number;
@@ -25,5 +26,7 @@ export interface Expense {
   /** @nullable */
   category?: string | null;
   date: string;
+  /** manual = entered in CostPilot; import = from a CSV import */
+  source?: ExpenseSource;
   createdAt: string;
 }

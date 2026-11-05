@@ -79,6 +79,17 @@ export interface CurrencyTotal {
   count: number;
 }
 
+/**
+ * manual = entered in CostPilot; import = from a CSV import
+ */
+export type ExpenseSource = typeof ExpenseSource[keyof typeof ExpenseSource];
+
+
+export const ExpenseSource = {
+  manual: 'manual',
+  import: 'import',
+} as const;
+
 export interface Expense {
   id: number;
   /** @nullable */
@@ -98,6 +109,8 @@ export interface Expense {
   /** @nullable */
   category?: string | null;
   date: string;
+  /** manual = entered in CostPilot; import = from a CSV import */
+  source?: ExpenseSource;
   createdAt: string;
 }
 
@@ -307,6 +320,120 @@ export interface BudgetStatusReport {
   workspaceId: number | null;
   period: BudgetStatusReportPeriod;
   budgets: BudgetStatus[];
+}
+
+export interface ImportRow {
+  /**
+     * Line in the file, used in the report
+     * @minimum 1
+     */
+  rowNumber: number;
+  /**
+     * YYYY-MM-DD
+     * @maxLength 40
+     */
+  date: string;
+  /**
+     * Exact decimal; negative for refunds/credits
+     * @maxLength 40
+     */
+  amount: string;
+  /** @maxLength 10 */
+  currency: string;
+  /** @maxLength 500 */
+  description?: string;
+  /** @maxLength 100 */
+  category?: string;
+  /**
+     * Name of an existing vendor in the scope
+     * @maxLength 200
+     */
+  vendor?: string;
+  /**
+     * Name of an existing project in the scope
+     * @maxLength 200
+     */
+  project?: string;
+  /**
+     * The source's transaction ID; prevents importing it twice
+     * @maxLength 200
+     */
+  externalId?: string;
+}
+
+export interface ImportRequest {
+  /**
+     * Omit or null for Personal
+     * @minimum 1
+     * @nullable
+     */
+  workspaceId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  fileName: string;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  rows: ImportRow[];
+  /**
+     * Row numbers of possible duplicates to import anyway
+     * @items.minimum 1
+     */
+  confirmDuplicateRows?: number[];
+}
+
+export type ImportRowResultStatus = typeof ImportRowResultStatus[keyof typeof ImportRowResultStatus];
+
+
+export const ImportRowResultStatus = {
+  valid: 'valid',
+  invalid: 'invalid',
+  already_imported: 'already_imported',
+  possible_duplicate: 'possible_duplicate',
+} as const;
+
+export interface ImportRowResult {
+  rowNumber: number;
+  status: ImportRowResultStatus;
+  messages: string[];
+}
+
+export interface ImportCounts {
+  valid: number;
+  invalid: number;
+  already_imported: number;
+  possible_duplicate: number;
+}
+
+export interface ImportPreview {
+  rows: ImportRowResult[];
+  counts: ImportCounts;
+  /** Rows that would be imported with the current confirmations */
+  importableCount: number;
+}
+
+export interface ImportBatch {
+  id: number;
+  /** @nullable */
+  workspaceId: number | null;
+  fileName: string;
+  rowCount: number;
+  insertedCount: number;
+  skippedCount: number;
+  createdAt: string;
+  /** @nullable */
+  undoneAt: string | null;
+}
+
+export interface ImportResult {
+  batch: ImportBatch | null;
+  insertedCount: number;
+  skippedCount: number;
+  rows: ImportRowResult[];
+  counts: ImportCounts;
 }
 
 export interface MessageResponse {
@@ -965,6 +1092,18 @@ export type GetBudgetStatusParams = {
    * @pattern ^\d{4}-(0[1-9]|1[0-2])$
    */
   month?: string;
+};
+
+export type ListImportsParams = {
+  /**
+   * Omit for Personal
+   * @minimum 1
+   */
+  workspaceId?: number;
+};
+
+export type UndoImport200 = {
+  deletedCount: number;
 };
 
 export type UploadReceiptBody = {

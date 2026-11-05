@@ -255,6 +255,7 @@ export const ListExpensesResponseItem = zod.object({
   "description": zod.string().nullish(),
   "category": zod.string().nullish(),
   "date": zod.string(),
+  "source": zod.enum(['manual', 'import']).optional().describe('manual = entered in CostPilot; import = from a CSV import'),
   "createdAt": zod.string()
 })
 export const ListExpensesResponse = zod.array(ListExpensesResponseItem)
@@ -291,6 +292,7 @@ export const CreateExpenseResponse = zod.object({
   "description": zod.string().nullish(),
   "category": zod.string().nullish(),
   "date": zod.string(),
+  "source": zod.enum(['manual', 'import']).optional().describe('manual = entered in CostPilot; import = from a CSV import'),
   "createdAt": zod.string()
 })
 
@@ -311,6 +313,7 @@ export const GetExpenseResponse = zod.object({
   "description": zod.string().nullish(),
   "category": zod.string().nullish(),
   "date": zod.string(),
+  "source": zod.enum(['manual', 'import']).optional().describe('manual = entered in CostPilot; import = from a CSV import'),
   "createdAt": zod.string()
 })
 
@@ -348,6 +351,7 @@ export const UpdateExpenseResponse = zod.object({
   "description": zod.string().nullish(),
   "category": zod.string().nullish(),
   "date": zod.string(),
+  "source": zod.enum(['manual', 'import']).optional().describe('manual = entered in CostPilot; import = from a CSV import'),
   "createdAt": zod.string()
 })
 
@@ -361,6 +365,7 @@ export const DeleteExpenseResponse = zod.void()
 
 /**
  * Every row is validated and authorized like a single create. Any invalid row rejects the whole batch.
+ * @deprecated
  * @summary Create up to 500 expenses in one all-or-nothing request
  */
 
@@ -444,6 +449,7 @@ export const SearchExpensesResponse = zod.object({
   "description": zod.string().nullish(),
   "category": zod.string().nullish(),
   "date": zod.string(),
+  "source": zod.enum(['manual', 'import']).optional().describe('manual = entered in CostPilot; import = from a CSV import'),
   "createdAt": zod.string()
 })),
   "total": zod.int(),
@@ -688,6 +694,182 @@ export const DeleteBudgetParams = zod.object({
 })
 
 export const DeleteBudgetResponse = zod.void()
+
+
+/**
+ * Each row is checked for a real date, an exact signed amount (negative = refund/credit, at most
+ * 2 decimals), an ISO currency, and a vendor/project that exists in the target scope. Rows whose
+ * external ID was already imported into the scope are skipped; rows identical to an existing
+ * expense or an earlier row (same date, amount, currency, vendor, project and description) are
+ * possible duplicates that are imported only when confirmed. Owners/admins only for a workspace.
+ * @summary Validate mapped CSV rows without writing anything
+ */
+
+export const previewImportBodyFileNameMax = 200;
+
+
+export const previewImportBodyRowsItemDateMax = 40;
+
+export const previewImportBodyRowsItemAmountMax = 40;
+
+export const previewImportBodyRowsItemCurrencyMax = 10;
+
+export const previewImportBodyRowsItemDescriptionMax = 500;
+
+export const previewImportBodyRowsItemCategoryMax = 100;
+
+export const previewImportBodyRowsItemVendorMax = 200;
+
+export const previewImportBodyRowsItemProjectMax = 200;
+
+export const previewImportBodyRowsItemExternalIdMax = 200;
+
+export const previewImportBodyRowsMax = 500;
+
+
+
+
+export const PreviewImportBody = zod.object({
+  "workspaceId": zod.int().min(1).nullish().describe('Omit or null for Personal'),
+  "fileName": zod.string().min(1).max(previewImportBodyFileNameMax),
+  "rows": zod.array(zod.object({
+  "rowNumber": zod.int().min(1).describe('Line in the file, used in the report'),
+  "date": zod.string().max(previewImportBodyRowsItemDateMax).describe('YYYY-MM-DD'),
+  "amount": zod.string().max(previewImportBodyRowsItemAmountMax).describe('Exact decimal; negative for refunds/credits'),
+  "currency": zod.string().max(previewImportBodyRowsItemCurrencyMax),
+  "description": zod.string().max(previewImportBodyRowsItemDescriptionMax).optional(),
+  "category": zod.string().max(previewImportBodyRowsItemCategoryMax).optional(),
+  "vendor": zod.string().max(previewImportBodyRowsItemVendorMax).optional().describe('Name of an existing vendor in the scope'),
+  "project": zod.string().max(previewImportBodyRowsItemProjectMax).optional().describe('Name of an existing project in the scope'),
+  "externalId": zod.string().max(previewImportBodyRowsItemExternalIdMax).optional().describe('The source\'s transaction ID; prevents importing it twice')
+})).min(1).max(previewImportBodyRowsMax),
+  "confirmDuplicateRows": zod.array(zod.int().min(1)).optional().describe('Row numbers of possible duplicates to import anyway')
+})
+
+export const PreviewImportResponse = zod.object({
+  "rows": zod.array(zod.object({
+  "rowNumber": zod.int(),
+  "status": zod.enum(['valid', 'invalid', 'already_imported', 'possible_duplicate']),
+  "messages": zod.array(zod.string())
+})),
+  "counts": zod.object({
+  "valid": zod.int(),
+  "invalid": zod.int(),
+  "already_imported": zod.int(),
+  "possible_duplicate": zod.int()
+}),
+  "importableCount": zod.int().describe('Rows that would be imported with the current confirmations')
+})
+
+
+/**
+ * @summary The 50 most recent imports in one scope
+ */
+
+
+
+export const ListImportsQueryParams = zod.object({
+  "workspaceId": zod.coerce.number().int().min(1).optional().describe('Omit for Personal')
+})
+
+export const ListImportsResponseItem = zod.object({
+  "id": zod.int(),
+  "workspaceId": zod.int().nullable(),
+  "fileName": zod.string(),
+  "rowCount": zod.int(),
+  "insertedCount": zod.int(),
+  "skippedCount": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "undoneAt": zod.coerce.date().nullable()
+})
+export const ListImportsResponse = zod.array(ListImportsResponseItem)
+
+
+/**
+ * @summary Import the valid rows (and confirmed possible duplicates) in one transaction
+ */
+
+export const createImportBodyFileNameMax = 200;
+
+
+export const createImportBodyRowsItemDateMax = 40;
+
+export const createImportBodyRowsItemAmountMax = 40;
+
+export const createImportBodyRowsItemCurrencyMax = 10;
+
+export const createImportBodyRowsItemDescriptionMax = 500;
+
+export const createImportBodyRowsItemCategoryMax = 100;
+
+export const createImportBodyRowsItemVendorMax = 200;
+
+export const createImportBodyRowsItemProjectMax = 200;
+
+export const createImportBodyRowsItemExternalIdMax = 200;
+
+export const createImportBodyRowsMax = 500;
+
+
+
+
+export const CreateImportBody = zod.object({
+  "workspaceId": zod.int().min(1).nullish().describe('Omit or null for Personal'),
+  "fileName": zod.string().min(1).max(createImportBodyFileNameMax),
+  "rows": zod.array(zod.object({
+  "rowNumber": zod.int().min(1).describe('Line in the file, used in the report'),
+  "date": zod.string().max(createImportBodyRowsItemDateMax).describe('YYYY-MM-DD'),
+  "amount": zod.string().max(createImportBodyRowsItemAmountMax).describe('Exact decimal; negative for refunds/credits'),
+  "currency": zod.string().max(createImportBodyRowsItemCurrencyMax),
+  "description": zod.string().max(createImportBodyRowsItemDescriptionMax).optional(),
+  "category": zod.string().max(createImportBodyRowsItemCategoryMax).optional(),
+  "vendor": zod.string().max(createImportBodyRowsItemVendorMax).optional().describe('Name of an existing vendor in the scope'),
+  "project": zod.string().max(createImportBodyRowsItemProjectMax).optional().describe('Name of an existing project in the scope'),
+  "externalId": zod.string().max(createImportBodyRowsItemExternalIdMax).optional().describe('The source\'s transaction ID; prevents importing it twice')
+})).min(1).max(createImportBodyRowsMax),
+  "confirmDuplicateRows": zod.array(zod.int().min(1)).optional().describe('Row numbers of possible duplicates to import anyway')
+})
+
+export const CreateImportResponse = zod.object({
+  "batch": zod.union([zod.object({
+  "id": zod.int(),
+  "workspaceId": zod.int().nullable(),
+  "fileName": zod.string(),
+  "rowCount": zod.int(),
+  "insertedCount": zod.int(),
+  "skippedCount": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "undoneAt": zod.coerce.date().nullable()
+}),zod.null()]),
+  "insertedCount": zod.int(),
+  "skippedCount": zod.int(),
+  "rows": zod.array(zod.object({
+  "rowNumber": zod.int(),
+  "status": zod.enum(['valid', 'invalid', 'already_imported', 'possible_duplicate']),
+  "messages": zod.array(zod.string())
+})),
+  "counts": zod.object({
+  "valid": zod.int(),
+  "invalid": zod.int(),
+  "already_imported": zod.int(),
+  "possible_duplicate": zod.int()
+})
+})
+
+
+/**
+ * @summary Undo an import by deleting the expenses it created
+ */
+
+
+
+export const UndoImportParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const UndoImportResponse = zod.object({
+  "deletedCount": zod.int()
+})
 
 
 export const ListSubscriptionsResponseItem = zod.object({

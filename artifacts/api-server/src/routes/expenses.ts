@@ -222,6 +222,7 @@ router.get("/search", async (req, res) => {
       description: expensesTable.description,
       category: expensesTable.category,
       date: expensesTable.date,
+      source: expensesTable.source,
       createdAt: expensesTable.createdAt,
     }).from(expensesTable)
       .leftJoin(platformsTable, vendorJoin).leftJoin(projectsTable, projectJoin)
@@ -383,6 +384,7 @@ router.post("/import-batch", async (req, res) => {
       userId: req.userId!,
       workspaceId,
       amount: String(parsed.amount),
+      source: "import",
     });
   }
   const inserted = await db.insert(expensesTable).values(formatted).returning();
