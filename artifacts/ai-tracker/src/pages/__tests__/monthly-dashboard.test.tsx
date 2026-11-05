@@ -82,7 +82,7 @@ describe("monthly dashboard", () => {
   it("switches breakdowns by currency and links each row to the matching filtered expenses", () => {
     summaryHook.result = ok(summary([
       currency({ currency: "EUR", byVendor: [{ id: 9, name: "OpenAI", net: "50.00", count: 1 }] }),
-      currency({ byVendor: [{ id: 3, name: "AWS", net: "80.30", count: 3 }], byProject: [{ id: null, name: null, net: "-19.80", count: 2 }] }),
+      currency({ byVendor: [{ id: 3, name: "AWS", net: "80.30", count: 3 }], byProject: [{ id: null, name: null, net: "-19.80", count: 2 }], byCategory: [{ name: null, net: "-19.80", count: 2 }] }),
     ]));
     render(<Dashboard />);
     fireEvent.click(screen.getByRole("button", { name: "USD" }));
@@ -92,6 +92,9 @@ describe("monthly dashboard", () => {
       .toBe("/expenses?from=2026-09-01&to=2026-09-30&currency=USD&platformId=3");
     const projects = screen.getByRole("region", { name: "By project (USD)" });
     expect(within(projects).getByRole("link", { name: "No project" }).getAttribute("href")).toContain("projectId=none");
+    const categories = screen.getByRole("region", { name: "By category (USD)" });
+    expect(within(categories).getByRole("link", { name: "Uncategorised" }).getAttribute("href"))
+      .toBe("/expenses?from=2026-09-01&to=2026-09-30&currency=USD&category=");
   });
 
   it("has distinct empty, loading and error states", () => {

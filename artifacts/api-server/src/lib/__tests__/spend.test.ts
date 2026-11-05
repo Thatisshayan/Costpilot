@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comparisonPeriod, fromCents, monthPeriod, percentChange, shiftMonth, toCents } from "../spend-math";
+import { comparisonPeriod, fromCents, isCalendarDate, monthPeriod, percentChange, shiftMonth, toCents } from "../spend-math";
 
 describe("exact money in cents", () => {
   it.each([
@@ -76,5 +76,14 @@ describe("calendar periods", () => {
     expect(shiftMonth("2026-01", -1)).toBe("2025-12");
     expect(shiftMonth("2026-11", -5)).toBe("2026-06");
     expect(shiftMonth("2025-12", 1)).toBe("2026-01");
+  });
+});
+
+describe("calendar dates in years 0-99", () => {
+  it("are validated as written, not shifted to 1900-1999", () => {
+    expect(isCalendarDate("0096-02-29")).toBe(true);
+    expect(isCalendarDate("0097-02-29")).toBe(false);
+    expect(monthPeriod("0096-02", "2026-11-05")).toMatchObject({ start: "0096-02-01", end: "0096-02-29" });
+    expect(shiftMonth("0100-01", -1)).toBe("0099-12");
   });
 });

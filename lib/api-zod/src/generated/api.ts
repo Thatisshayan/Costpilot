@@ -411,6 +411,7 @@ export const searchExpensesQueryLimitMax = 100;
 
 export const searchExpensesQueryOffsetDefault = 0;
 export const searchExpensesQueryOffsetMin = 0;
+export const searchExpensesQueryOffsetMax = 1000000;
 
 
 
@@ -428,7 +429,7 @@ export const SearchExpensesQueryParams = zod.object({
   "entryType": zod.enum(['expense', 'credit']).optional(),
   "sort": zod.enum(['date_desc', 'date_asc', 'amount_desc', 'amount_asc']).default(searchExpensesQuerySortDefault),
   "limit": zod.coerce.number().int().min(1).max(searchExpensesQueryLimitMax).default(searchExpensesQueryLimitDefault),
-  "offset": zod.coerce.number().int().min(searchExpensesQueryOffsetMin).default(searchExpensesQueryOffsetDefault)
+  "offset": zod.coerce.number().int().min(searchExpensesQueryOffsetMin).max(searchExpensesQueryOffsetMax).default(searchExpensesQueryOffsetDefault)
 })
 
 export const SearchExpensesResponse = zod.object({
