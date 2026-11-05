@@ -19,6 +19,31 @@ export interface CreateWorkspaceBody {
   slug: string;
 }
 
+export type WorkspaceInvitationRole = typeof WorkspaceInvitationRole[keyof typeof WorkspaceInvitationRole];
+
+
+export const WorkspaceInvitationRole = {
+  admin: 'admin',
+  viewer: 'viewer',
+} as const;
+
+export type WorkspaceInvitationStatus = typeof WorkspaceInvitationStatus[keyof typeof WorkspaceInvitationStatus];
+
+
+export const WorkspaceInvitationStatus = {
+  pending: 'pending',
+} as const;
+
+export interface WorkspaceInvitation {
+  id: number;
+  email: string;
+  role: WorkspaceInvitationRole;
+  /** Private one-time bearer capability. Share only with intended recipients. */
+  token: string;
+  status: WorkspaceInvitationStatus;
+  inviteUrl: string;
+}
+
 export type WorkspaceMemberRole = typeof WorkspaceMemberRole[keyof typeof WorkspaceMemberRole];
 
 
@@ -238,8 +263,10 @@ export interface Expense {
 export interface ExpenseInput {
   /** @minimum 1 */
   workspaceId?: number;
-  platformId?: number;
-  projectId?: number;
+  /** @nullable */
+  platformId?: number | null;
+  /** @nullable */
+  projectId?: number | null;
   amount: number;
   currency?: string;
   description?: string;
@@ -248,8 +275,10 @@ export interface ExpenseInput {
 }
 
 export interface ExpenseUpdate {
-  platformId?: number;
-  projectId?: number;
+  /** @nullable */
+  platformId?: number | null;
+  /** @nullable */
+  projectId?: number | null;
   amount?: number;
   currency?: string;
   description?: string;

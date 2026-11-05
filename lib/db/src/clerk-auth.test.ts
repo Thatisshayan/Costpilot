@@ -56,7 +56,7 @@ describe("Clerk Authentication Middleware", () => {
   });
 
   it("should bypass authentication for external incoming webhook", async () => {
-    const req = makeMockRequest({}, "/api/webhooks/incoming");
+    const req = makeMockRequest({}, "/api/webhooks/incoming/test-provider");
     const res = makeMockResponse();
     const next = vi.fn();
     const verifySpy = vi.spyOn(authConfig, "verifyToken");
@@ -131,7 +131,7 @@ describe("Clerk Authentication Middleware", () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.jsonData.error).toBe("Unauthorized");
     expect(res.jsonData.message).toBe("Invalid or expired token");
-    expect(res.jsonData.details).toBe("JWT expired");
+    expect(res.jsonData.details).toBeUndefined();
   });
 
   it("should authenticate successfully with a valid token", async () => {

@@ -7,8 +7,10 @@
  */
 
 export interface ExpenseUpdate {
-  platformId?: number;
-  projectId?: number;
+  /** @nullable */
+  platformId?: number | null;
+  /** @nullable */
+  projectId?: number | null;
   amount?: number;
   currency?: string;
   description?: string;

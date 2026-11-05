@@ -189,7 +189,7 @@ export default function HomeScreenPremium() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+        <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={Colors.dark.accentAction} />
@@ -203,7 +203,7 @@ export default function HomeScreenPremium() {
   if (error) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+        <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.centered}>
             <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
@@ -223,7 +223,7 @@ export default function HomeScreenPremium() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+      <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safeArea}>
 
         {/* Premium Header */}

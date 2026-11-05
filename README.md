@@ -15,10 +15,10 @@ Launch readiness: [closure plan](docs/governance/LAUNCH_PLAN.md) and [current au
 | Auth | Clerk |
 | Payments | Stripe |
 | AI | OpenAI (GPT models) |
-| Mobile | Expo 56 + React Native 0.85 |
+| Mobile | Expo 58 + React Native 0.88 |
 | Web UI | React 19 + Vite 7 + TailwindCSS 4 |
 | Code Generation | Orval (from OpenAPI spec) |
-| Validation | Zod 3.x |
+| Validation | Zod 4.x |
 
 ## Project Structure
 
@@ -38,7 +38,7 @@ costpilot/
 ## Setup
 
 ### Prerequisites
-- Node.js 22+
+- Node.js 22.13+ (Node 22 is used in CI/production)
 - pnpm 9.x
 - Docker (for PostgreSQL/Redis)
 
@@ -81,7 +81,7 @@ pnpm --filter @workspace/db run push
 |---------|-------------|
 | `pnpm --filter @workspace/api-server run dev` | Start API server (port 3001) |
 | `pnpm --filter @workspace/ai-tracker run dev` | Start web dashboard (Vite dev server) |
-| `pnpm --filter @workspace/mobile-app run start` | Start Expo development server |
+| `pnpm --filter mobile-app run start` | Start Expo development server |
 | `pnpm run typecheck` | Type-check all packages |
 | `pnpm --filter @workspace/api-spec run codegen` | Regenerate API hooks and Zod schemas |
 | `pnpm --filter @workspace/db run push` | Push DB schema changes |

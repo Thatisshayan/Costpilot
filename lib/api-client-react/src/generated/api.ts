@@ -75,6 +75,7 @@ import type {
   ValidateDeploymentBody,
   Webhook,
   Workspace,
+  WorkspaceInvitation,
   WorkspaceMember
 } from './api.schemas';
 
@@ -4422,7 +4423,7 @@ export const getInviteToWorkspaceUrl = (id: number,) => {
  * @summary Invite a user to a workspace
  */
 export const inviteToWorkspace = async (id: number,
-    inviteToWorkspaceBody: InviteToWorkspaceBody, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceMember> => {
+    inviteToWorkspaceBody: InviteToWorkspaceBody, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceInvitation> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -4438,7 +4439,7 @@ export const inviteToWorkspace = async (id: number,
     }
     return headers;
   };
-return customFetch<WorkspaceMember>(getInviteToWorkspaceUrl(id),
+return customFetch<WorkspaceInvitation>(getInviteToWorkspaceUrl(id),
   {
     ...options,
     method: 'POST',

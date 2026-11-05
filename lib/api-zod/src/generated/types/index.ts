@@ -64,5 +64,8 @@ export * from './validateDeploymentBody';
 export * from './webhook';
 export * from './webhookType';
 export * from './workspace';
+export * from './workspaceInvitation';
+export * from './workspaceInvitationRole';
+export * from './workspaceInvitationStatus';
 export * from './workspaceMember';
 export * from './workspaceMemberRole';

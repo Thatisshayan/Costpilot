@@ -265,8 +265,8 @@ export const ListExpensesResponse = zod.array(ListExpensesResponseItem)
 
 export const CreateExpenseBody = zod.object({
   "workspaceId": zod.int().min(1).optional(),
-  "platformId": zod.int().optional(),
-  "projectId": zod.int().optional(),
+  "platformId": zod.int().nullish(),
+  "projectId": zod.int().nullish(),
   "amount": zod.number(),
   "currency": zod.string().optional(),
   "description": zod.string().optional(),
@@ -315,8 +315,8 @@ export const UpdateExpenseParams = zod.object({
 })
 
 export const UpdateExpenseBody = zod.object({
-  "platformId": zod.int().optional(),
-  "projectId": zod.int().optional(),
+  "platformId": zod.int().nullish(),
+  "projectId": zod.int().nullish(),
   "amount": zod.number().optional(),
   "currency": zod.string().optional(),
   "description": zod.string().optional(),
@@ -917,11 +917,11 @@ export const InviteToWorkspaceBody = zod.object({
 
 export const InviteToWorkspaceResponse = zod.object({
   "id": zod.int(),
-  "workspaceId": zod.int(),
-  "userId": zod.string(),
-  "email": zod.string(),
-  "role": zod.enum(['owner', 'admin', 'viewer']),
-  "createdAt": zod.string()
+  "email": zod.email(),
+  "role": zod.enum(['admin', 'viewer']),
+  "token": zod.string().describe('Private one-time bearer capability. Share only with intended recipients.'),
+  "status": zod.enum(['pending']),
+  "inviteUrl": zod.string()
 })
 
 
