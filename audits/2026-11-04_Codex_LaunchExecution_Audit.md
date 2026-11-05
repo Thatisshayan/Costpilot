@@ -26,3 +26,4 @@ Agent: Codex. Branch: docs/fix-doc-drift. Launch remains blocked pending verific
 ## Remaining gates
 
 See docs/governance/LAUNCH_PLAN.md and RELEASE_RUNBOOK.md. Resolve remaining dependency advisories, run/fix the new exact-SHA CI checks, commit regenerated contracts, configure approved staging origins/keys/secrets, verify real sign-in and device journeys, approve legal/support/retention details, and obtain Shayan's release approval. No billable deploy, production migration or provider execution occurred.
+CI follow-up: first checkpoint jobs failed during pnpm/action-setup because the major-only `9` did not exactly match packageManager `pnpm@9.15.9`. Workflow versions were aligned to 9.15.9 before rerunning. No application test pass is inferred from setup-only failures.

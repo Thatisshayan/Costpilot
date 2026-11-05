@@ -15,7 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ArrowUpRight, Plus, Pencil, Trash2, Calendar, Folder, Scan, Loader2, FileSpreadsheet } from "lucide-react";
 import { formatCurrency } from "../lib/currency";
-import CurrencySelector, { useCurrency } from "../components/currency-selector";
+
 import { Link } from "wouter";
 import {
   Dialog,
@@ -70,7 +70,7 @@ export default function Expenses() {
   const projects = accessibleProjects.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
   const expenses = accessibleExpenses.filter(e => (e.workspaceId ?? null) === activeWorkspaceId);
   const createMutation = useCreateExpense();
-  const [currency] = useCurrency();
+
   const updateMutation = useUpdateExpense();
   const deleteMutation = useDeleteExpense();
   const { mutateAsync: uploadReceipt, isPending: isUploading } = useUploadReceipt();
@@ -111,12 +111,12 @@ export default function Expenses() {
       return;
     }
     const payload = {
-      ...(form.platformId ? { platformId: Number(form.platformId) } : {}),
-      ...(form.projectId ? { projectId: Number(form.projectId) } : {}),
+      platformId: form.platformId ? Number(form.platformId) : null,
+      projectId: form.projectId ? Number(form.projectId) : null,
       amount: Number(form.amount),
       currency: form.currency || "USD",
-      ...(form.description ? { description: form.description } : {}),
-      ...(form.category ? { category: form.category } : {}),
+      description: form.description,
+      category: form.category,
       date: form.date,
     };
     try {
@@ -158,16 +158,6 @@ export default function Expenses() {
           <p className="text-sm text-slate-400 mt-1">Track your granular API costs and tool purchases.</p>
         </div>
         <div className="flex items-center gap-3">
-          <CurrencySelector />
-          <Link href="/import" className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] text-slate-300 text-sm font-semibold rounded-xl transition-all shadow-lg">
-            <FileSpreadsheet size={16} />
-            Import CSV
-          </Link>
-          <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] text-slate-300 text-sm font-semibold rounded-xl transition-all shadow-lg">
-            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Scan size={16} />}
-            {isUploading ? "Scanning..." : "Scan Receipt"}
-            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={isUploading} />
-          </label>
           <button
             onClick={openAdd}
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
@@ -231,7 +221,7 @@ export default function Expenses() {
                       {format(new Date(expense.date + "T12:00:00"), "MMM d, yyyy")}
                     </td>
                     <td className="py-4 text-right pr-2 font-mono font-semibold text-white text-base">
-                      {formatCurrency(expense.amount, currency)}
+                      {`${expense.amount.toFixed(2)} ${expense.currency ?? "USD"}`}
                     </td>
                     <td className="py-4 pr-2">
                       <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
