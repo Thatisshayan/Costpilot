@@ -43,4 +43,8 @@ try {
   assert.equal((await call(`/expenses/${item.id}`,"DELETE")).status,204);
   assert.equal((await call("/remediation/execute","POST",{ actionId: 1 })).status,503);
   console.log("Production container smoke passed: readiness, real RSA token verification, bearer CRUD, CSV/PDF and disabled preview execution.");
-} finally { docker(["stop", "--time", "15", name]); }
+} catch (error) {
+  // The smoke environment contains synthetic credentials only.
+  docker(["logs", "--tail", "80", name]);
+  throw error;
+} finally { docker(["stop", "--timeout", "15", name]); }
