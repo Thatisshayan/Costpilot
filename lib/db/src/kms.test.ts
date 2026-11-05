@@ -117,6 +117,14 @@ describe("KMS Simulated Envelope Encryption (AES-256-GCM)", () => {
       b.secretIv = b.secretIv + "00";
       expect(() => decrypt(JSON.stringify(b))).toThrow(/IV/);
     });
+    it("rejects an exact-length but non-hex nonce or tag", () => {
+      const a = JSON.parse(encrypt(SECRET_TEXT));
+      a.secretIv = "zz" + a.secretIv.slice(2);
+      expect(() => decrypt(JSON.stringify(a))).toThrow(/Invalid IV: expected 12 bytes/);
+      const b = JSON.parse(encrypt(SECRET_TEXT));
+      b.secretTag = "zz" + b.secretTag.slice(2);
+      expect(() => decrypt(JSON.stringify(b))).toThrow(/Invalid authentication tag: expected 16 bytes/);
+    });
     it("rejects truncated tags in the legacy 3-part format too", () => {
       const key = crypto.scryptSync(process.env.ENCRYPTION_KEY!, "salt", 32);
       const iv = crypto.randomBytes(12);

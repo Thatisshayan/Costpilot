@@ -16,7 +16,7 @@
 | **High:** docker-compose setuid escalation (2) | `no-new-privileges:true` on postgres and redis (local development only) | — |
 | **Critical (evidence):** CSV export "XSS" | No code change needed. | The rehearsal now asserts `X-Content-Type-Options: nosniff` and `Content-Disposition: attachment`. |
 
-**Fixed in the Batch 2 PR:** the export-loop DoS (PR #8's historical finding) via a 50,000-row cap (413), with a 50,001-row rehearsal case.
+**Deferred to the Batch 2 PR:** the export-loop DoS (PR #8's historical finding). The 50,000-row cap (413) and its 50,001-row rehearsal case are not in this PR; the finding stays Deferred With Reason until the Batch 2 PR merges.
 
 ## Reconciliation
 
