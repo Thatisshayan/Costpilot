@@ -331,12 +331,12 @@ Removed or not planned: GPU tools, LLM router, benchmark "market intelligence", 
 | Batch | Items | Status |
 |---|---|---|
 | **1. Trustworthy core** | P0-01, P0-02 (UI part), P0-04, P0-05, P0-08, P0-10, P0-14, P0-15, P0-17 (guard) | **Implemented on `agent/claude/batch1-trustworthy-core`, awaiting owner review.** Evidence: [Batch 1 audit](../../audits/2026-11-05_Claude_Batch1TrustworthyCore_Audit.md) |
-| 2. Monthly financial view | P0-03 (server filters, sort, pagination), P0-06 (server per-currency totals, period selector, vendor/project breakdowns, monthly trend), P0-13 (export accuracy), plus the follow-ups below | Next; awaiting approval |
+| 2. Monthly financial view | P0-03 (server filters, sort, pagination), P0-06 (server per-currency totals, period selector, vendor/project/category breakdowns, six-month trend), P0-13 (export accuracy), export cap | **Implemented on `agent/claude/batch2-monthly-dashboard` (stacked on PR #14), awaiting owner review.** Evidence: [Batch 2 audit](../../audits/2026-11-05_Claude_Batch2MonthlyDashboard_Audit.md). No index migration needed (existing indexes verified) |
 | 3. Control and ingestion | P0-09 budgets and thresholds, P0-12 CSV import with P2-01 provenance and duplicate prevention, P0-07 projects, P0-11 first-run checklist | Planned |
 | 4. Recurring spend and team | P1-04 subscriptions and renewals (D10), P1-02 in-app alerts (D8), P1-06 activity log, P0-02b contributor role (D2) | Planned |
 | 5. Integration readiness | P2-02 to P2-05, AWS design validation (D9; no live connection) | Planned |
 
-P0-16 (ledger integrity) moves into Batch 2 for indexes and `updated_at` only. Amount precision waits for the D3 decimal-model proposal.
+P0-16 (ledger integrity): Batch 2 verified the existing indexes cover the new queries; `updated_at` moves to Batch 4 with the activity log (P1-06). Amount precision waits for the D3 decimal-model proposal.
 
 **Follow-ups found in Batch 1 (Batch 2 scope):**
 - On phones the expense and member tables scroll inside their card, so the amount column is off-screen until scrolled. Use a stacked row layout below `sm`.
