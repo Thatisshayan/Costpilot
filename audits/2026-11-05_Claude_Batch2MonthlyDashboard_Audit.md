@@ -78,6 +78,11 @@ No migration was needed. On 200,000 local rows, the existing `expenses_user_date
 3. **Amount filters compare signed amounts,** so a minimum of 10 excludes a −50 credit.
 4. **Comparison basis:** same days for a partial month, full previous month otherwise.
 
+## Codacy
+
+- **Finding 86** (unbounded export loop, from PR #8) is **Fixed** by the 50,000-row cap; the register is updated.
+- Codacy reports **12 new findings on this PR** (10 high, 2 medium). They could not be identified from this environment and are recorded in the [register](../docs/security/CODACY_REMEDIATION_REGISTER.md) as accepted residual risk for internal development merges only (owner decision, 2026-11-05).
+
 ## Follow-ups
 
 - **Phone filters:** the filter panel is a long single column on phones; a collapsible "Filters" control would help.
