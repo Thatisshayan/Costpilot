@@ -53,6 +53,22 @@
 - `node artifacts/ai-tracker/e2e/narrow-viewport.mjs`
 - Codegen drift: `pnpm --filter @workspace/api-spec run codegen`, then `git diff --exit-code` on the generated directories
 
+## Codacy on PR #14
+
+**Report:** 25 new issues: 1 critical and 19 high (Security), 5 medium (unused code, best practice, complexity).
+
+**Why the list is a reproduction:** Codacy's per-issue list is not readable from the agent environment (app.codacy.com is blocked, and the check run carries no annotations). The findings were reproduced locally with `eslint-plugin-security` 3.0.1 and the open-source Semgrep rules on the changed files. This is a **probable match, not a confirmed one**.
+
+| Finding (local reproduction) | Where | Assessment | Action |
+|---|---|---|---|
+| `detect-unsafe-regex` on amount parsing | `ai-tracker/src/lib/expense-form.ts` (runs on user input) | Patterns were linear, but they run on user input | **Fixed:** replaced with a split-and-digits check (no nested quantifiers) |
+| `detect-object-injection` on badge lookups keyed by server strings | `pages/collaboration.tsx` | A crafted `__proto__` role could only break a badge | **Fixed:** `Map` lookups |
+| `detect-object-injection` on typed keys | `pages/expenses.tsx` (`fieldErrors[field]`, `ENTRY_TYPE_LABEL[type]`) | Keys are compile-time unions; not user-controlled | Not changed |
+| `detect-non-literal-fs-filename`, `detect-unsafe-regex`, `detect-object-injection` | `scripts/mock-guard.mjs`, `scripts/__tests__/*`, `api-server/src/__tests__/openapi-contract.test.ts`, `ai-tracker/src/components/layout.test.tsx`, `e2e/narrow-viewport.mjs` | Build-time and test tooling over repository files only, never request data | Not changed; recorded |
+| Semgrep `spawn-shell-true` | `scripts/verify.mjs:12` | Pre-existing on `main` (shell only for Windows `.cmd` shims) | Not changed |
+
+**Status:** these findings stay recorded as **unconfirmed until the owner or someone with Codacy access compares them with the actual list**. None is classified as a false positive on Codacy's side. The 5 historical Codacy findings remain unresolved.
+
 ## Limitations and follow-ups
 
 - **Not exercised:** a live Clerk sign-in and a real two-account journey in a browser (Clerk is unreachable here). All UI journeys were verified with component tests and a stubbed-auth browser harness, not end to end.

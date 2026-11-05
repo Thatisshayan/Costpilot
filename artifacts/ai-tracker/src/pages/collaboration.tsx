@@ -21,27 +21,31 @@ import { useWorkspace } from "@/context/workspace-context";
 import { CreateWorkspaceForm } from "@/components/create-workspace-form";
 import { apiErrorMessage } from "@/lib/api-error";
 
-const ROLE_BADGE: Record<string, { label: string; color: string }> = {
-  owner: { label: "Owner", color: "bg-amber-500/10 text-amber-300 border-amber-500/20" },
-  admin: { label: "Admin", color: "bg-indigo-500/10 text-indigo-300 border-indigo-500/20" },
-  viewer: { label: "Viewer", color: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" },
-};
+// Maps, not object literals: role/status strings come from the server, and a Map lookup
+// can never resolve inherited keys such as "__proto__".
+const VIEWER_BADGE = { label: "Viewer", color: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" };
+const ROLE_BADGE = new Map<string, { label: string; color: string }>([
+  ["owner", { label: "Owner", color: "bg-amber-500/10 text-amber-300 border-amber-500/20" }],
+  ["admin", { label: "Admin", color: "bg-indigo-500/10 text-indigo-300 border-indigo-500/20" }],
+  ["viewer", VIEWER_BADGE],
+]);
 
-const STATUS_BADGE: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  active: { label: "Active", color: "text-emerald-300", icon: <CheckCircle2 size={14} aria-hidden /> },
-  pending: { label: "Invitation pending", color: "text-amber-300", icon: <Clock size={14} aria-hidden /> },
-  expired: { label: "Expired", color: "text-slate-400", icon: <Clock size={14} aria-hidden /> },
-};
+const ACTIVE_BADGE = { label: "Active", color: "text-emerald-300", icon: <CheckCircle2 size={14} aria-hidden /> };
+const STATUS_BADGE = new Map<string, { label: string; color: string; icon: React.ReactNode }>([
+  ["active", ACTIVE_BADGE],
+  ["pending", { label: "Invitation pending", color: "text-amber-300", icon: <Clock size={14} aria-hidden /> }],
+  ["expired", { label: "Expired", color: "text-slate-400", icon: <Clock size={14} aria-hidden /> }],
+]);
 
 const card = "bg-white/[0.02] border border-white/[0.06] rounded-3xl backdrop-blur-md";
 
 function RoleBadge({ role }: { role: string }) {
-  const badge = ROLE_BADGE[role] ?? ROLE_BADGE.viewer;
+  const badge = ROLE_BADGE.get(role) ?? VIEWER_BADGE;
   return <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${badge.color}`}>{badge.label}</span>;
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const badge = STATUS_BADGE[status] ?? STATUS_BADGE.active;
+  const badge = STATUS_BADGE.get(status) ?? ACTIVE_BADGE;
   return <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${badge.color}`}>{badge.icon}{badge.label}</span>;
 }
 
@@ -215,7 +219,7 @@ function WorkspaceTeamPage({ workspaceId }: { workspaceId: number }) {
         <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Team</h1>
         <p className="text-slate-300 text-sm max-w-xl">
           Members of <span className="font-semibold text-white">{activeWorkspace?.name ?? "this workspace"}</span> share
-          its expenses, vendors and projects. Your role: <span className="font-semibold text-white">{activeRole ? ROLE_BADGE[activeRole].label : "loading…"}</span>.
+          its expenses, vendors and projects. Your role: <span className="font-semibold text-white">{activeRole ? ROLE_BADGE.get(activeRole)?.label ?? activeRole : "loading…"}</span>.
         </p>
       </header>
 

@@ -50,12 +50,18 @@ function isCalendarDate(value: string): boolean {
   return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
 }
 
+/** Digits with at most one decimal point and digits on both sides (no signs, exponents or spaces). */
+function isPlainDecimal(value: string): boolean {
+  const parts = value.split(".");
+  return parts.length <= 2 && parts.every(part => /^\d+$/.test(part));
+}
+
 export function validateExpenseForm(form: ExpenseFormFields): ExpenseFieldErrors {
   const errors: ExpenseFieldErrors = {};
   const raw = form.amount.trim();
   if (!raw) errors.amount = "Enter an amount.";
-  else if (!/^\d+(\.\d+)?$/.test(raw)) errors.amount = "Enter a positive number such as 12.50. Choose Refund / credit for money returned.";
-  else if (!/^\d+(\.\d{1,2})?$/.test(raw)) errors.amount = "Use at most 2 decimal places.";
+  else if (!isPlainDecimal(raw)) errors.amount = "Enter a positive number such as 12.50. Choose Refund / credit for money returned.";
+  else if ((raw.split(".")[1] ?? "").length > 2) errors.amount = "Use at most 2 decimal places.";
   else if (Number(raw) <= 0) errors.amount = "The amount must be greater than zero.";
   else if (Number(raw) > MAX_ABS_AMOUNT) errors.amount = "The amount must be 99,999,999.99 or less.";
   if (!/^[A-Z]{3}$/.test(form.currency.trim().toUpperCase())) errors.currency = "Choose a 3-letter currency code such as USD.";
