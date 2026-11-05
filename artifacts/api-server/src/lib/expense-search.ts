@@ -10,7 +10,7 @@ const idOrNone = z.union([z.literal("none"), z.coerce.number().int().positive()]
 
 export const FilterFields = {
   // Blank or whitespace-only search text means "no text filter".
-  q: z.string().trim().max(100).optional().transform(v => v || undefined),
+  q: z.preprocess(v => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().trim().max(100).optional()),
   from: date.optional(),
   to: date.optional(),
   minAmount: money.optional(),
