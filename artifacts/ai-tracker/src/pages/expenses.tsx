@@ -132,13 +132,19 @@ export default function Expenses() {
     if (trimmed === (query.q ?? "")) return;
     const timer = setTimeout(() => setQuery({ q: trimmed || undefined }), 300);
     return () => clearTimeout(timer);
+    // `query` is a dependency so the pending update keeps filters changed in the meantime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qInput]);
+  }, [qInput, query]);
 
   const filterErrors = validateExpenseQuery(query);
   const filtersValid = Object.keys(filterErrors).length === 0;
   const params = toSearchParams(query, activeWorkspaceId);
-  const result = useSearchExpenses(params, { query: { enabled: filtersValid, placeholderData: previous => previous } });
+  // Keep the previous page on screen while paging or filtering, but never another scope's rows.
+  const result = useSearchExpenses(params, { query: {
+    enabled: filtersValid,
+    placeholderData: (previous, previousQuery) =>
+      (previousQuery?.queryKey[1] as { workspaceId?: number } | undefined)?.workspaceId === params.workspaceId ? previous : undefined,
+  } });
   const { isLoading, isError, error, refetch } = result;
   const page = result.data;
   const expenses = (page?.items ?? []) as Expense[];
@@ -304,7 +310,7 @@ export default function Expenses() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <ExportButtons workspaceId={activeWorkspaceId} filters={exportFilters} />
+          <ExportButtons workspaceId={activeWorkspaceId} filters={exportFilters} disabled={!filtersValid} />
           {canWrite && (
             <button
               type="button"

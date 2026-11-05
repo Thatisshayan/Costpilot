@@ -1043,7 +1043,10 @@ export type SearchExpensesParams = {
    * @maximum 100
    */
   limit?: number;
-  /** @minimum 0 */
+  /**
+   * @minimum 0
+   * @maximum 1000000
+   */
   offset?: number;
 };
 

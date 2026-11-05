@@ -100,7 +100,7 @@ router.post("/generate", async (req, res) => {
       doc.fontSize(12).text(`Module: ${module}`);
       doc.fontSize(12).text(`Scope: ${scopeName}`);
       if (filters.from || filters.to) doc.fontSize(12).text(`Dates: ${filters.from ?? "start"} to ${filters.to ?? "latest"}`);
-      doc.fontSize(10).text("Recorded amounts as entered, per row. Currencies are not converted or totalled.");
+      doc.fontSize(10).text("Recorded amounts as entered, per row, with a net total for each currency. Currencies are never converted or added together.");
       doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`);
       doc.moveDown();
 

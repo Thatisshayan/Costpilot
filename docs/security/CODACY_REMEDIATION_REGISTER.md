@@ -19,7 +19,7 @@ The owner exported the repository issue list from the Codacy dashboard: 345 find
 | **5 historical unresolved findings** (3 new high on PR #8, 2 on PR #9) | **Identified by `git blame`; this supersedes the PR #8 and PR #9 "unidentified" entries in `DEFERRED_WORK.md`.** PR #8: findings 24 and 99 (`0001_eager_makkari.sql` lines 36–37: Oracle `RAC_*` rule, Not Applicable) and 86 (`routes/exports.ts` export loop, **Fixed** by the 50,000-row cap in PR #16). PR #9: findings 119 and 179 (`scripts/secret-scan.mjs`: existsSync on a fixed report path and a log line; Verified False Positive). |
 | **25 new findings on PR #14** (1 critical, 19 high, 5 medium) | **Accepted residual risk — internal development merges only.** See the next section. |
 | **1 new finding on PR #15** (1 high) | **Accepted residual risk — internal development merges only.** See the next section. |
-| **12 new findings on PR #16** (10 high, 2 medium) | **Accepted residual risk — internal development merges only.** See the next section. |
+| **New findings on PR #16** (12 at `188917c`: 10 high, 2 medium; 0 after retargeting to `main` at `fcfed09`; **4 high Security at `067a440`**, after the CodeRabbit fixes) | **Accepted residual risk — internal development merges only.** See the next section. |
 | **Repository backlog** | The 345 findings below |
 
 ### Unidentified PR findings: accepted residual risk
@@ -30,7 +30,7 @@ On 2026-11-05 the owner accepted these findings as residual risk **for merging i
 |---|---|---|---|
 | #14 Batch 1 trustworthy core | 25 new: 1 critical, 19 high, 5 medium | Accepted residual risk (internal merges only) | Codacy's PR issue list is not reachable from the agent environment (`app.codacy.com` and `api.codacy.com` are blocked; no Codacy connector). A local ESLint/Semgrep approximation did not reproduce the count. Rule, file and line are unknown. |
 | #15 Security remediation | 1 new: high | Accepted residual risk (internal merges only) | Same limitation. |
-| #16 Batch 2 monthly dashboard | 12 new: 10 high, 2 medium | Accepted residual risk (internal merges only) | Same limitation. |
+| #16 Batch 2 monthly dashboard | 12 new (10 high, 2 medium) at `188917c`; 0 at `fcfed09` against `main`; **4 new high (Security) at `067a440`** | Accepted residual risk (internal merges only); reported to the owner as newly appeared before merging | Same limitation. A manual review of the `fcfed09..067a440` changes found no new request input, SQL built from input (all values are bound parameters), HTML sink or unbounded regex. Not classified as false positives. |
 
 Codacy stays enabled and its reports are kept. **Before any production or external access** these must be identified and triaged like the backlog below. To get each list:
 

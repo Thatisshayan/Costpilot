@@ -18,10 +18,13 @@ export const SummaryQuery = z.object({
 
 const TREND_MONTHS = 6;
 
+/** The pool or a read transaction; the summary reads all run in one snapshot. */
+type Executor = Pick<typeof db, "select">;
+
 type GroupRow = { currency: string; key: number | string | null; name: string | null; net: string; count: number };
 
-async function totalsByCurrency(scope: Scope, from: string, through: string) {
-  const rows = await db.select({
+async function totalsByCurrency(ex: Executor, scope: Scope, from: string, through: string) {
+  const rows = await ex.select({
     currency: expensesTable.currency,
     charges: sql<string>`coalesce(sum(${expensesTable.amount}) filter (where ${expensesTable.amount} >= 0), 0)::numeric(20,2)::text`,
     credits: sql<string>`coalesce(sum(${expensesTable.amount}) filter (where ${expensesTable.amount} < 0), 0)::numeric(20,2)::text`,
@@ -32,22 +35,24 @@ async function totalsByCurrency(scope: Scope, from: string, through: string) {
   return new Map(rows.map(r => [r.currency, r]));
 }
 
-async function groupedNet(scope: Scope, from: string, through: string, by: "vendor" | "project" | "category"): Promise<GroupRow[]> {
+async function groupedNet(ex: Executor, scope: Scope, from: string, through: string, by: "vendor" | "project" | "category"): Promise<GroupRow[]> {
   const range = and(scopeCondition(scope), gte(expensesTable.date, from), lte(expensesTable.date, through));
   const net = sql<string>`sum(${expensesTable.amount})::numeric(20,2)::text`;
   const count = sql<number>`count(*)::int`;
   if (by === "vendor") {
-    return db.select({ currency: expensesTable.currency, key: platformsTable.id, name: platformsTable.name, net, count })
+    return ex.select({ currency: expensesTable.currency, key: platformsTable.id, name: platformsTable.name, net, count })
       .from(expensesTable).leftJoin(platformsTable, vendorJoin).where(range)
       .groupBy(expensesTable.currency, platformsTable.id, platformsTable.name);
   }
   if (by === "project") {
-    return db.select({ currency: expensesTable.currency, key: projectsTable.id, name: projectsTable.name, net, count })
+    return ex.select({ currency: expensesTable.currency, key: projectsTable.id, name: projectsTable.name, net, count })
       .from(expensesTable).leftJoin(projectsTable, projectJoin).where(range)
       .groupBy(expensesTable.currency, projectsTable.id, projectsTable.name);
   }
-  return db.select({ currency: expensesTable.currency, key: expensesTable.category, name: expensesTable.category, net, count })
-    .from(expensesTable).where(range).groupBy(expensesTable.currency, expensesTable.category);
+  // An empty-string category is grouped with uncategorised (NULL).
+  const category = sql<string | null>`nullif(${expensesTable.category}, '')`;
+  return ex.select({ currency: expensesTable.currency, key: category, name: category, net, count })
+    .from(expensesTable).where(range).groupBy(expensesTable.currency, category);
 }
 
 /** Largest net first, then name, so ordering is deterministic. */
@@ -86,20 +91,21 @@ router.get("/summary", async (req, res) => {
   const scope: Scope = { userId, workspaceId };
 
   const trendStart = `${shiftMonth(period.month, -(TREND_MONTHS - 1))}-01`;
-  const [current, previous, vendors, projects, categories, trendRows] = await Promise.all([
-    totalsByCurrency(scope, period.start, period.through),
-    totalsByCurrency(scope, comparison.start, comparison.through),
-    groupedNet(scope, period.start, period.through, "vendor"),
-    groupedNet(scope, period.start, period.through, "project"),
-    groupedNet(scope, period.start, period.through, "category"),
-    db.select({
+  // One read-only snapshot, so totals, breakdowns and trend agree even while expenses change.
+  const [current, previous, vendors, projects, categories, trendRows] = await db.transaction(tx => Promise.all([
+    totalsByCurrency(tx, scope, period.start, period.through),
+    totalsByCurrency(tx, scope, comparison.start, comparison.through),
+    groupedNet(tx, scope, period.start, period.through, "vendor"),
+    groupedNet(tx, scope, period.start, period.through, "project"),
+    groupedNet(tx, scope, period.start, period.through, "category"),
+    tx.select({
       month: sql<string>`substring(${expensesTable.date}, 1, 7)`,
       currency: expensesTable.currency,
       net: sql<string>`sum(${expensesTable.amount})::numeric(20,2)::text`,
     }).from(expensesTable)
       .where(and(scopeCondition(scope), gte(expensesTable.date, trendStart), lte(expensesTable.date, period.through)))
       .groupBy(sql`substring(${expensesTable.date}, 1, 7)`, expensesTable.currency),
-  ]);
+  ]), { isolationLevel: "repeatable read", accessMode: "read only" });
 
   const months = Array.from({ length: TREND_MONTHS }, (_, i) => shiftMonth(period.month, i - (TREND_MONTHS - 1)));
   const currencyCodes = [...new Set([...current.keys(), ...previous.keys(), ...trendRows.map(r => r.currency)])].sort();
