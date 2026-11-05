@@ -22,6 +22,7 @@ import {
   Cell
 } from "recharts";
 import { toast } from "sonner";
+import { authenticatedFetch } from "@workspace/api-client-react/custom-fetch";
 import { formatCurrency } from "../lib/currency";
 import CurrencySelector, { useCurrency } from "../components/currency-selector";
 
@@ -32,7 +33,7 @@ export default function Analytics() {
 
   const handleExport = async (type: "csv" | "pdf") => {
     try {
-      const response = await fetch(`/api/analytics/export/${type}`);
+      const response = await authenticatedFetch(`/api/analytics/export/${type}`);
       if (!response.ok) throw new Error("Export failed");
       
       const blob = await response.blob();

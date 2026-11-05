@@ -13,11 +13,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const { data: workspaces } = useListWorkspaces() as { data: Workspace[] | undefined };
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (workspaces && workspaces.length > 0 && activeWorkspaceId === null) {
-      setActiveWorkspaceId(workspaces[0].id);
-    }
-  }, [workspaces, activeWorkspaceId]);
+
 
   const activeWorkspace = workspaces?.find((w) => w.id === activeWorkspaceId) ?? null;
 

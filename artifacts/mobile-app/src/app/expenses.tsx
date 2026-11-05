@@ -1,7 +1,8 @@
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -16,14 +17,18 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { apiFetch } from '@/lib/api';
+import { personalExpensesOnly } from '@/lib/personal-scope';
+import { formatEntryAmount } from '@/lib/entry-type';
 
 type Expense = {
-  id: string;
+  id: number;
   amount: number;
   description: string;
-  platformName: string;
+  platformName: string | null;
   category: string;
-  spentAt: string;
+  date: string;
+  currency: string;
+  workspaceId?: number | null;
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -42,7 +47,7 @@ function getPlatformColor(name: string): string {
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+  const date = new Date(`${dateStr}T12:00:00`);
   return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -50,9 +55,9 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function ExpenseCard({ item }: { item: Expense }) {
+function ExpenseCard({ item, onEdit, onDelete }: { item: Expense; onEdit: () => void; onDelete: () => void }) {
   const theme = useTheme();
-  const platformColor = getPlatformColor(item.platformName);
+  const platformColor = getPlatformColor(item.platformName ?? "General");
 
   return (
     <ThemedView
@@ -66,13 +71,17 @@ function ExpenseCard({ item }: { item: Expense }) {
             {item.description || item.category}
           </ThemedText>
           <ThemedText style={styles.expenseMeta}>
-            {item.platformName} · {formatDate(item.spentAt)}
+            {item.platformName} · {formatDate(item.date)}
           </ThemedText>
         </View>
       </View>
       <ThemedText style={styles.expenseAmount}>
-        ${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {formatEntryAmount(item.amount, item.currency)}
       </ThemedText>
+      <View style={{ gap: 12 }}>
+        <Pressable accessibilityLabel={`Edit ${item.description}`} onPress={onEdit}><ThemedText>Edit</ThemedText></Pressable>
+        <Pressable accessibilityLabel={`Delete ${item.description}`} onPress={onDelete}><ThemedText>Delete</ThemedText></Pressable>
+      </View>
     </ThemedView>
   );
 }
@@ -115,9 +124,8 @@ export default function ExpensesScreen() {
       setError(null);
 
       const data = await apiFetch<Expense[]>('/expenses', {
-        headers: { 'x-simulated-user-id': 'dev-user-1' },
       });
-      setExpenses(data);
+      setExpenses(personalExpensesOnly(data));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load expenses');
     } finally {
@@ -126,9 +134,17 @@ export default function ExpensesScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchExpenses();
-  }, []);
+  useFocusEffect(useCallback(() => { void fetchExpenses(); }, [fetchExpenses]));
+
+  const deleteExpense = (item: Expense) => {
+    Alert.alert('Delete expense?', 'This permanently removes the expense.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try { await apiFetch(`/expenses/${item.id}`, { method: 'DELETE' }); await fetchExpenses(true); }
+        catch (error) { Alert.alert('Delete failed', error instanceof Error ? error.message : 'Please try again.'); }
+      } },
+    ]);
+  };
 
   const handleRefresh = () => {
     fetchExpenses(true);
@@ -173,7 +189,7 @@ export default function ExpensesScreen() {
         ]}
       >
         <ThemedView style={styles.headerRow}>
-          <ThemedText style={styles.headerTitle}>Expenses</ThemedText>
+          <ThemedText style={styles.headerTitle}>Personal Expenses</ThemedText>
           <Pressable
             style={({ pressed }) => [
               styles.addButton,
@@ -188,8 +204,8 @@ export default function ExpensesScreen() {
 
       <FlatList
         data={expenses}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ExpenseCard item={item} />}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item }) => <ExpenseCard item={item} onEdit={() => router.push({ pathname: "/add-expense", params: { id: String(item.id) } })} onDelete={() => deleteExpense(item)} />}
         contentContainerStyle={[
           styles.listContent,
           contentPlatformStyle,

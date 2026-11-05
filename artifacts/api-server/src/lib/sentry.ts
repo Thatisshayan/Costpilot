@@ -1,13 +1,11 @@
-export function initSentry() {
-  if (process.env.SENTRY_DSN) {
-    console.log("[Sentry] Backend monitoring configured");
-  }
-}
+import * as Sentry from "@sentry/node";
 
-export function captureError(error: Error, context?: Record<string, unknown>) {
-  if (process.env.SENTRY_DSN) {
-    console.error("[Sentry] Captured:", error.message, context);
-  } else {
-    console.error("[Sentry] Skipped (no DSN):", error.message);
-  }
+export function initSentry() {
+  Sentry.init({ dsn: process.env.SENTRY_DSN, enabled: Boolean(process.env.SENTRY_DSN),
+    environment: process.env.NODE_ENV, sendDefaultPii: false, tracesSampleRate: 0,
+    beforeBreadcrumb: () => null,
+    beforeSend(event) { delete event.request; delete event.user; delete event.extra; return event; },
+  });
 }
+export function captureError(error: Error) { Sentry.captureException(error); }
+export function flushMonitoring() { return Sentry.flush(2000); }

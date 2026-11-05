@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/context/workspace-context";
 import { useState } from "react";
 import {
   useListExpenses,
@@ -14,7 +15,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ArrowUpRight, Plus, Pencil, Trash2, Calendar, Folder, Scan, Loader2, FileSpreadsheet } from "lucide-react";
 import { formatCurrency } from "../lib/currency";
-import CurrencySelector, { useCurrency } from "../components/currency-selector";
+import { ExportButtons } from "@/components/export-buttons";
+import { ENTRY_TYPE_LABEL, entryTypeOf, formatEntryAmount, signedAmount, type EntryType } from "@/lib/entry-type";
+
 import { Link } from "wouter";
 import {
   Dialog,
@@ -42,6 +45,7 @@ type Expense = {
 type FormState = {
   platformId: string;
   projectId: string;
+  entryType: EntryType;
   amount: string;
   currency: string;
   description: string;
@@ -52,20 +56,25 @@ type FormState = {
 const emptyForm = (): FormState => ({
   platformId: "",
   projectId: "",
+  entryType: "expense",
   amount: "",
   currency: "USD",
   description: "",
   category: "API Usage",
-  date: new Date().toISOString().slice(0, 10),
+  date: format(new Date(), "yyyy-MM-dd"),
 });
 
 export default function Expenses() {
   const qc = useQueryClient();
-  const { data: expenses = [], isLoading } = useListExpenses();
-  const { data: platforms = [] } = useListPlatforms();
-  const { data: projects = [] } = useListProjects();
+  const { data: accessibleExpenses = [], isLoading, isError } = useListExpenses();
+  const { data: accessiblePlatforms = [] } = useListPlatforms();
+  const { data: accessibleProjects = [] } = useListProjects();
+  const { activeWorkspaceId } = useWorkspace();
+  const platforms = accessiblePlatforms.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
+  const projects = accessibleProjects.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
+  const expenses = accessibleExpenses.filter(e => (e.workspaceId ?? null) === activeWorkspaceId);
   const createMutation = useCreateExpense();
-  const [currency] = useCurrency();
+
   const updateMutation = useUpdateExpense();
   const deleteMutation = useDeleteExpense();
   const { mutateAsync: uploadReceipt, isPending: isUploading } = useUploadReceipt();
@@ -91,7 +100,8 @@ export default function Expenses() {
     setForm({
       platformId: e.platformId ? String(e.platformId) : "",
       projectId: e.projectId ? String(e.projectId) : "",
-      amount: String(e.amount),
+      entryType: entryTypeOf(e.amount),
+      amount: String(Math.abs(e.amount)),
       currency: e.currency ?? "USD",
       description: e.description ?? "",
       category: e.category ?? "API Usage",
@@ -105,13 +115,18 @@ export default function Expenses() {
       toast.error("Amount and date are required.");
       return;
     }
+    const magnitude = Number(form.amount);
+    if (!Number.isFinite(magnitude) || magnitude <= 0) {
+      toast.error("Enter a positive amount; choose Refund / credit for money returned.");
+      return;
+    }
     const payload = {
-      ...(form.platformId ? { platformId: Number(form.platformId) } : {}),
-      ...(form.projectId ? { projectId: Number(form.projectId) } : {}),
-      amount: Number(form.amount),
+      platformId: form.platformId ? Number(form.platformId) : null,
+      projectId: form.projectId ? Number(form.projectId) : null,
+      amount: signedAmount(magnitude, form.entryType),
       currency: form.currency || "USD",
-      ...(form.description ? { description: form.description } : {}),
-      ...(form.category ? { category: form.category } : {}),
+      description: form.description,
+      category: form.category,
       date: form.date,
     };
     try {
@@ -119,7 +134,7 @@ export default function Expenses() {
         await updateMutation.mutateAsync({ id: editTarget.id, data: payload });
         toast.success("Expense updated successfully.");
       } else {
-        await createMutation.mutateAsync({ data: payload });
+        await createMutation.mutateAsync({ data: { ...payload, ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}) } });
         toast.success("Expense logged successfully.");
       }
       invalidate();
@@ -140,41 +155,8 @@ export default function Expenses() {
     setDeleteId(null);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const result = await uploadReceipt({ data: { receipt: file } });
-      if (result.success && result.data) {
-        const { amount, platform, category, date, description } = result.data;
-        
-        setEditTarget(null);
-        setForm({
-          ...emptyForm(),
-          amount: amount ? String(amount) : "",
-          category: category || "API Usage",
-          date: date || new Date().toISOString().slice(0, 10),
-          description: description || "",
-        });
-
-        // Fuzzy match platform if it's a string from AI
-        if (platform) {
-          const match = platforms.find(p => p.name.toLowerCase().includes(platform!.toLowerCase()));
-          if (match) {
-            setForm(prev => ({ ...prev, platformId: String(match.id) }));
-          }
-        }
-        
-        setDialogOpen(true);
-        toast.success("Receipt parsed! Please verify the details.");
-      }
-    } catch (err) {
-      toast.error("Failed to parse receipt. Please check your OpenAI API key.");
-    } finally {
-      // Clear input
-      e.target.value = "";
-    }
+  const handleFileChange = async (_e: React.ChangeEvent<HTMLInputElement>) => {
+    toast.error("Receipt scanning is not enabled for this release. Enter expenses manually.");
   };
 
   return (
@@ -186,16 +168,7 @@ export default function Expenses() {
           <p className="text-sm text-slate-400 mt-1">Track your granular API costs and tool purchases.</p>
         </div>
         <div className="flex items-center gap-3">
-          <CurrencySelector />
-          <Link href="/import" className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] text-slate-300 text-sm font-semibold rounded-xl transition-all shadow-lg">
-            <FileSpreadsheet size={16} />
-            Import CSV
-          </Link>
-          <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] text-slate-300 text-sm font-semibold rounded-xl transition-all shadow-lg">
-            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Scan size={16} />}
-            {isUploading ? "Scanning..." : "Scan Receipt"}
-            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={isUploading} />
-          </label>
+          <ExportButtons workspaceId={activeWorkspaceId} />
           <button
             onClick={openAdd}
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
@@ -210,7 +183,7 @@ export default function Expenses() {
       <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-md">
         <h2 className="text-lg font-semibold text-white mb-5">Expense History</h2>
         
-        {isLoading ? (
+        {isError ? <p role="alert">Expenses could not be loaded. Please refresh and try again.</p> : isLoading ? (
           <div className="text-center py-12 text-slate-500 font-medium">Loading history...</div>
         ) : expenses && expenses.length > 0 ? (
           <div className="overflow-x-auto">
@@ -258,8 +231,8 @@ export default function Expenses() {
                     <td className="py-4 text-slate-400 font-medium">
                       {format(new Date(expense.date + "T12:00:00"), "MMM d, yyyy")}
                     </td>
-                    <td className="py-4 text-right pr-2 font-mono font-semibold text-white text-base">
-                      {formatCurrency(expense.amount, currency)}
+                    <td className={`py-4 text-right pr-2 font-mono font-semibold text-base ${expense.amount < 0 ? "text-emerald-400" : "text-white"}`}>
+                      {formatEntryAmount(expense.amount, expense.currency ?? "USD")}
                     </td>
                     <td className="py-4 pr-2">
                       <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -330,11 +303,25 @@ export default function Expenses() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount ($) *</label>
+                <label htmlFor="expense-entry-type" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Type</label>
+                <select
+                  id="expense-entry-type"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                  value={form.entryType}
+                  onChange={(e) => setForm({ ...form, entryType: e.target.value as EntryType })}
+                >
+                  {(Object.keys(ENTRY_TYPE_LABEL) as EntryType[]).map(type => (
+                    <option key={type} value={type}>{ENTRY_TYPE_LABEL[type]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount *</label>
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
                   placeholder="0.00"
                   value={form.amount}

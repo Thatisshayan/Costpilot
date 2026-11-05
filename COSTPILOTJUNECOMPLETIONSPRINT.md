@@ -1,5 +1,7 @@
 # CostPilot — June Completion Sprint
 
+> **⚠️ HISTORICAL / ABANDONED** — This sprint plan was created June 25, 2026 and was never fully executed. Many items have since been completed in different ways or are no longer relevant. Retained for reference only. Do not use as an active task list.
+
 **Target:** Elevate project from 6.1/10 → 8.0/10  
 **Scope:** All directions — Security, Quality, Testing, Performance, Observability, DevOps, Product, Architecture, Mobile, Documentation  
 **Last Audit Score:** 6.1/10 (June 25, 2026)

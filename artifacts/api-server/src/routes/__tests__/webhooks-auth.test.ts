@@ -49,7 +49,7 @@ describe("Auth Middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("should accept token from query parameter", async () => {
+  it("should reject token from query parameter", async () => {
     const req = makeReq({}, { token: "valid-token" });
     const res = makeRes();
     const next = vi.fn();

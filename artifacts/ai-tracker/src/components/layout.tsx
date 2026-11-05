@@ -1,3 +1,5 @@
+import { launchPaths } from "@/lib/launch-scope";
+import { UserButton } from "@clerk/react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -61,6 +63,7 @@ import { useHealthCheck } from "@/hooks/use-health-check";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, shortcut: "⌘D" },
+  { name: "Projects", href: "/projects", icon: Building },
   { name: "Expenses", href: "/expenses", icon: DollarSign, shortcut: "⌘E" },
   { name: "Subscriptions", href: "/subscriptions", icon: Repeat, shortcut: "⌘S" },
   { name: "API Usage", href: "/api-usage", icon: TrendingUp },
@@ -221,7 +224,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Workspace Switcher */}
-            <WorkspaceSwitcher isCollapsed={isCollapsed} />
+            <UserButton />
+          <WorkspaceSwitcher isCollapsed={isCollapsed} />
 
             {/* Quick Search */}
             {!isCollapsed && (
@@ -243,7 +247,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             {/* Navigation */}
             <nav className="space-y-1 w-full mt-2 lg:mt-0">
-              {navigation.map((item) => {
+              {navigation.filter(item => launchPaths.has(item.href)).map((item) => {
                 const isActive = location === item.href;
                 
                 const navLink = (
@@ -295,7 +299,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           )}
           {!isCollapsed && (
             <div className="px-4 py-1 mb-2 text-xs text-slate-600">
-              Last synced: {Math.floor((Date.now() - lastSyncRef.current) / 60000) < 1 ? "just now" : `${Math.floor((Date.now() - lastSyncRef.current) / 60000)}m ago`}
+              API last checked: {Math.floor((Date.now() - lastSyncRef.current) / 60000) < 1 ? "just now" : `${Math.floor((Date.now() - lastSyncRef.current) / 60000)}m ago`}
             </div>
           )}
 

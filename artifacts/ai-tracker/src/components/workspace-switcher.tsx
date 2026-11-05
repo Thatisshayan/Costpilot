@@ -50,7 +50,7 @@ export function WorkspaceSwitcher({ isCollapsed }: { isCollapsed: boolean }) {
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-0.5">Workspace</div>
-              <div className="text-sm font-semibold text-white truncate">{activeWorkspace?.name || "Select Workspace"}</div>
+              <div className="text-sm font-semibold text-white truncate">{activeWorkspace?.name || "Personal"}</div>
             </div>
           )}
           {!isCollapsed && <ChevronDown size={14} className="text-slate-500" />}
@@ -58,6 +58,7 @@ export function WorkspaceSwitcher({ isCollapsed }: { isCollapsed: boolean }) {
         <DropdownMenuContent align="start" className="w-64 bg-[#09090b]/95 border-white/[0.1] text-slate-200 backdrop-blur-xl">
           <DropdownMenuLabel className="text-xs font-medium text-slate-500 uppercase tracking-wider px-3 py-2">My Workspaces</DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-white/[0.05]" />
+          <DropdownMenuItem onClick={() => setActiveWorkspaceId(null)}>Personal expenses</DropdownMenuItem>
           {workspaces?.map((w: any) => (
             <DropdownMenuItem 
               key={w.id} 

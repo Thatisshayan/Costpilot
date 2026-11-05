@@ -3,8 +3,8 @@ name: CI - API Server
 on:
   push:
     branches: [main]
+  # Runs for every PR (including stacked PRs into release-candidate branches).
   pull_request:
-    branches: [main]
 
 jobs:
   build-and-test:
@@ -43,8 +43,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
-
+          version: 10.34.7
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -57,15 +56,23 @@ jobs:
       - name: Build API Server
         run: pnpm --filter @workspace/api-server run build
 
+      - name: Generate isolated CI fixture secrets
+        run: |
+          for fixture_name in JWT_SECRET WEBHOOK_SECRET; do
+            fixture_value="$(openssl rand -hex 32)"
+            echo "::add-mask::$fixture_value"
+            echo "$fixture_name=$fixture_value" >> "$GITHUB_ENV"
+          done
+
       - name: Run API Server Tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/costpilot
           REDIS_URL: redis://localhost:6379
           NODE_ENV: test
-          JWT_SECRET: stub-jwt-secret-at-least-32-chars-long
+
           CLERK_SECRET_KEY: test_key
           STRIPE_SECRET_KEY: sk_test_stub
-          WEBHOOK_SECRET: stub-secret-at-least-32-chars-long
+
         run: pnpm --filter @workspace/api-server run test
 
       - name: Run DB Tests

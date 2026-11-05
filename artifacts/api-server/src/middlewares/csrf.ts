@@ -10,6 +10,12 @@ function generateToken(): string {
 
 export function csrfProtection(req: Request, res: Response, next: NextFunction): void {
   const method = req.method.toUpperCase();
+
+  // Explicit bearer credentials are not attached automatically by browsers.
+  // requireAuth still verifies the token before any protected route runs.
+  if (/^Bearer \S+$/.test(req.headers.authorization ?? "")) {
+    return next();
+  }
   
   // Skip CSRF for webhooks (they have their own signature verification)
   if (req.originalUrl?.includes("/webhooks/")) {

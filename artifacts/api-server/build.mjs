@@ -28,6 +28,8 @@ async function buildAll() {
     // - uses native modules and loads them dynamically (e.g. sharp)
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
+      "@sentry/node", // Its instrumentation resolves its own runtime dependencies.
+      "pdfkit", // Keep its bundled font data beside the runtime dependency.
       "*.node",
       "sharp",
       "better-sqlite3",

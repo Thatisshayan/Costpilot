@@ -4,10 +4,12 @@ import {
   workspacesTable,
   workspaceMembersTable,
   workspaceInvitesTable,
+  expensesTable, projectsTable, platformsTable,
 } from "@workspace/db";
 import { eq, and, or, count } from "drizzle-orm";
 import crypto from "crypto";
 import { requireWorkspaceMember } from "../middlewares/authz";
+import { hashInviteToken, isInviteToken } from "../lib/invite-token";
 import { CreateWorkspaceBody, UpdateWorkspaceBody, InviteToWorkspaceBody } from "@workspace/api-zod";
 
 const router = Router();
@@ -27,7 +29,7 @@ router.get("/", async (req, res) => {
     })
     .from(workspacesTable)
     .innerJoin(workspaceMembersTable, eq(workspacesTable.id, workspaceMembersTable.workspaceId))
-    .where(eq(workspaceMembersTable.userId, userId));
+    .where(and(eq(workspaceMembersTable.userId, userId), eq(workspaceMembersTable.status, "active")));
 
   res.json(workspaces);
 });
@@ -37,20 +39,10 @@ router.post("/", async (req, res) => {
   const userId = req.userId!;
   const { name, slug } = CreateWorkspaceBody.parse(req.body);
 
-  const [workspace] = await db
-    .insert(workspacesTable)
-    .values({
-      name,
-      slug,
-      ownerId: userId,
-    })
-    .returning();
-
-  await db.insert(workspaceMembersTable).values({
-    workspaceId: workspace.id,
-    userId,
-    role: "owner",
-    email: (req as any).userEmail || "unknown@example.com",
+  const workspace = await db.transaction(async tx => {
+    const [created] = await tx.insert(workspacesTable).values({ name, slug, ownerId: userId }).returning();
+    await tx.insert(workspaceMembersTable).values({ workspaceId: created.id, userId, role: "owner", email: req.userEmail || userId });
+    return created;
   });
 
   res.status(201).json(workspace);
@@ -59,11 +51,18 @@ router.post("/", async (req, res) => {
 // List Members
 router.get("/:id/members", requireWorkspaceMember(["owner", "admin", "viewer"]), async (req, res) => {
   const workspaceId = parseInt(req.params.id as string);
+  // Pending invitations are management data: only owners/admins see them.
+  const canManage = req.workspaceRole === "owner" || req.workspaceRole === "admin";
 
   const members = await db
-    .select()
+    .select({ id: workspaceMembersTable.id, workspaceId: workspaceMembersTable.workspaceId,
+      userId: workspaceMembersTable.userId, email: workspaceMembersTable.email,
+      role: workspaceMembersTable.role, status: workspaceMembersTable.status,
+      joinedAt: workspaceMembersTable.joinedAt, createdAt: workspaceMembersTable.createdAt })
     .from(workspaceMembersTable)
-    .where(eq(workspaceMembersTable.workspaceId, workspaceId));
+    .where(canManage
+      ? eq(workspaceMembersTable.workspaceId, workspaceId)
+      : and(eq(workspaceMembersTable.workspaceId, workspaceId), eq(workspaceMembersTable.status, "active")));
 
   res.json(members);
 });
@@ -89,29 +88,27 @@ router.post("/:id/invite", requireWorkspaceMember(["owner", "admin"]), async (re
     return;
   }
 
+  // The raw token is returned once to the inviter and only its hash is stored.
   const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashInviteToken(token);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  const [invite] = await db
-    .insert(workspaceInvitesTable)
-    .values({
-      workspaceId,
-      email,
-      role,
-      token,
-      invitedBy: req.userId!,
-      expiresAt,
-    })
-    .returning();
-
-  await db.insert(workspaceMembersTable).values({
-    workspaceId,
-    userId: "pending-" + token.slice(0, 8),
-    email,
-    role,
-    status: "pending",
-    inviteToken: token,
+  const invite = await db.transaction(async tx => {
+    // Serialize invite creation per workspace, including the duplicate check.
+    await tx.select({ id: workspacesTable.id }).from(workspacesTable)
+      .where(eq(workspacesTable.id, workspaceId)).for("update");
+    const [pending] = await tx.select({ id: workspaceMembersTable.id }).from(workspaceMembersTable)
+      .where(and(eq(workspaceMembersTable.workspaceId, workspaceId), eq(workspaceMembersTable.email, email))).limit(1);
+    if (pending) return null;
+    const [created] = await tx.insert(workspaceInvitesTable).values({
+      workspaceId, email, role, token: tokenHash, invitedBy: req.userId!, expiresAt,
+    }).returning();
+    await tx.insert(workspaceMembersTable).values({
+      workspaceId, userId: `pending-${crypto.randomUUID()}`, email, role, status: "pending", inviteToken: tokenHash,
+    });
+    return created;
   });
+  if (!invite) { res.status(409).json({ error: "User is already a member of this workspace" }); return; }
 
   res.status(201).json({
     id: invite.id,
@@ -193,7 +190,8 @@ router.delete("/members/:memberId", async (req, res) => {
     .where(
       and(
         eq(workspaceMembersTable.workspaceId, memberToRemove.workspaceId),
-        eq(workspaceMembersTable.userId, currentUserId)
+        eq(workspaceMembersTable.userId, currentUserId),
+        eq(workspaceMembersTable.status, "active")
       )
     );
 
@@ -212,95 +210,64 @@ router.delete("/members/:memberId", async (req, res) => {
     return;
   }
 
-  await db.delete(workspaceMembersTable).where(eq(workspaceMembersTable.id, memberId));
+  await db.transaction(async tx => {
+    await tx.delete(workspaceMembersTable).where(eq(workspaceMembersTable.id, memberId));
+    // Removing a pending invitation also revokes its token.
+    if (memberToRemove.status === "pending" && memberToRemove.inviteToken) {
+      await tx.update(workspaceInvitesTable).set({ status: "expired" }).where(and(
+        eq(workspaceInvitesTable.token, memberToRemove.inviteToken), eq(workspaceInvitesTable.status, "pending")));
+    }
+  });
 
   res.json({ message: "Member removed successfully" });
 });
 
 // Accept Invite
 router.post("/accept-invite", async (req, res) => {
-  const { token } = req.body;
-  if (!token) {
-    res.status(400).json({ error: "Invite token is required" });
+  const token = req.body?.token;
+  if (!isInviteToken(token)) {
+    res.status(400).json({ error: "A valid invite token is required" });
     return;
   }
-
-  const [invite] = await db
-    .select()
-    .from(workspaceInvitesTable)
-    .where(eq(workspaceInvitesTable.token, token));
-
-  if (!invite) {
-    res.status(404).json({ error: "Invite not found" });
-    return;
-  }
-
-  if (invite.status !== "pending") {
-    res.status(400).json({ error: "Invite has already been " + invite.status });
-    return;
-  }
-
-  if (new Date() > new Date(invite.expiresAt)) {
-    await db
-      .update(workspaceInvitesTable)
-      .set({ status: "expired" })
-      .where(eq(workspaceInvitesTable.id, invite.id));
-
-    await db
-      .update(workspaceMembersTable)
-      .set({ status: "expired" })
-      .where(eq(workspaceMembersTable.inviteToken, token));
-
-    res.status(400).json({ error: "Invite has expired" });
-    return;
-  }
-
-  const userId = req.userId!;
-  const userEmail = (req as any).userEmail || invite.email;
-
-  await db
-    .update(workspaceInvitesTable)
-    .set({ status: "accepted" })
-    .where(eq(workspaceInvitesTable.id, invite.id));
-
-  const [updatedMember] = await db
-    .update(workspaceMembersTable)
-    .set({
-      userId,
-      email: userEmail,
-      status: "active",
-      inviteToken: null,
-    })
-    .where(eq(workspaceMembersTable.inviteToken, token))
-    .returning();
-
-  if (!updatedMember) {
-    const [newMember] = await db
-      .insert(workspaceMembersTable)
-      .values({
-        workspaceId: invite.workspaceId,
-        userId,
-        email: userEmail,
-        role: invite.role,
-        status: "active",
-      })
+  const tokenHash = hashInviteToken(token);
+  // The random invite token is a bearer capability. A signed-in account must
+  // explicitly accept it; possession, not an unverified email claim, grants access.
+  const result = await db.transaction(async tx => {
+    const [invite] = await tx.select().from(workspaceInvitesTable)
+      .where(eq(workspaceInvitesTable.token, tokenHash)).for("update");
+    if (!invite || invite.status !== "pending" || invite.expiresAt <= new Date()) {
+      return { status: 400, body: { error: "Invite is invalid, expired or already consumed" } };
+    }
+    // Serialize accepts for this workspace, including separate tokens for one user.
+    await tx.select().from(workspacesTable).where(eq(workspacesTable.id, invite.workspaceId)).for("update");
+    const [existing] = await tx.select().from(workspaceMembersTable).where(and(
+      eq(workspaceMembersTable.workspaceId, invite.workspaceId), eq(workspaceMembersTable.userId, req.userId!)
+    ));
+    if (existing) return { status: 409, body: { error: "Account already has a membership in this workspace" } };
+    const [member] = await tx.update(workspaceMembersTable)
+      .set({ userId: req.userId!, email: invite.email, status: "active", inviteToken: null })
+      .where(and(eq(workspaceMembersTable.inviteToken, tokenHash), eq(workspaceMembersTable.status, "pending")))
       .returning();
-
-    res.json({ message: "Invite accepted", member: newMember });
-    return;
-  }
-
-  res.json({ message: "Invite accepted", member: updatedMember });
+    // The pending membership was removed (invite revoked); never fall through to success.
+    if (!member) return { status: 400, body: { error: "Invite is invalid, expired or already consumed" } };
+    await tx.update(workspaceInvitesTable).set({ status: "accepted" }).where(eq(workspaceInvitesTable.id, invite.id));
+    return { status: 200, body: { message: "Invite accepted", member } };
+  });
+  res.status(result.status).json(result.body);
 });
 
 // Get Workspace by invite token (for accept-invite page)
 router.get("/invite/:token", async (req, res) => {
   const { token } = req.params;
+  if (!isInviteToken(token)) {
+    res.status(404).json({ error: "Invite not found" });
+    return;
+  }
 
   const [invite] = await db
     .select()
     .from(workspaceInvitesTable)
-    .where(eq(workspaceInvitesTable.token, token));
+    .where(eq(workspaceInvitesTable.token, hashInviteToken(token)));
 
   if (!invite) {
     res.status(404).json({ error: "Invite not found" });
@@ -354,17 +321,23 @@ router.patch("/:id", requireWorkspaceMember(["owner", "admin"]), async (req, res
 router.delete("/:id", requireWorkspaceMember(["owner"]), async (req, res) => {
   const workspaceId = parseInt(req.params.id as string);
 
-  const [workspace] = await db
-    .select()
-    .from(workspacesTable)
-    .where(eq(workspacesTable.id, workspaceId));
-
-  if (!workspace) {
-    res.status(404).json({ error: "Workspace not found" });
+  const result = await db.transaction(async tx => {
+    // The parent lock also serializes concurrent FK inserts with deletion.
+    const [workspace] = await tx.select().from(workspacesTable)
+      .where(eq(workspacesTable.id, workspaceId)).for("update");
+    if (!workspace) return "missing";
+    for (const table of [expensesTable, projectsTable, platformsTable]) {
+      const [record] = await tx.select({ id: table.id }).from(table).where(eq(table.workspaceId, workspaceId)).limit(1);
+      if (record) return "nonempty";
+    }
+    await tx.delete(workspacesTable).where(eq(workspacesTable.id, workspaceId));
+    return "deleted";
+  });
+  if (result === "missing") { res.status(404).json({ error: "Workspace not found" }); return; }
+  if (result === "nonempty") {
+    res.status(409).json({ error: "Remove workspace expenses, projects and platforms before deleting the workspace. Shared records will not be converted to personal records." });
     return;
   }
-
-  await db.delete(workspacesTable).where(eq(workspacesTable.id, workspaceId));
 
   res.json({ message: "Workspace deleted successfully" });
 });

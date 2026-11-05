@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { CheckCircle2, XCircle, Loader2, Users, Clock, ArrowRight, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAcceptInvite, useGetInviteByToken } from '@workspace/api-client-react';
 
 export default function AcceptInvite() {
   const [location, setLocation] = useLocation();
-  const params = new URLSearchParams(location.split('?')[1] || '');
+  const params = new URLSearchParams(useSearch());
   const token = params.get('token') || '';
 
   const { data: invite, isLoading: inviteLoading, isError: inviteError } = useGetInviteByToken(token, {

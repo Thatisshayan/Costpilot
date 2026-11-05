@@ -1,34 +1,41 @@
+import { csvCell } from "../lib/csv";
+import { resourceScope } from "../lib/resource-scope";
 import { Router } from "express";
 import { logger } from "../lib/logger";
 import { z } from "zod";
 import { db, expensesTable, platformsTable } from "@workspace/db";
-import { eq, desc, sql, and, gte } from "drizzle-orm";
+import { eq, desc, sql, and, isNull } from "drizzle-orm";
+import { getWorkspaceMember } from "../middlewares/authz";
 import PDFDocument from "pdfkit";
 
 const router = Router();
 
+// Mirrors OpenAPI GenerateExpenseExportBody; kept local because .strict() (unknown
+// keys such as dateRange -> 400) is not emitted by the generated schema.
 const GenerateExportBody = z.object({
-  module: z.string(),
+  module: z.literal("expenses"),
   format: z.enum(["csv", "pdf"]),
-  dateRange: z.string().optional(),
-});
-
-function sanitizeCsvField(val: string | null | undefined): string {
-  if (!val) return "";
-  const trimmed = val.trim();
-  if (trimmed.length > 0 && ["=", "+", "-", "@"].includes(trimmed.charAt(0))) {
-    return `'${trimmed}`;
-  }
-  return trimmed.replace(/"/g, '""');
-}
+  // Omitted/null exports personal records; a workspace id exports that workspace only.
+  workspaceId: z.number().int().positive().nullable().optional(),
+}).strict();
 
 // Generate Premium PDF/CSV Export
 router.post("/generate", async (req, res) => {
   try {
-    const { module, format, dateRange } = GenerateExportBody.parse(req.body);
+    const { module, format, workspaceId = null } = GenerateExportBody.parse(req.body);
     const userId = req.userId!;
+    // Any active member (including viewers) may export a workspace they can read.
+    if (workspaceId !== null && !(await getWorkspaceMember(workspaceId, userId))) {
+      res.status(403).json({ error: "Workspace membership required" });
+      return;
+    }
+    const scopeFilter = workspaceId === null
+      ? and(isNull(expensesTable.workspaceId), eq(expensesTable.userId, userId))
+      : eq(expensesTable.workspaceId, workspaceId);
+    const scopeLabel = workspaceId === null ? "personal" : `workspace-${workspaceId}`;
+    const stamp = new Date().toISOString().slice(0, 10);
 
-    logger.info({ module, format, dateRange }, "Generating export");
+    logger.info({ module, format }, "Generating export");
 
     const userExpenses = await db
       .select({
@@ -41,40 +48,38 @@ router.post("/generate", async (req, res) => {
         platformName: platformsTable.name,
       })
       .from(expensesTable)
-      .leftJoin(platformsTable, eq(expensesTable.platformId, platformsTable.id))
-      .where(eq(expensesTable.userId, userId))
+      .leftJoin(platformsTable, and(eq(expensesTable.platformId, platformsTable.id), sql`((${expensesTable.workspaceId} IS NULL AND ${platformsTable.workspaceId} IS NULL AND ${expensesTable.userId} = ${platformsTable.userId}) OR ${expensesTable.workspaceId} = ${platformsTable.workspaceId})`))
+      .where(and(resourceScope(expensesTable, userId), scopeFilter))
       .orderBy(desc(expensesTable.date));
 
     if (format === "csv") {
-      let csv = "ID,Date,Amount,Currency,Description,Category,Platform\n";
+      // Amount keeps its sign; Type states it explicitly so credits are never read as spending.
+      let csv = "ID,Date,Type,Amount,Currency,Description,Category,Platform\n";
       for (const e of userExpenses) {
-        const descSanitized = sanitizeCsvField(e.description);
-        const catSanitized = sanitizeCsvField(e.category);
-        const platformSanitized = sanitizeCsvField(e.platformName);
-        csv += `${e.id},${e.date},${e.amount},${e.currency},"${descSanitized}","${catSanitized}","${platformSanitized}"\n`;
+        const amount = Number(e.amount);
+        csv += [e.id, e.date, amount < 0 ? "Refund/credit" : "Expense", amount, e.currency, e.description, e.category, e.platformName].map(csvCell).join(",") + "\n";
       }
 
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename=${module}-export.csv`);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="costpilot-${module}-${scopeLabel}-${stamp}.csv"`);
       res.status(200).send(csv);
       return;
     }
 
     if (format === "pdf") {
       const doc = new PDFDocument({ margin: 50 });
-      const filename = `${module}-report.pdf`;
+      const filename = `costpilot-${module}-${scopeLabel}-${stamp}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
       doc.pipe(res);
 
       doc.fontSize(20).text("CostPilot - Export Report", { align: "center" });
       doc.moveDown();
       doc.fontSize(12).text(`Module: ${module}`);
+      doc.fontSize(12).text(`Scope: ${workspaceId === null ? "Personal" : `Workspace ${workspaceId}`}`);
+      doc.fontSize(10).text("Recorded amounts as entered, per row. Currencies are not converted or totalled.");
       doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`);
-      if (dateRange) {
-        doc.fontSize(12).text(`Date Range: ${dateRange}`);
-      }
       doc.moveDown();
 
       doc.fontSize(14).text("Expenses", { underline: true });
@@ -85,7 +90,7 @@ router.post("/generate", async (req, res) => {
       } else {
         for (const e of userExpenses) {
           doc.fontSize(10).text(
-            `${e.date} | ${e.platformName || "General"} | ${e.description || "N/A"} | $${Number(e.amount).toFixed(2)} ${e.currency || "USD"}`
+            `${e.date} | ${e.platformName || "General"} | ${e.description || "N/A"} | ${Number(e.amount).toFixed(2)} ${e.currency || "USD"}${Number(e.amount) < 0 ? " (refund/credit)" : ""}`
           );
         }
       }

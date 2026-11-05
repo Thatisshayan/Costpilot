@@ -2,17 +2,19 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
+    "test": "pnpm --filter @workspace/api-server run test && pnpm --filter @workspace/ai-tracker run test",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
   "devDependencies": {
-    "@esbuild/win32-x64": "^0.28.0",
-    "@rollup/rollup-win32-x64-msvc": "^4.60.4",
     "@testing-library/dom": "^10.4.1",
-    "esbuild": "0.28.0",
+    "esbuild": "0.28.1",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
   },
@@ -20,20 +22,5 @@
     "@types/pdfkit": "^0.17.6",
     "pdfkit": "^0.18.0"
   },
-  "pnpm": {
-    "overrides": {
-      "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0",
-      "esbuild": "0.28.0",
-      "@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-freebsd-ia32": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-freebsd-x64": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-linux-arm64": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-linux-arm": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-linux-ia32": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32": "-",
-      "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
-    }
-  }
+  "packageManager": "pnpm@10.34.7"
 }

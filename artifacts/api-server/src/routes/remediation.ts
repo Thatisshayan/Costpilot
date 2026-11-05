@@ -51,36 +51,7 @@ router.post("/execute", async (req, res) => {
       return;
     }
 
-    // 3. Mark as executing
-    await db.update(remediationActionsTable)
-      .set({ status: "Executing" })
-      .where(eq(remediationActionsTable.id, actionId));
-
-    // 4. Mock execution logic
-    await db.insert(remediationLogsTable).values({
-      actionId,
-      logMessage: "Connecting to provider API...",
-    });
-
-    // Simulate work
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    await db.insert(remediationLogsTable).values({
-      actionId,
-      logMessage: "Successfully downgraded tier / rotated key.",
-      details: "Action verified by provider telemetry.",
-    });
-
-    // 5. Complete
-    const [updated] = await db.update(remediationActionsTable)
-      .set({ 
-        status: "Completed",
-        executedAt: new Date()
-      })
-      .where(eq(remediationActionsTable.id, actionId))
-      .returning();
-
-    res.json({ success: true, action: updated });
+    res.status(501).json({ error: "RemediationUnavailable", message: "Provider execution is unavailable. No changes have been made." });
   } catch (err) {
     logger.error({ err }, "Remediation execution failed");
     // Forward to error handler if it's ZodError, otherwise standard response

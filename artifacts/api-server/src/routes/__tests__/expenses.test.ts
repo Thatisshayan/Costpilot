@@ -35,6 +35,7 @@ vi.mock("@workspace/db", () => ({
   db: {
     execute: () => Promise.resolve(),
     select: () => {
+      mockDbState.selectCalls = (mockDbState.selectCalls ?? 0) + 1;
       const chain: any = {};
       chain.from = () => chain;
       chain.leftJoin = () => chain;
@@ -45,9 +46,10 @@ vi.mock("@workspace/db", () => ({
       return chain;
     },
     insert: () => ({
-      values: () => ({
-        returning: () => thenable(mockDbState.insertResult),
-      }),
+      values: (values: any) => {
+        mockDbState.lastInsert = values;
+        return { returning: () => thenable(mockDbState.insertResult) };
+      },
     }),
     update: () => ({
       set: () => ({
@@ -56,11 +58,12 @@ vi.mock("@workspace/db", () => ({
         }),
       }),
     }),
-    delete: () => ({ where: () => Promise.resolve() }),
+    delete: () => ({ where: () => ({ returning: () => thenable(mockDbState.deleteResult ?? [{ id: 1 }]) }) }),
   },
   expensesTable: {},
   platformsTable: {},
   projectsTable: {},
+  workspaceMembersTable: { workspaceId: "workspaceId", userId: "userId", role: "role" },
 }));
 
 vi.mock("@workspace/api-zod", () => ({
@@ -114,6 +117,9 @@ describe("Expenses API", () => {
     mockDbState.selectResult = Promise.resolve([]);
     mockDbState.insertResult = Promise.resolve([]);
     mockDbState.updateResult = Promise.resolve([]);
+    mockDbState.deleteResult = undefined;
+    mockDbState.lastInsert = undefined;
+    mockDbState.selectCalls = 0;
   });
 
   describe("GET /", () => {
@@ -155,7 +161,7 @@ describe("Expenses API", () => {
       const now = new Date();
       const inserted = { id: 1, platformId: 1, projectId: null, amount: "99.99", currency: "USD", description: "Test", category: "API Usage", date: "2025-02-01", userId: "user-1", createdAt: now };
       mockDbState.insertResult = Promise.resolve([inserted]);
-      mockDbState.selectResult = Promise.resolve([{ name: "OpenAI" }]);
+      mockDbState.selectResult = Promise.resolve([{ id: 1, name: "OpenAI", userId: "user-1", workspaceId: null }]);
 
       const req = makeMockRequest({ platformId: 1, amount: 99.99, currency: "USD", description: "Test", category: "API Usage", date: "2025-02-01" });
       const res = makeMockResponse();
@@ -187,7 +193,7 @@ describe("Expenses API", () => {
 
       const now = new Date();
       mockDbState.selectResult = Promise.resolve([
-        { id: 5, platformId: null, platformName: null, projectId: null, projectName: null, amount: "25.00", currency: "USD", description: "Single expense", category: "Compute", date: "2025-03-01", createdAt: now },
+        { id: 5, userId: "user-1", workspaceId: null, platformId: null, platformName: null, projectId: null, projectName: null, amount: "25.00", currency: "USD", description: "Single expense", category: "Compute", date: "2025-03-01", createdAt: now },
       ]);
 
       const req = makeMockRequest({}, { id: "5" });
@@ -206,6 +212,18 @@ describe("Expenses API", () => {
       expect(res.statusCode).toBe(404);
       expect(res.jsonData.error).toBe("Not found");
     });
+
+    it("should allow a workspace member to read shared expenses", async () => {
+      const handler = getHandler("/:id", "get");
+      mockDbState.selectResult = Promise.resolve([
+        { id: 5, userId: "another-user", workspaceId: 9, role: "viewer", platformId: null, platformName: null, projectId: null, projectName: null, amount: "25.00", currency: "USD", description: "Shared expense", category: "Compute", date: "2025-03-01", createdAt: new Date() },
+      ]);
+      const res = makeMockResponse();
+      await handler(makeMockRequest({}, { id: "5" }), res);
+      expect(res.statusCode).toBe(200);
+      expect(res.jsonData.workspaceId).toBe(9);
+      expect(res.jsonData).not.toHaveProperty("userId");
+    });
   });
 
   describe("PATCH /:id", () => {
@@ -216,7 +234,7 @@ describe("Expenses API", () => {
       const now = new Date();
       const updated = { id: 1, platformId: null, projectId: null, amount: "150.00", currency: "USD", description: "Updated", category: "Storage", date: "2025-03-15", userId: "user-1", createdAt: now };
       mockDbState.updateResult = Promise.resolve([updated]);
-      mockDbState.selectResult = Promise.resolve([]);
+      mockDbState.selectResult = Promise.resolve([{ ...updated, workspaceId: null }]);
 
       const req = makeMockRequest({ amount: 150, description: "Updated" }, { id: "1" });
       const res = makeMockResponse();
@@ -228,11 +246,22 @@ describe("Expenses API", () => {
     it("should return 404 when updating non-existent expense", async () => {
       const handler = getHandler("/:id", "patch");
       mockDbState.updateResult = Promise.resolve([]);
+      mockDbState.selectResult = Promise.resolve([]);
       const req = makeMockRequest({ description: "nope" }, { id: "999" });
       const res = makeMockResponse();
       await handler(req, res);
       expect(res.statusCode).toBe(404);
       expect(res.jsonData.error).toBe("Not found");
+    });
+
+    it("should reject a viewer attempting to update a shared expense", async () => {
+      const handler = getHandler("/:id", "patch");
+      mockDbState.selectResult = Promise.resolve([
+        { id: 1, userId: "another-user", workspaceId: 9, role: "viewer", amount: "10.00", createdAt: new Date() },
+      ]);
+      const res = makeMockResponse();
+      await handler(makeMockRequest({ description: "change" }, { id: "1" }), res);
+      expect(res.statusCode).toBe(403);
     });
   });
 
@@ -240,10 +269,59 @@ describe("Expenses API", () => {
     it("should delete an expense and return 204", async () => {
       const handler = getHandler("/:id", "delete");
       expect(handler).toBeDefined();
+      mockDbState.selectResult = Promise.resolve([{ id: 1, userId: "user-1", workspaceId: null }]);
       const req = makeMockRequest({}, { id: "1" });
       const res = makeMockResponse();
       await handler(req, res);
       expect(res.statusCode).toBe(204);
+    });
+
+    it("reports 404 when the scoped delete removed nothing", async () => {
+      mockDbState.selectResult = Promise.resolve([{ id: 1, userId: "user-1", workspaceId: null }]);
+      mockDbState.deleteResult = [];
+      const res = makeMockResponse();
+      await getHandler("/:id", "delete")(makeMockRequest({}, { id: "1" }), res);
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe("amount, currency and date validation", () => {
+    const create = async (body: any) => {
+      mockDbState.insertResult = Promise.resolve([{ id: 1, amount: "1.00", currency: "USD", createdAt: new Date() }]);
+      const res = makeMockResponse();
+      await getHandler("/", "post")(makeMockRequest(body), res);
+      return res;
+    };
+
+    it("normalizes currency codes to uppercase before storing", async () => {
+      const res = await create({ amount: 12.5, date: "2026-11-04", currency: " usd " });
+      expect(res.statusCode).toBe(201);
+      expect(mockDbState.lastInsert.currency).toBe("USD");
+      expect(mockDbState.lastInsert.amount).toBe("12.5");
+    });
+
+    it("keeps negative amounts (refunds/credits) within range", async () => {
+      expect((await create({ amount: -15.25, date: "2026-11-04" })).statusCode).toBe(201);
+    });
+
+    it.each([
+      [{ amount: 1.005, date: "2026-11-04" }, "decimal"],
+      [{ amount: 100000000, date: "2026-11-04" }, "between"],
+      [{ amount: 5, date: "2026-11-04", currency: "US$" }, "currency"],
+      [{ amount: 5, date: "2026-11-04", currency: "EURO" }, "currency"],
+      [{ amount: 5, date: "2026-02-30" }, "date"],
+      [{ amount: 5, date: "04/11/2026" }, "date"],
+    ])("rejects %j without writing", async (body, message) => {
+      const res = await create(body);
+      expect(res.statusCode).toBe(400);
+      expect(res.jsonData.error).toContain(message);
+      expect(mockDbState.lastInsert).toBeUndefined();
+    });
+
+    it("validates amounts on update", async () => {
+      const res = makeMockResponse();
+      await getHandler("/:id", "patch")(makeMockRequest({ amount: 0.001 }, { id: "1" }), res);
+      expect(res.statusCode).toBe(400);
     });
   });
 
@@ -269,6 +347,41 @@ describe("Expenses API", () => {
       await handler(req, res);
       expect(res.statusCode).toBe(201);
       expect(res.jsonData.count).toBe(2);
+    });
+
+    it("checks shared-workspace rows once per workspace/reference within a request", async () => {
+      mockDbState.selectResult = Promise.resolve([{ id: 7, role: "owner", workspaceId: 5, userId: "user-1" }]);
+      mockDbState.insertResult = Promise.resolve(Array.from({ length: 50 }, (_, i) => ({ id: i })));
+      const transactions = Array.from({ length: 50 }, (_, i) => ({ amount: 1, date: "2026-11-04", workspaceId: 5, platformId: 7, description: `row ${i}` }));
+      const res = makeMockResponse();
+      await getHandler("/import-batch", "post")(makeMockRequest({ transactions }), res);
+      expect(res.statusCode).toBe(201);
+      // One membership lookup + one platform lookup, instead of 100.
+      expect(mockDbState.selectCalls).toBe(2);
+    });
+
+    it("rejects an import into a workspace where the user is a viewer", async () => {
+      mockDbState.selectResult = Promise.resolve([{ id: 1, role: "viewer", workspaceId: 5, userId: "user-1" }]);
+      const res = makeMockResponse();
+      await getHandler("/import-batch", "post")(makeMockRequest({ transactions: [{ amount: 1, date: "2026-11-04", workspaceId: 5 }] }), res);
+      expect(res.statusCode).toBe(403);
+      expect(mockDbState.lastInsert).toBeUndefined();
+    });
+
+    it("rejects an import into a workspace where the user is not a member", async () => {
+      mockDbState.selectResult = Promise.resolve([]);
+      const res = makeMockResponse();
+      await getHandler("/import-batch", "post")(makeMockRequest({ transactions: [{ amount: 1, date: "2026-11-04", workspaceId: 5 }] }), res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("rejects the whole batch when one row is invalid", async () => {
+      const res = makeMockResponse();
+      await getHandler("/import-batch", "post")(makeMockRequest({ transactions: [
+        { amount: 1, date: "2026-11-04" }, { amount: 1.234, date: "2026-11-04" },
+      ] }), res);
+      expect(res.statusCode).toBe(400);
+      expect(mockDbState.lastInsert).toBeUndefined();
     });
 
     it("should reject empty transactions array", async () => {

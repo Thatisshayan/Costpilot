@@ -1,0 +1,43 @@
+name: Launch verification
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @workspace/api-spec run codegen
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-contracts
+          retention-days: 3
+          path: |
+            lib/api-client-react/src/generated
+            lib/api-zod/src/generated
+      - run: pnpm run build
+      - name: Verify Pages direct-link fallback
+        run: cmp artifacts/ai-tracker/dist/public/index.html artifacts/ai-tracker/dist/public/404.html
+      - run: pnpm run test
+      - name: Verify native lint tooling
+        run: pnpm --filter mobile-app exec eslint src/hooks/use-theme.ts src/components/app-tabs.web.tsx
+      - name: Bundle Android application
+        env:
+          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
+          EXPO_NO_TELEMETRY: "1"
+          EXPO_OFFLINE: "1"
+        run: pnpm --filter mobile-app exec expo export --platform android --output-dir dist
+      - name: Check committed generated contracts
+        run: git diff --exit-code -- lib/api-client-react/src/generated lib/api-zod/src/generated

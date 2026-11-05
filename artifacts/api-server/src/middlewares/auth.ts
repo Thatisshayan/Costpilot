@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyToken as clerkVerifyToken } from "@clerk/clerk-sdk-node";
+import { verifyToken as clerkVerifyToken } from "@clerk/backend";
 import { getWorkspaceMember } from "./authz";
 
 // Exported configuration object to facilitate robust unit testing/mocking across package boundaries
@@ -21,34 +21,41 @@ declare global {
 }
 
 /**
+ * The x-user-id test identity is honoured only when AUTH_TEST_BYPASS=1, NODE_ENV
+ * is development or test, and no live Clerk key is configured. Startup
+ * validation (lib/env.ts) refuses any other combination.
+ */
+export function testAuthBypassEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.AUTH_TEST_BYPASS === "1"
+    && (env.NODE_ENV === "development" || env.NODE_ENV === "test")
+    && !(env.CLERK_SECRET_KEY ?? "").startsWith("sk_live_");
+}
+
+/**
  * Clerk Authentication Middleware
  * Populates req.userId from the verified session.
  */
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
+  if (req.path === "/healthz" && req.method === "GET") return next();
   // Bypass Clerk auth for external webhooks (e.g. Stripe, Clerk, provider telemetry)
   // These endpoints verify their own HMAC signatures independently of the bearer session.
-  if (
-    req.originalUrl.includes("/webhooks/stripe") ||
-    req.originalUrl.includes("/webhooks/incoming") ||
-    req.originalUrl.includes("/webhooks/clerk")
-  ) {
+  const path = req.originalUrl.split("?")[0];
+  if (/^\/api\/webhooks\/(stripe|clerk|incoming\/[^/]+)\/?$/.test(path)) {
     return next();
   }
 
-  // Development bypass: allow simulating a user via header or query param
-  if (process.env.NODE_ENV !== "production") {
-    const devUserId = (req.headers["x-user-id"] as string) || (req.query.simulatedUserId as string);
-    if (devUserId) {
-      req.userId = devUserId;
+  // Local test identity: only with an explicit opt-in on a dev/test runtime.
+  // A non-production NODE_ENV alone never enables it.
+  if (testAuthBypassEnabled()) {
+    const testUserId = req.headers["x-user-id"];
+    if (typeof testUserId === "string" && testUserId) {
+      req.userId = testUserId;
       return next();
     }
   }
 
   const authHeader = req.headers.authorization;
-  let token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
-  if (!token && req.query.token) {
-    token = req.query.token as string;
-  }
+  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
 
   if (!token) {
     return res.status(401).json({ error: "Unauthorized", message: "Authentication token missing" });
@@ -58,6 +65,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     const decoded = await authConfig.verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY,
       jwtKey: process.env.CLERK_JWT_KEY,
+      authorizedParties: process.env.ALLOWED_ORIGINS?.split(",").map(origin => origin.trim()).filter(Boolean),
     });
 
     if (decoded && decoded.sub) {
@@ -69,7 +77,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid or expired token",
-      details: err?.message,
+
     });
   }
 
