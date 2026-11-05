@@ -30,6 +30,7 @@ export default defineConfig({
       clean: false,
       prettier: true,
       override: {
+        query: { version: 5 },
         fetch: {
           includeHttpResponseReturnType: false,
         },

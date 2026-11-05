@@ -9,9 +9,9 @@ const now = Math.floor(Date.now()/1000);
 const unsigned = [Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "local-rehearsal" })).toString("base64url"),
   Buffer.from(JSON.stringify({ sub: "launch-a", iss: "https://clerk.costpilot.test", azp: "https://costpilot.test", iat: now, nbf: now-5, exp: now+300 })).toString("base64url")].join(".");
 const token = `${unsigned}.${sign("RSA-SHA256", Buffer.from(unsigned), privateKey).toString("base64url")}`;
-const env = { ...process.env, DATABASE_URL: database, CLERK_SECRET_KEY: "fixture-only", KMS_MASTER_KEY: "1".repeat(64),
+const env = { ...process.env, DATABASE_URL: database, CLERK_SECRET_KEY: "test", KMS_MASTER_KEY: "1".repeat(64),
   CLERK_JWT_KEY: publicKey.export({ type: "spki", format: "pem" }).toString(),
-  CLERK_WEBHOOK_SIGNING_SECRET: "fixture-only", ALLOWED_ORIGINS: "https://costpilot.test", PORT: "8099" };
+  CLERK_WEBHOOK_SIGNING_SECRET: "test", ALLOWED_ORIGINS: "https://costpilot.test", PORT: "8099" };
 const name = `costpilot-smoke-${Date.now()}`;
 function docker(args) {
   const result = spawnSync("docker", args, { env, stdio: "inherit", timeout: 120000 });

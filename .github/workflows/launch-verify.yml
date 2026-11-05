@@ -20,6 +20,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @workspace/api-spec run codegen
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: generated-contracts
           retention-days: 3

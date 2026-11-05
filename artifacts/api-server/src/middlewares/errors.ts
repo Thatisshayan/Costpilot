@@ -13,7 +13,6 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  if (!err.statusCode || err.statusCode >= 500) captureError(err);
   // Log the full detailed error for server side observability
   req.log?.error(err, `Error processing request ${req.method}`);
 
@@ -33,6 +32,7 @@ export const errorHandler = (
 
   const isProduction = process.env.NODE_ENV === "production";
   const statusCode = err.statusCode || 500;
+  if (statusCode >= 500) captureError(err);
   
   // Obfuscate 500 errors or database leaks in production
   let message = err.message || "Internal Server Error";
