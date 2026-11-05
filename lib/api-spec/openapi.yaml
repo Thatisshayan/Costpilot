@@ -396,6 +396,114 @@ paths:
         "403":
           description: Not an active member of the requested workspace
 
+  /budgets:
+    get:
+      operationId: listBudgets
+      tags: [budgets]
+      summary: Monthly budgets in one scope
+      parameters:
+        - { name: workspaceId, in: query, schema: { type: integer, minimum: 1 }, description: "Omit for Personal" }
+      responses:
+        "200":
+          description: Budgets, workspace-level first, then by project name and currency
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Budget"
+        "400":
+          description: Invalid query
+        "403":
+          description: Not an active member of the requested workspace
+    post:
+      operationId: createBudget
+      tags: [budgets]
+      summary: Create a monthly budget (workspace owners and admins; Personal budgets by their owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+        "400":
+          description: Invalid fields, or a project outside the budget's scope
+        "403":
+          description: Workspace owner or admin role required
+        "409":
+          description: A budget already exists for this scope, project and currency
+
+  /budgets/status:
+    get:
+      operationId: getBudgetStatus
+      tags: [budgets]
+      summary: Spending against each budget for one month, in the budget's currency only
+      description: |
+        Actual spend is computed in the database from stored expenses with the same rules as the
+        spend summary: net = charges + refunds/credits (negative amounts), an expense counts in the
+        month of its date, and the current month runs to today (UTC). Only expenses in the budget's
+        currency count; nothing is converted. No forecast is made.
+      parameters:
+        - { name: workspaceId, in: query, schema: { type: integer, minimum: 1 }, description: "Omit for Personal" }
+        - { name: month, in: query, schema: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }, description: "YYYY-MM; defaults to the current month. Future months are rejected." }
+      responses:
+        "200":
+          description: Budget status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetStatusReport"
+        "400":
+          description: Invalid or future month
+        "403":
+          description: Not an active member of the requested workspace
+
+  /budgets/{id}:
+    patch:
+      operationId: updateBudget
+      tags: [budgets]
+      summary: Change a budget's name, amount or thresholds (scope, project and currency are fixed)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+        "400":
+          description: Invalid fields
+        "403":
+          description: Workspace owner or admin role required
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteBudget
+      tags: [budgets]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Workspace owner or admin role required
+        "404":
+          description: Not found
+
   /subscriptions:
     get:
       x-costpilot-availability: disabled  # blocked by the API launch scope (503)
@@ -1498,6 +1606,75 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SpendCurrency"
+
+    Budget:
+      type: object
+      required: [id, workspaceId, projectId, projectName, name, period, currency, amount, thresholds, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        workspaceId: { type: ["integer", "null"] }
+        projectId: { type: ["integer", "null"], description: "Null for a budget covering the whole scope" }
+        projectName: { type: ["string", "null"] }
+        name: { type: string }
+        period: { type: string, enum: [monthly] }
+        currency: { type: string }
+        amount: { type: string, description: "Exact decimal with 2 places" }
+        thresholds: { type: array, items: { type: integer }, description: "Alert thresholds as percentages of the amount, ascending" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    BudgetInput:
+      type: object
+      required: [name, currency, amount]
+      additionalProperties: false
+      properties:
+        workspaceId: { type: ["integer", "null"], minimum: 1, description: "Omit or null for Personal" }
+        projectId: { type: ["integer", "null"], minimum: 1, description: "Must belong to the same scope" }
+        name: { type: string, minLength: 1, maxLength: 80 }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        amount: { type: string, pattern: '^\d{1,10}(\.\d{1,2})?$', description: "Greater than zero, at most 2 decimals" }
+        thresholds: { type: array, minItems: 1, maxItems: 5, items: { type: integer, minimum: 1, maximum: 100 }, description: "Strictly ascending; defaults to [50, 80, 100]" }
+
+    BudgetUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        amount: { type: string, pattern: '^\d{1,10}(\.\d{1,2})?$' }
+        thresholds: { type: array, minItems: 1, maxItems: 5, items: { type: integer, minimum: 1, maximum: 100 } }
+
+    BudgetStatus:
+      type: object
+      required: [budget, net, charges, credits, count, remaining, percentUsed, thresholdReached, state]
+      properties:
+        budget: { $ref: "#/components/schemas/Budget" }
+        net: { type: string, description: "Charges plus refunds/credits in the budget's currency for the period" }
+        charges: { type: string }
+        credits: { type: string, description: "Zero or negative" }
+        count: { type: integer }
+        remaining: { type: string, description: "Amount minus net; negative when over budget" }
+        percentUsed: { type: number, description: "net / amount × 100, rounded half away from zero to 0.1" }
+        thresholdReached: { type: ["integer", "null"], description: "Highest threshold reached, if any" }
+        state: { type: string, enum: [ok, alert, over], description: "over when net exceeds the amount; alert when a threshold is reached" }
+
+    BudgetStatusReport:
+      type: object
+      required: [workspaceId, period, budgets]
+      properties:
+        workspaceId: { type: ["integer", "null"] }
+        period:
+          type: object
+          required: [month, start, end, through, isPartial]
+          properties:
+            month: { type: string }
+            start: { type: string }
+            end: { type: string }
+            through: { type: string }
+            isPartial: { type: boolean }
+        budgets:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetStatus"
 
     MessageResponse:
       type: object

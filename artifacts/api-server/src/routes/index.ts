@@ -7,6 +7,7 @@ import workspacesRouter from "./workspaces";
 import webhooksRouter from "./webhooks";
 import exportsRouter from "./exports";
 import spendRouter from "./spend";
+import spendBudgetsRouter from "./spend-budgets";
 import { launchScope } from "../middlewares/launch-scope";
 
 const router: IRouter = Router();
@@ -19,4 +20,5 @@ router.use("/workspaces", workspacesRouter);
 router.use("/webhooks", webhooksRouter);
 router.use("/exports", exportsRouter);
 router.use("/spend", spendRouter);
+router.use("/budgets", spendBudgetsRouter);
 export default router;
