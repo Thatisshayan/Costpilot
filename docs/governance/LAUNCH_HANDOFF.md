@@ -38,6 +38,10 @@ The authorized Clerk **test** publishable key is configured in ignored web/mobil
 
 Root `.env` is for local server configuration. Client `.env.local` files are separate. Public client values are embedded at build time and require a rebuild when changed. Server secrets belong in the host's environment/secret store; use GitHub Secrets only for workflows that actually require them. All credentials/configuration must target the same staging instance.
 
+## Claude takeover — 2026-11-05
+
+Engineering responsibility moved from Codex to Claude. PR #7 review blockers are fixed on `agent/claude/pr7-blocker-fixes` (focused PR into `docs/fix-doc-drift`); see the [audit](../../audits/2026-11-05_Claude_PR7BlockerFixes_Audit.md). Pages publishing is now manual (`workflow_dispatch` + `publish` confirmation + `github-pages` environment). The local test identity needs `AUTH_TEST_BYPASS=1` on a development/test runtime. Open owner decisions: PR merges, hosting provider/region/budget (Pages terms exclude commercial SaaS), negative-amount policy, REPO_RULES secret-scan wording (R25), the history-scan false positive, and the pnpm >= 10.16 upgrade that would make `minimumReleaseAge` effective.
+
 ## Resume checklist
 
 1. Inspect `git status`, current branch and PR checks. Preserve user `.claude` configuration and ignored private audit/install artifacts. Do not delete files without Shayan approval.

@@ -34,6 +34,10 @@ At ab017b0, the full governance verification, build/typecheck, 138 API tests, 43
 
 The supplied Clerk **test** publishable key is configured in ignored web/mobile files and GitHub's public build variable. Shayan approved **Obsidianmedia.yt@gmail.com** as privacy/support contact, now included in the draft notice. The mobile helper requires an explicit API origin and never silently uses a hardcoded production service.
 
+## Review follow-through — 2026-11-05
+
+An independent review of PR #7 found and fixed (branch `agent/claude/pr7-blocker-fixes`, PR into `docs/fix-doc-drift`): viewer access to invite tokens enabling admin escalation, automatic Pages publishing on merge, platform credentials overwritten by the mask on edit, NODE_ENV-only test impersonation, and a missing duplicate guard before the membership unique index. The same batch adds money/currency/date validation, mobile HTTPS and personal-only scope, a scoped web CSV/PDF export control, batch-import query reuse and smaller review fixes. Local Node 22/PostgreSQL 16 evidence and open items are in the [audit](../../audits/2026-11-05_Claude_PR7BlockerFixes_Audit.md); exact-SHA CI is on that PR. Pages deploys are now manual-only.
+
 ## Remaining sequence
 
 1. The existing Pages web URL is approved. Select/provision an approved API host and confirm its URL and public operator identity. Configure matching server Clerk/webhook secrets, authorized domains/Native API, and persistent encryption-key custody privately. Run the status-only environment preflight; the missing contact input is resolved.
