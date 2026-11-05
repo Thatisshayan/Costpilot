@@ -18,6 +18,8 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { apiFetch } from '@/lib/api';
+import { isPersonalExpense, SHARED_EXPENSE_MESSAGE } from '@/lib/personal-scope';
+import { ENTRY_TYPE_LABEL, entryTypeOf, signedAmount, type EntryType } from '@/lib/entry-type';
 
 const CATEGORIES = [
   'ai-tokens',
@@ -39,6 +41,7 @@ export default function AddExpenseScreen() {
   const theme = useTheme();
 
   const [amount, setAmount] = useState('');
+  const [entryType, setEntryType] = useState<EntryType>('expense');
   const [currency, setCurrency] = useState('USD');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -49,10 +52,11 @@ export default function AddExpenseScreen() {
   useEffect(() => {
     if (!id) return;
     let active = true;
-    apiFetch<{ amount: number; currency: string; description: string; category: string; date: string }>(`/expenses/${id}`)
+    apiFetch<{ amount: number; currency: string; description: string; category: string; date: string; workspaceId?: number | null }>(`/expenses/${id}`)
       .then(expense => {
         if (!active) return;
-        setAmount(String(expense.amount)); setCurrency(expense.currency);
+        if (!isPersonalExpense(expense)) { setLoadError(SHARED_EXPENSE_MESSAGE); return; }
+        setEntryType(entryTypeOf(expense.amount)); setAmount(String(Math.abs(expense.amount))); setCurrency(expense.currency);
         setDescription(expense.description ?? ''); setCategory(expense.category); setDate(expense.date);
       }).catch(error => { if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load expense'); })
       .finally(() => { if (active) setIsLoading(false); });
@@ -60,6 +64,7 @@ export default function AddExpenseScreen() {
   }, [id]);
 
   const handleSubmit = async () => {
+    if (loadError) return;
     if (!amount || !/^[A-Z]{3}$/.test(currency)) {
       Alert.alert('Missing Fields', 'Please enter an amount and a three-letter currency code.');
       return;
@@ -67,7 +72,7 @@ export default function AddExpenseScreen() {
 
     const parsedAmount = Number(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid positive number.');
+      Alert.alert('Invalid Amount', 'Enter a positive amount; choose Refund / credit for money returned.');
       return;
     }
 
@@ -76,7 +81,7 @@ export default function AddExpenseScreen() {
       await apiFetch(editing ? `/expenses/${id}` : '/expenses', {
         method: editing ? 'PATCH' : 'POST',
         body: JSON.stringify({
-          amount: parsedAmount,
+          amount: signedAmount(parsedAmount, entryType),
           description: description || "Expense",
           currency,
           category,
@@ -134,6 +139,23 @@ export default function AddExpenseScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <ThemedView style={styles.fieldGroup}>
+            <ThemedText style={styles.label}>Type</ThemedText>
+            <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
+              {(Object.keys(ENTRY_TYPE_LABEL) as EntryType[]).map(type => (
+                <Pressable
+                  key={type}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: entryType === type }}
+                  onPress={() => setEntryType(type)}
+                  style={[styles.input, { flex: 1, borderColor: entryType === type ? theme.text : theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+                >
+                  <ThemedText>{ENTRY_TYPE_LABEL[type]}</ThemedText>
+                </Pressable>
+              ))}
+            </ThemedView>
+          </ThemedView>
+
           <ThemedView style={styles.fieldGroup}>
             <ThemedText style={styles.label}>Amount</ThemedText>
             <TextInput

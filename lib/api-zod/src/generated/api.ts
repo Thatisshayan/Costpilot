@@ -108,7 +108,7 @@ export const UpdatePlatformBody = zod.object({
   "logoUrl": zod.string().optional(),
   "category": zod.string().optional(),
   "email": zod.string().optional(),
-  "apiKey": zod.string().optional(),
+  "apiKey": zod.string().nullish().describe('Omit to keep the stored credential; send null to clear it. Masked placeholders are rejected.'),
   "notes": zod.string().optional()
 })
 
@@ -261,17 +261,22 @@ export const ListExpensesResponse = zod.array(ListExpensesResponseItem)
 
 
 
+export const createExpenseBodyAmountMin = -99999999.99;
+export const createExpenseBodyAmountMax = 99999999.99;
+
+export const createExpenseBodyCurrencyRegExp = new RegExp('^\\s*[A-Za-z]{3}\\s*$');
+export const createExpenseBodyDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const CreateExpenseBody = zod.object({
   "workspaceId": zod.int().min(1).optional(),
   "platformId": zod.int().nullish(),
   "projectId": zod.int().nullish(),
-  "amount": zod.number(),
-  "currency": zod.string().optional(),
+  "amount": zod.number().min(createExpenseBodyAmountMin).max(createExpenseBodyAmountMax).describe('At most 2 decimal places. Negative values record refunds or credits.'),
+  "currency": zod.string().regex(createExpenseBodyCurrencyRegExp).optional().describe('ISO 4217 code; stored uppercase.'),
   "description": zod.string().optional(),
   "category": zod.string().optional(),
-  "date": zod.string()
+  "date": zod.string().regex(createExpenseBodyDateRegExp).describe('Calendar date (YYYY-MM-DD).')
 })
 
 export const CreateExpenseResponse = zod.object({
@@ -314,14 +319,21 @@ export const UpdateExpenseParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const updateExpenseBodyAmountMin = -99999999.99;
+export const updateExpenseBodyAmountMax = 99999999.99;
+
+export const updateExpenseBodyCurrencyRegExp = new RegExp('^\\s*[A-Za-z]{3}\\s*$');
+export const updateExpenseBodyDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 export const UpdateExpenseBody = zod.object({
   "platformId": zod.int().nullish(),
   "projectId": zod.int().nullish(),
-  "amount": zod.number().optional(),
-  "currency": zod.string().optional(),
+  "amount": zod.number().min(updateExpenseBodyAmountMin).max(updateExpenseBodyAmountMax).optional().describe('At most 2 decimal places. Negative values record refunds or credits.'),
+  "currency": zod.string().regex(updateExpenseBodyCurrencyRegExp).optional().describe('ISO 4217 code; stored uppercase.'),
   "description": zod.string().optional(),
   "category": zod.string().optional(),
-  "date": zod.string().optional()
+  "date": zod.string().regex(updateExpenseBodyDateRegExp).optional().describe('Calendar date (YYYY-MM-DD).')
 })
 
 export const UpdateExpenseResponse = zod.object({
@@ -828,6 +840,22 @@ export const ListConnectedSourcesResponse = zod.array(ListConnectedSourcesRespon
  * @summary Export all expenses as CSV
  */
 export const ExportExpensesCsvResponse = zod.unknown()
+
+
+/**
+ * Omit workspaceId (or send null) for personal expenses; a workspace id exports that workspace and requires active membership. Amounts are listed per row and never converted or totalled across currencies.
+ * @summary Export recorded expenses for one scope as CSV or PDF
+ */
+
+
+
+export const GenerateExpenseExportBody = zod.object({
+  "module": zod.enum(['expenses']),
+  "format": zod.enum(['csv', 'pdf']),
+  "workspaceId": zod.int().min(1).nullish()
+})
+
+export const GenerateExpenseExportResponse = zod.unknown()
 
 
 /**

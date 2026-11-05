@@ -76,16 +76,20 @@ function resolveUrl(input: RequestInfo | URL): string {
   return input.url;
 }
 
+function assertConfiguredOrigin(request: RequestInfo | URL): void {
+  const allowedOrigin = _baseUrl || (typeof location !== "undefined" ? location.origin : undefined);
+  if (allowedOrigin && new URL(resolveUrl(request), allowedOrigin).origin !== new URL(allowedOrigin).origin) {
+    throw new Error("API requests must use the configured origin");
+  }
+}
+
 /** Fetch an API response while applying the configured API origin and Clerk bearer token. */
 export async function authenticatedFetch(
   input: RequestInfo | URL,
   init: RequestInit = {},
 ): Promise<Response> {
   const request = applyBaseUrl(input);
-  const allowedOrigin = _baseUrl || (typeof location !== "undefined" ? location.origin : undefined);
-  if (allowedOrigin && new URL(resolveUrl(request), allowedOrigin).origin !== new URL(allowedOrigin).origin) {
-    throw new Error("API requests must use the configured origin");
-  }
+  assertConfiguredOrigin(request);
   const headers = mergeHeaders(isRequest(request) ? request.headers : undefined, init.headers);
   if (_authTokenGetter && !headers.has("authorization")) {
     const token = await _authTokenGetter();
@@ -366,8 +370,10 @@ export async function customFetch<T = unknown>(
   }
 
   // Attach bearer token when an auth getter is configured and no
-  // Authorization header has been explicitly provided.
+  // Authorization header has been explicitly provided, and never to a
+  // foreign origin.
   if (_authTokenGetter && !headers.has("authorization")) {
+    assertConfiguredOrigin(input);
     const token = await _authTokenGetter();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);

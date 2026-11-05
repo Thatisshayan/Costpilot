@@ -25,6 +25,10 @@
 #     - typescript
 #
 # ============================================================================
+# ENFORCEMENT NOTE (2026-11-05): the pinned packageManager is pnpm 9.15.9, which
+# does not implement minimumReleaseAge (support starts in pnpm 10.16). Until the
+# pnpm upgrade in docs/governance/DEFERRED_WORK.md lands, this setting is NOT
+# enforced; protection comes from the frozen lockfile and the dependency audit.
 minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:

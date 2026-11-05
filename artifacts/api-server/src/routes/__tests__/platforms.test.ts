@@ -40,12 +40,13 @@ vi.mock("@workspace/db", () => ({
       return chain;
     },
     insert: () => ({
-      values: () => ({
-        returning: () => thenable(mockDbState.insertResult),
-      }),
+      values: (values: any) => {
+        mockDbState.lastInsert = values;
+        return { returning: () => thenable(mockDbState.insertResult) };
+      },
     }),
     update: () => ({
-      set: () => ({
+      set: (values: any) => (mockDbState.lastSet = values, {
         where: () => ({
           returning: () => thenable(mockDbState.updateResult),
         }),
@@ -117,6 +118,8 @@ describe("Platforms API", () => {
     mockDbState.selectResult = Promise.resolve([]);
     mockDbState.insertResult = Promise.resolve([]);
     mockDbState.updateResult = Promise.resolve([]);
+    mockDbState.lastSet = undefined;
+    mockDbState.lastInsert = undefined;
     mockAuth.isWorkspaceMember = () => Promise.resolve(true);
     mockKms.encrypt = (text: string) => `encrypted:${text}`;
     mockKms.decrypt = (text: string) => text.replace("encrypted:", "");
@@ -154,32 +157,25 @@ describe("Platforms API", () => {
       expect(res.jsonData[0].apiKey).toBe("••••••••");
     });
 
-    it("should reveal apiKey when reveal=true query param is set and authorized", async () => {
+    it("never decrypts credentials, even when reveal is requested", async () => {
       const handler = getHandler("/", "get");
-      const now = new Date();
+      let decrypted = false;
+      mockKms.decrypt = () => { decrypted = true; return "sk-real-key"; };
       mockDbState.selectResult = Promise.resolve([
-        { id: 1, name: "OpenAI", workspaceId: 10, apiKey: "encrypted:sk-real-key", createdAt: now },
+        { id: 1, name: "OpenAI", workspaceId: null, apiKey: "encrypted:sk-real-key", createdAt: new Date() },
       ]);
-
-      const req = makeMockRequest({}, {}, { reveal: "true" });
       const res = makeMockResponse();
-      await handler(req, res);
-      expect(res.jsonData[0].apiKey).toBe("sk-real-key");
+      await handler({ ...makeMockRequest({}, {}, { reveal: "true" }), headers: { "x-reveal-key": "true" } }, res);
+      expect(res.jsonData[0].apiKey).toBe("••••••••");
+      expect(JSON.stringify(res.jsonData)).not.toContain("sk-real-key");
+      expect(decrypted).toBe(false);
     });
 
-    it("should show masked key when reveal=true but user is not authorized", async () => {
-      const handler = getHandler("/", "get");
-      mockAuth.isWorkspaceMember = () => Promise.resolve(false);
-
-      const now = new Date();
-      mockDbState.selectResult = Promise.resolve([
-        { id: 1, name: "OpenAI", workspaceId: 10, apiKey: "encrypted:sk-real-key", createdAt: now },
-      ]);
-
-      const req = makeMockRequest({}, {}, { reveal: "true" });
+    it("never returns plaintext from GET /:id", async () => {
+      mockDbState.selectResult = Promise.resolve([{ id: 1, name: "OpenAI", apiKey: "encrypted:sk-real-key", createdAt: new Date() }]);
       const res = makeMockResponse();
-      await handler(req, res);
-      expect(res.jsonData[0].apiKey).toBe("••••••••");
+      await getHandler("/:id", "get")(makeMockRequest({}, { id: "1" }, { reveal: "true" }), res);
+      expect(res.jsonData.apiKey).toBe("••••••••");
     });
   });
 
@@ -240,6 +236,51 @@ describe("Platforms API", () => {
       await handler(req, res);
       expect(res.statusCode).toBe(404);
       expect(res.jsonData.error).toBe("Not found");
+    });
+  });
+
+  describe("PATCH /:id credentials", () => {
+    const stored = { id: 1, name: "OpenAI", apiKey: "encrypted:sk-original", createdAt: new Date() };
+
+    it("leaves the stored credential untouched when apiKey is omitted", async () => {
+      mockDbState.updateResult = Promise.resolve([stored]);
+      const res = makeMockResponse();
+      await getHandler("/:id", "patch")(makeMockRequest({ notes: "renamed" }, { id: "1" }), res);
+      expect(res.statusCode).toBe(200);
+      expect(mockDbState.lastSet).toEqual({ notes: "renamed" });
+      expect(res.jsonData.apiKey).toBe("••••••••");
+    });
+
+    it.each(["••••••••", "********", "  ", ""])("rejects masked or blank placeholder %j without writing", async (placeholder) => {
+      const res = makeMockResponse();
+      await getHandler("/:id", "patch")(makeMockRequest({ name: "OpenAI", apiKey: placeholder }, { id: "1" }), res);
+      expect(res.statusCode).toBe(400);
+      expect(mockDbState.lastSet).toBeUndefined();
+    });
+
+    it("encrypts an explicit replacement credential", async () => {
+      mockDbState.updateResult = Promise.resolve([{ ...stored, apiKey: "encrypted:sk-new" }]);
+      const res = makeMockResponse();
+      await getHandler("/:id", "patch")(makeMockRequest({ apiKey: "sk-new" }, { id: "1" }), res);
+      expect(res.statusCode).toBe(200);
+      expect(mockDbState.lastSet).toEqual({ apiKey: "encrypted:sk-new" });
+      expect(JSON.stringify(res.jsonData)).not.toContain("sk-new");
+    });
+
+    it("clears the credential only when null is sent explicitly", async () => {
+      mockDbState.updateResult = Promise.resolve([{ ...stored, apiKey: null }]);
+      const res = makeMockResponse();
+      await getHandler("/:id", "patch")(makeMockRequest({ apiKey: null }, { id: "1" }), res);
+      expect(res.statusCode).toBe(200);
+      expect(mockDbState.lastSet).toEqual({ apiKey: null });
+      expect(res.jsonData.apiKey).toBeNull();
+    });
+
+    it("rejects a masked placeholder on create", async () => {
+      const res = makeMockResponse();
+      await getHandler("/", "post")(makeMockRequest({ name: "OpenAI", apiKey: "••••••••" }), res);
+      expect(res.statusCode).toBe(400);
+      expect(mockDbState.lastInsert).toBeUndefined();
     });
   });
 

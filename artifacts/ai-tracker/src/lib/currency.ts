@@ -18,9 +18,29 @@ export const CURRENCIES = {
 
 export type CurrencyCode = keyof typeof CURRENCIES;
 
-export function formatCurrency(amount: number, currency: CurrencyCode = "USD"): string {
-  const config = CURRENCIES[currency];
-  if (!config) return `$${amount.toFixed(2)}`;  
+/** Trim/uppercase a stored currency code so "usd" and "USD" are one currency. */
+export function normalizeCurrencyCode(code: string | null | undefined): string {
+  const normalized = (code ?? "").trim().toUpperCase();
+  return normalized || "USD";
+}
+
+/**
+ * Totals per currency, summed in whole cents to avoid floating-point drift.
+ * Different currencies are never added together or converted.
+ */
+export function totalsByCurrency(expenses: { amount: number; currency?: string | null }[]): Map<string, number> {
+  const cents = new Map<string, number>();
+  for (const expense of expenses) {
+    const code = normalizeCurrencyCode(expense.currency);
+    cents.set(code, (cents.get(code) ?? 0) + Math.round(expense.amount * 100));
+  }
+  return new Map([...cents].map(([code, total]) => [code, total / 100]));
+}
+
+export function formatCurrency(amount: number, currency: CurrencyCode | string = "USD"): string {
+  const config = CURRENCIES[currency as CurrencyCode];
+  // Unknown codes keep their own label rather than borrowing a "$" sign.
+  if (!config) return `${amount.toFixed(2)} ${normalizeCurrencyCode(currency)}`;
   try {
     return new Intl.NumberFormat(config.locale, {
       style: "currency",

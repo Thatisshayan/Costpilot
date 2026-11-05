@@ -40,6 +40,7 @@ describe("Clerk Authentication Middleware", () => {
 
   afterEach(() => {
     process.env.NODE_ENV = originalEnv;
+    delete process.env.AUTH_TEST_BYPASS;
   });
 
   it("should bypass authentication for external stripe webhook", async () => {
@@ -68,8 +69,23 @@ describe("Clerk Authentication Middleware", () => {
     expect(verifySpy).not.toHaveBeenCalled();
   });
 
-  it("should bypass verification in development via x-user-id header", async () => {
+  it("should NOT bypass verification in development without the explicit opt-in", async () => {
     process.env.NODE_ENV = "development";
+    delete process.env.AUTH_TEST_BYPASS;
+    const req = makeMockRequest({ "x-user-id": "simulated_user_999" });
+    const res = makeMockResponse();
+    const next = vi.fn();
+
+    await requireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(req.userId).toBeUndefined();
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it("should bypass verification only with AUTH_TEST_BYPASS=1 in development", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.AUTH_TEST_BYPASS = "1";
     const req = makeMockRequest({ "x-user-id": "simulated_user_999" });
     const res = makeMockResponse();
     const next = vi.fn();

@@ -193,7 +193,11 @@ export interface PlatformUpdate {
   logoUrl?: string;
   category?: string;
   email?: string;
-  apiKey?: string;
+  /**
+     * Omit to keep the stored credential; send null to clear it. Masked placeholders are rejected.
+     * @nullable
+     */
+  apiKey?: string | null;
   notes?: string;
 }
 
@@ -267,10 +271,23 @@ export interface ExpenseInput {
   platformId?: number | null;
   /** @nullable */
   projectId?: number | null;
+  /**
+     * At most 2 decimal places. Negative values record refunds or credits.
+     * @minimum -99999999.99
+     * @maximum 99999999.99
+     */
   amount: number;
+  /**
+     * ISO 4217 code; stored uppercase.
+     * @pattern ^\s*[A-Za-z]{3}\s*$
+     */
   currency?: string;
   description?: string;
   category?: string;
+  /**
+     * Calendar date (YYYY-MM-DD).
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
   date: string;
 }
 
@@ -279,10 +296,23 @@ export interface ExpenseUpdate {
   platformId?: number | null;
   /** @nullable */
   projectId?: number | null;
+  /**
+     * At most 2 decimal places. Negative values record refunds or credits.
+     * @minimum -99999999.99
+     * @maximum 99999999.99
+     */
   amount?: number;
+  /**
+     * ISO 4217 code; stored uppercase.
+     * @pattern ^\s*[A-Za-z]{3}\s*$
+     */
   currency?: string;
   description?: string;
   category?: string;
+  /**
+     * Calendar date (YYYY-MM-DD).
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
   date?: string;
 }
 
@@ -549,6 +579,31 @@ export type ListConnectedSources200Item = {
   type?: string;
   status?: string;
   lastSync?: string;
+};
+
+export type GenerateExpenseExportBodyModule = typeof GenerateExpenseExportBodyModule[keyof typeof GenerateExpenseExportBodyModule];
+
+
+export const GenerateExpenseExportBodyModule = {
+  expenses: 'expenses',
+} as const;
+
+export type GenerateExpenseExportBodyFormat = typeof GenerateExpenseExportBodyFormat[keyof typeof GenerateExpenseExportBodyFormat];
+
+
+export const GenerateExpenseExportBodyFormat = {
+  csv: 'csv',
+  pdf: 'pdf',
+} as const;
+
+export type GenerateExpenseExportBody = {
+  module: GenerateExpenseExportBodyModule;
+  format: GenerateExpenseExportBodyFormat;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  workspaceId?: number | null;
 };
 
 export type UpdateWorkspaceBody = {

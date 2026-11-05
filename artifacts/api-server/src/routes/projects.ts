@@ -51,7 +51,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
-  if (req.body.workspaceId !== undefined) { res.status(400).json({ error: "Workspace assignment is immutable" }); return; }
+  if (req.body?.workspaceId !== undefined) { res.status(400).json({ error: "Workspace assignment is immutable" }); return; }
   const { id } = UpdateProjectParams.parse({ id: Number(req.params.id) });
   const body = UpdateProjectBody.parse(req.body);
   const [project] = await db

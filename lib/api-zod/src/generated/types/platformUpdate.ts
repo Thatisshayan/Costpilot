@@ -12,6 +12,10 @@ export interface PlatformUpdate {
   logoUrl?: string;
   category?: string;
   email?: string;
-  apiKey?: string;
+  /**
+     * Omit to keep the stored credential; send null to clear it. Masked placeholders are rejected.
+     * @nullable
+     */
+  apiKey?: string | null;
   notes?: string;
 }
