@@ -31,10 +31,11 @@ describe("monthly dashboard", () => {
   it("asks the server for the selected scope and month instead of downloading the ledger", () => {
     summaryHook.result = ok(summary([]));
     render(<Dashboard />);
-    const current = recentMonths(new Date().toISOString().slice(0, 10))[0];
-    expect(summaryHook.calls.at(-1)).toEqual({ month: current, workspaceId: 7 });
-    fireEvent.change(screen.getByLabelText("Month"), { target: { value: recentMonths(new Date().toISOString())[2] } });
-    expect((summaryHook.calls.at(-1) as { month: string }).month).toBe(recentMonths(new Date().toISOString())[2]);
+    expect(summaryHook.calls.at(-1)).toEqual({ workspaceId: 7 });
+    const third = (screen.getByLabelText("Month") as HTMLSelectElement).options[2].value;
+    expect(third).toBe("2026-07");
+    fireEvent.change(screen.getByLabelText("Month"), { target: { value: third } });
+    expect((summaryHook.calls.at(-1) as { month: string }).month).toBe("2026-07");
   });
 
   it("omits workspaceId in Personal scope", () => {
@@ -112,6 +113,24 @@ describe("monthly dashboard", () => {
     summaryHook.result = ok(summary([]));
     render(<Dashboard />);
     expect(screen.queryByRole("link", { name: "Add an expense" })).toBeNull();
+  });
+
+  it("defaults to the server's current month and never offers a month after it", () => {
+    // The browser clock is a month ahead of the server (2026-09).
+    summaryHook.result = ok(summary([currency({})], true));
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-01T00:30:00Z"));
+    try {
+      render(<Dashboard />);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(summaryHook.calls.at(-1)).not.toHaveProperty("month");
+    const options = [...(screen.getByLabelText("Month") as HTMLSelectElement).options];
+    expect(options[0].value).toBe("");
+    expect(options[0].text).toMatch(/September 2026 \(month to date\)/);
+    expect(options.map(o => o.value)).not.toContain("2026-10");
+    expect(options[1].value).toBe("2026-08");
   });
 });
 

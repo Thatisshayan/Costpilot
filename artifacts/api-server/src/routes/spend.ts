@@ -46,8 +46,10 @@ async function groupedNet(scope: Scope, from: string, through: string, by: "vend
       .from(expensesTable).leftJoin(projectsTable, projectJoin).where(range)
       .groupBy(expensesTable.currency, projectsTable.id, projectsTable.name);
   }
-  return db.select({ currency: expensesTable.currency, key: expensesTable.category, name: expensesTable.category, net, count })
-    .from(expensesTable).where(range).groupBy(expensesTable.currency, expensesTable.category);
+  // A legacy empty-string category is grouped with uncategorised (NULL).
+  const category = sql<string | null>`nullif(${expensesTable.category}, '')`;
+  return db.select({ currency: expensesTable.currency, key: category, name: category, net, count })
+    .from(expensesTable).where(range).groupBy(expensesTable.currency, category);
 }
 
 /** Largest net first, then name, so ordering is deterministic. */

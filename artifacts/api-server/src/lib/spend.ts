@@ -59,11 +59,16 @@ export function filterConditions(f: ExpenseFilters): SQL[] {
   if (f.to) conditions.push(lte(expensesTable.date, f.to));
   if (f.minAmount !== undefined) conditions.push(sql`${expensesTable.amount} >= ${f.minAmount}::numeric`);
   if (f.maxAmount !== undefined) conditions.push(sql`${expensesTable.amount} <= ${f.maxAmount}::numeric`);
-  if (f.platformId === "none") conditions.push(isNull(expensesTable.platformId));
+  // "none" means no vendor/project from the expense's own scope, matching how the dashboard
+  // groups rows (the queries using these conditions left-join with vendorJoin/projectJoin).
+  if (f.platformId === "none") conditions.push(isNull(platformsTable.id));
   else if (f.platformId !== undefined) conditions.push(eq(expensesTable.platformId, f.platformId));
-  if (f.projectId === "none") conditions.push(isNull(expensesTable.projectId));
+  if (f.projectId === "none") conditions.push(isNull(projectsTable.id));
   else if (f.projectId !== undefined) conditions.push(eq(expensesTable.projectId, f.projectId));
-  if (f.category !== undefined) conditions.push(f.category === "" ? isNull(expensesTable.category) : eq(expensesTable.category, f.category));
+  // "" means uncategorised: NULL or a legacy empty string, as the dashboard groups them.
+  if (f.category !== undefined) {
+    conditions.push(f.category === "" ? or(isNull(expensesTable.category), eq(expensesTable.category, ""))! : eq(expensesTable.category, f.category));
+  }
   if (f.currency) conditions.push(eq(expensesTable.currency, f.currency));
   if (f.entryType === "expense") conditions.push(sql`${expensesTable.amount} >= 0`);
   if (f.entryType === "credit") conditions.push(sql`${expensesTable.amount} < 0`);

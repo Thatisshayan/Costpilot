@@ -9,7 +9,8 @@ const money = z.string().regex(/^-?\d{1,8}(\.\d{1,2})?$/, "must be an amount wit
 const idOrNone = z.union([z.literal("none"), z.coerce.number().int().positive()]);
 
 export const FilterFields = {
-  q: z.string().trim().min(1).max(100).optional(),
+  // Blank or whitespace-only search text means "no text filter".
+  q: z.string().trim().max(100).optional().transform(v => v || undefined),
   from: date.optional(),
   to: date.optional(),
   minAmount: money.optional(),

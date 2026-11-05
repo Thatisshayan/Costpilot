@@ -282,6 +282,15 @@ This document is the **single source of truth for product priorities**. `LAUNCH_
   - existing rehearsal suite.
 - **Size:** S–M. **Priority:** P0, Batch 2.
 
+### P0-18 Exact amounts in list responses ⚑D3
+- **Status:** 2. `GET /expenses` and `GET /expenses/search` return `amount` as a JSON number, as the existing `Expense` schema does. Totals, summaries and exports already use exact decimal strings. Found in the Batch 2 pre-merge review (low severity: 2-decimal values up to 99,999,999.99 round-trip exactly in IEEE doubles).
+- **Acceptance:**
+  - `Expense.amount` is a decimal string in the contract, the API and the clients.
+  - Web and mobile format it with `formatMoney` without parsing to float.
+  - Done together with the D3 precision decision, so the contract changes only once.
+- **Tests:** contract test; API returns `"100.10"`; web renders the string unchanged; mobile client type check.
+- **Size:** S. **Priority:** P1, with D3.
+
 ### P0-17 Mock containment and removal ⚑D6
 - **Status:** 7 code present in 36 web pages, about 12 API route files, 2 mobile screens and `artifacts/web-dashboard`.
 - **Acceptance:**

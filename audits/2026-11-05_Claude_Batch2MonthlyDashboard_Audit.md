@@ -87,8 +87,8 @@ No migration was needed. On 200,000 local rows, the existing `expenses_user_date
 
 - **Phone filters — DONE (follow-up branch `agent/claude/batch2-completion`):** below `sm`, only Search shows by default. A "More filters" button (`aria-expanded`, `aria-controls`, with a count of active filters) reveals the rest. The panel stays open while a filter is invalid, so errors are never hidden. Tests: 2 page tests, 1 unit test (`activeFilterCount`); the 375px check passes in all 24 combinations.
 - **Live sign-in:** a real Clerk sign-in was not exercised here, so the phone-width check uses stubbed sign-in.
-- **Low-severity edge cases from the pre-merge review (no critical, high or medium findings):**
-  1. A dashboard drill-down link can list a different set than the card counted. This happens for legacy rows with an empty-string category, or with a vendor that belongs to another scope.
-  2. The month list uses the browser clock. A client ahead of the server across a UTC month boundary gets a 400 for the default month.
-  3. Search items return `amount` as a JSON number, as the existing `Expense` schema does. Totals are exact strings.
-  4. A whitespace-only `q` gives 400 rather than being ignored. The web client trims it.
+- **Low-severity edge cases from the pre-merge review** (no critical, high or medium findings). Dispositions on `agent/claude/batch2-completion`:
+  1. **Fixed:** drill-down links did not always select the rows the dashboard counted. The dashboard now groups a legacy empty-string category as uncategorised, and `category=` matches NULL or `""`. `platformId=none`/`projectId=none` now mean "no vendor or project from the expense's own scope", matching the "unassigned" group, so an out-of-scope vendor id is found but never named. Rehearsal cases added.
+  2. **Fixed:** the dashboard's default month is now the server's current month (no `month` parameter), and the selector never offers a later month. A browser clock ahead of the server can no longer cause a 400. Web test added.
+  3. **Recorded:** `amount` is a JSON number in list responses (existing contract). Backlog P0-18, with D3.
+  4. **Fixed:** a blank or whitespace-only `q` is ignored instead of returning 400. Rehearsal case added.

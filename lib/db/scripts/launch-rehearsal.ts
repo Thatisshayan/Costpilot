@@ -285,6 +285,25 @@ try {
   for (const bad of ["from=2026-02-30", "minAmount=1.234", "limit=101", "sort=evil", "from=2026-09-30&to=2026-09-01", "nope=1"]) {
     assert.equal((await call("launch-a", `/expenses/search?${bad}`)).status, 400, `rejects ${bad}`);
   }
+  const blankQ = await call("launch-a", `/expenses/search?${range}&q=${encodeURIComponent("   ")}`);
+  assert.equal(blankQ.status, 200, "whitespace-only search text is ignored, not rejected");
+  assert.equal((await blankQ.json() as Page).total, 5);
+
+  // Dashboard drill-down links select exactly the rows the dashboard counted, including legacy
+  // empty-string categories and a vendor id that points outside the expense's scope.
+  const [personalVendor] = await db.insert(platforms).values({ userId: "launch-a", name: "Personal-only vendor" }).returning();
+  await db.insert(expenses).values([
+    row("7.00", "GBP", "2026-07-10", { category: "" }),
+    row("3.00", "GBP", "2026-07-11", { platformId: personalVendor.id, category: "Compute" }),
+  ]);
+  const july = (await (await call("launch-a", `/spend/summary?workspaceId=${ws2.id}&month=2026-07`)).json() as { currencies: Cur[] }).currencies.find(c => c.currency === "GBP")!;
+  assert.deepEqual(july.byCategory.map(c => [c.name, c.net]), [[null, "7.00"], ["Compute", "3.00"]], "an empty category is grouped as uncategorised");
+  assert.deepEqual(july.byVendor.map(v => [v.id, v.name, v.net]), [[null, null, "10.00"]], "an out-of-scope vendor is never named");
+  const julyRange = `workspaceId=${ws2.id}&from=2026-07-01&to=2026-07-31&currency=GBP`;
+  const uncategorised = await (await call("launch-a", `/expenses/search?${julyRange}&category=`)).json() as Page;
+  assert.deepEqual(uncategorised.totals.map(t => t.net), ["7.00"], "the uncategorised link finds the empty-string row");
+  const unassigned = await (await call("launch-a", `/expenses/search?${julyRange}&platformId=none`)).json() as Page;
+  assert.deepEqual([unassigned.total, unassigned.totals.map(t => t.net), unassigned.items.map(i => i.platformName)], [2, ["10.00"], [null, null]], "the no-vendor link finds the out-of-scope row without naming it");
 
   // Export with the same filters: per-currency row sums equal the dashboard summary.
   const exportRes = await call("launch-c", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { from: "2026-09-01", to: "2026-09-30" } });
