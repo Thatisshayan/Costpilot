@@ -40,3 +40,5 @@ Patched-lockfile audit: zero critical advisories, 66 high, 48 moderate, 11 low a
 Shayan approved removal of package-lock.json; it has been removed. The remaining external gates are actual staging origins/client keys, server encryption/webhook configuration, approved privacy/support details, live sign-in/device checks and release approval. No production migration or deployment has been performed.
 
 Authentication SDK migration in progress: maintained @clerk/backend, @clerk/react and @clerk/expo replace deprecated package names. Native custom sign-in uses the vendor-supported legacy hook compatibility entry point and now includes email codes and MFA verification. Query caches/native tab state reset when the authenticated account changes. Exact-SHA CI and live instance verification remain required.
+
+Native dependency closure uses the supported Expo 58 compatibility manifest instead of overriding incompatible internals of Expo 56. Expo 58 supports Node 22.13+, so the Node 22 CI/runtime policy is retained with an accurate minimum. Android bundling, native types and the exact lockfile must pass before this migration is accepted.
