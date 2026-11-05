@@ -33,7 +33,7 @@ const TEXT_LABEL = { description: "Description", category: "Category", vendor: "
 export type ImportRowInput = z.infer<typeof ImportRow>;
 
 export const ImportRequest = z.object({
-  workspaceId: z.number().int().positive().nullable().optional(),
+  workspaceId: z.number().int().positive().max(2147483647).nullable().optional(),
   fileName: z.string().trim().min(1).max(200).refine(v => !v.includes("\u0000"), "fileName contains an invalid character"),
   rows: z.array(ImportRow).min(1).max(MAX_IMPORT_ROWS, `at most ${MAX_IMPORT_ROWS} rows per import`),
   confirmDuplicateRows: z.array(z.number().int().min(1)).max(MAX_IMPORT_ROWS).optional(),

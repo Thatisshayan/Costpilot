@@ -443,6 +443,8 @@ try {
   assert(importList.some(b => b.id === first.batch!.id));
   assert.equal((await call("launch-b", `/imports?workspaceId=${ws2.id}`)).status, 403);
   assert.equal((await call("launch-c", `/imports/${first.batch!.id}`, "DELETE")).status, 403);
+  assert.equal((await call("launch-a", "/imports/99999999999", "DELETE")).status, 404, "an id beyond the integer range is not found, not a 500");
+  assert.equal((await call("launch-a", "/imports?workspaceId=99999999999")).status, 400);
   assert.equal((await call("launch-b", `/imports/${first.batch!.id}`, "DELETE")).status, 404);
   const undo = await call("launch-a", `/imports/${first.batch!.id}`, "DELETE");
   assert.equal(undo.status, 200);

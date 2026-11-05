@@ -219,7 +219,7 @@ class NothingImported extends Error {
   constructor(readonly analysis: Awaited<ReturnType<typeof analyze>>) { super("nothing imported"); }
 }
 
-const ListQuery = z.object({ workspaceId: z.coerce.number().int().positive().optional() }).strict();
+const ListQuery = z.object({ workspaceId: z.coerce.number().int().positive().max(2147483647).optional() }).strict();
 
 router.get("/", async (req, res) => {
   const parsed = ListQuery.safeParse(req.query);
@@ -237,7 +237,7 @@ router.get("/", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
-  const id = z.coerce.number().int().positive().safeParse(req.params.id);
+  const id = z.coerce.number().int().positive().max(2147483647).safeParse(req.params.id);
   if (!id.success) { res.status(404).json({ error: "Not found" }); return; }
   const [batch] = await db.select().from(importBatchesTable)
     .where(and(eq(importBatchesTable.id, id.data), resourceScope(importBatchesTable, req.userId!)));
