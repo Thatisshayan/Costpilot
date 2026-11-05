@@ -6,24 +6,25 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 const ws = vi.hoisted(() => ({
   value: { activeWorkspaceId: 5 as number | null, activeRole: "owner" as string | null, canWrite: true, canManage: true },
 }));
-type Call = { params: Record<string, unknown>; enabled: unknown };
+type Call = { params: Record<string, unknown>; enabled: unknown; placeholderData?: (previous: unknown, previousQuery?: { queryKey: unknown[] }) => unknown };
 const api = vi.hoisted(() => ({
   calls: [] as Call[],
   result: { data: undefined as unknown, isLoading: false, isError: false, error: null as unknown, refetch: vi.fn() },
   exportFilters: [] as unknown[],
+  exportDisabled: [] as unknown[],
 }));
 
 vi.mock("@/context/workspace-context", () => ({ useWorkspace: () => ws.value }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn(async () => undefined) }) }));
 vi.mock("@/components/export-buttons", () => ({
-  ExportButtons: (props: { filters?: unknown }) => { api.exportFilters.push(props.filters); return <span>export</span>; },
+  ExportButtons: (props: { filters?: unknown; disabled?: boolean }) => { api.exportFilters.push(props.filters); api.exportDisabled.push(props.disabled); return <span>export</span>; },
 }));
 vi.mock("@workspace/api-client-react", () => {
   const mutation = () => () => ({ mutateAsync: vi.fn(), isPending: false });
   return {
-    useSearchExpenses: (params: Record<string, unknown>, options: { query?: { enabled?: unknown } }) => {
-      api.calls.push({ params, enabled: options?.query?.enabled });
+    useSearchExpenses: (params: Record<string, unknown>, options: { query?: { enabled?: unknown; placeholderData?: Call["placeholderData"] } }) => {
+      api.calls.push({ params, enabled: options?.query?.enabled, placeholderData: options?.query?.placeholderData });
       return api.result;
     },
     useListPlatforms: () => ({ data: [{ id: 12, workspaceId: 5, name: "AWS" }, { id: 99, workspaceId: 7, name: "Other scope" }] }),
@@ -48,6 +49,7 @@ const search = () => new URLSearchParams(window.location.search);
 beforeEach(() => {
   api.calls = [];
   api.exportFilters = [];
+  api.exportDisabled = [];
   ws.value = { activeWorkspaceId: 5, activeRole: "owner", canWrite: true, canManage: true };
   api.result = { data: page([item(1, 12.5, "USD")], 1, [{ currency: "USD", net: "12.50", count: 1 }]), isLoading: false, isError: false, error: null, refetch: vi.fn() };
   window.history.replaceState(null, "", "/expenses");
@@ -104,6 +106,29 @@ describe("server-side search parameters", () => {
     expect(screen.getByText("The start date must be on or before the end date.")).toBeTruthy();
     expect(screen.getByLabelText("Minimum amount").getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByRole("alert").textContent).toMatch(/fix the highlighted filters/i);
+  });
+
+  it("keeps a filter chosen while the search text is still debouncing", async () => {
+    render(<Expenses />);
+    fireEvent.change(screen.getByLabelText("Search"), { target: { value: "openai" } });
+    fireEvent.change(screen.getByLabelText("Vendor"), { target: { value: "12" } });
+    await waitFor(() => expect(search().get("q")).toBe("openai"), { timeout: 2000 });
+    expect(search().get("platformId")).toBe("12");
+  });
+
+  it("disables export while a filter is invalid instead of sending it", () => {
+    window.history.replaceState(null, "", "/expenses?minAmount=abc");
+    render(<Expenses />);
+    expect(api.exportDisabled.at(-1)).toBe(true);
+  });
+
+  it("keeps the previous page while paging, but never another scope's rows", () => {
+    render(<Expenses />);
+    const keep = lastCall().placeholderData!;
+    const previous = { items: [1] };
+    expect(keep(previous, { queryKey: ["/api/expenses/search", { workspaceId: 5, offset: 25 }] })).toBe(previous);
+    expect(keep(previous, { queryKey: ["/api/expenses/search", { workspaceId: 8 }] })).toBeUndefined();
+    expect(keep(previous, { queryKey: ["/api/expenses/search", {}] })).toBeUndefined();
   });
 
   it("clears every filter at once", async () => {

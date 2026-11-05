@@ -83,6 +83,29 @@ No migration was needed. On 200,000 local rows, the existing `expenses_user_date
 - **Finding 86** (unbounded export loop, from PR #8) is **Fixed** by the 50,000-row cap; the register is updated.
 - Codacy reports **12 new findings on this PR** (10 high, 2 medium). They could not be identified from this environment and are recorded in the [register](../docs/security/CODACY_REMEDIATION_REGISTER.md) as accepted residual risk for internal development merges only (owner decision, 2026-11-05).
 
+## CodeRabbit review (14 minor comments, 1 follow-up, 2 nitpicks)
+
+All were checked against the code. Fixed on this PR before merging:
+
+| Comment | Fix |
+|---|---|
+| JPY stored with cents (e.g. 1500.49) displayed as ¥1,500 | `formatMoney` never hides recorded cents (¥1,500.49) |
+| Previous workspace's rows shown while the new scope loads | The previous page is kept only within the same scope; otherwise the loading state shows |
+| Search debounce could overwrite a filter chosen within 300 ms | The effect depends on the latest query (web test) |
+| Export enabled with invalid filters (HTTP 400 for the user) | Export buttons disabled until the filters are valid; filters are never dropped |
+| `minAmount` > `maxAmount` accepted (empty results) | 400 on search and export (rehearsal) |
+| Deep link `page=40002` exceeded the offset limit | Page clamped to 40,001 |
+| Years 0000–0099 mis-validated (`Date.UTC`) | `setUTCFullYear`; the new test also exposed unpadded years in month periods, which is fixed |
+| `category=""` missed empty-string categories | Matches NULL or `""`; the dashboard groups both as uncategorised |
+| Summary and search read in separate statements | Each request reads in one `repeatable read`, read-only transaction |
+| PDF intro said totals were absent | Wording corrected |
+| "No spend in either period" when charges and refunds cancel out | "Net is zero in both periods" |
+| `offset` maximum missing from the spec | Added and clients regenerated |
+| Backlog follow-ups out of date | Updated; the member-table phone layout stays open |
+| Nitpicks | Uncategorised drill-down link test; real `ExportButtons` request-body test |
+
+**Deferred with acceptance criteria (backlog):** the synchronous PDF rendering, which predates this PR and is bounded by the 50,000-row cap.
+
 ## Follow-ups
 
 - **Phone filters — DONE (follow-up branch `agent/claude/batch2-completion`):** below `sm`, only Search shows by default. A "More filters" button (`aria-expanded`, `aria-controls`, with a count of active filters) reveals the rest. The panel stays open while a filter is invalid, so errors are never hidden. Tests: 2 page tests, 1 unit test (`activeFilterCount`); the 375px check passes in all 24 combinations.

@@ -209,8 +209,9 @@ router.get("/search", async (req, res) => {
     amount_desc: [desc(expensesTable.amount), desc(expensesTable.id)],
     amount_asc: [asc(expensesTable.amount), asc(expensesTable.id)],
   }[sort];
-  const [items, totals] = await Promise.all([
-    db.select({
+  // One read-only snapshot, so the page, the count and the totals agree.
+  const [items, totals] = await db.transaction(tx => Promise.all([
+    tx.select({
       id: expensesTable.id,
       workspaceId: expensesTable.workspaceId,
       platformId: expensesTable.platformId,
@@ -226,14 +227,14 @@ router.get("/search", async (req, res) => {
     }).from(expensesTable)
       .leftJoin(platformsTable, vendorJoin).leftJoin(projectsTable, projectJoin)
       .where(where).orderBy(...order).limit(limit).offset(offset),
-    db.select({
+    tx.select({
       currency: expensesTable.currency,
       net: sql<string>`sum(${expensesTable.amount})::numeric(20,2)::text`,
       count: sql<number>`count(*)::int`,
     }).from(expensesTable)
       .leftJoin(platformsTable, vendorJoin).leftJoin(projectsTable, projectJoin)
       .where(where).groupBy(expensesTable.currency).orderBy(expensesTable.currency),
-  ]);
+  ]), { isolationLevel: "repeatable read", accessMode: "read only" });
   res.json({
     items: items.map(e => ({ ...e, amount: Number(e.amount), createdAt: e.createdAt.toISOString() })),
     total: totals.reduce((n, t) => n + t.count, 0),

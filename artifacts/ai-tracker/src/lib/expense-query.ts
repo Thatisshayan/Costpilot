@@ -5,6 +5,8 @@
 import type { ExpenseFilters, SearchExpensesParams } from "@workspace/api-client-react";
 
 export const PAGE_SIZE = 25;
+/** Largest page whose offset stays within the API limit (offset at most 1,000,000). */
+export const MAX_PAGE = Math.floor(1_000_000 / PAGE_SIZE) + 1;
 
 export const SORTS = ["date_desc", "date_asc", "amount_desc", "amount_asc"] as const;
 export type Sort = (typeof SORTS)[number];
@@ -45,7 +47,7 @@ export function parseExpenseQuery(search: string): ExpenseQuery {
   const sort = params.get("sort");
   if (sort && (SORTS as readonly string[]).includes(sort)) query.sort = sort as Sort;
   const page = Number(params.get("page"));
-  if (Number.isInteger(page) && page > 1) query.page = page;
+  if (Number.isInteger(page) && page > 1) query.page = Math.min(page, MAX_PAGE);
   return query;
 }
 
@@ -79,7 +81,9 @@ function isCalendarDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return false;
   const [y, m, d] = match.slice(1).map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
+  // setUTCFullYear avoids Date.UTC mapping years 0-99 to 1900-1999.
+  const date = new Date(0);
+  date.setUTCFullYear(y, m - 1, d);
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
 }
 

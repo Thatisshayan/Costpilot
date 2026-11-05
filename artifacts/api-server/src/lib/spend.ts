@@ -65,7 +65,7 @@ export function filterConditions(f: ExpenseFilters): SQL[] {
   else if (f.platformId !== undefined) conditions.push(eq(expensesTable.platformId, f.platformId));
   if (f.projectId === "none") conditions.push(isNull(projectsTable.id));
   else if (f.projectId !== undefined) conditions.push(eq(expensesTable.projectId, f.projectId));
-  // "" means uncategorised: NULL or a legacy empty string, as the dashboard groups them.
+  // "" means uncategorised: NULL or an empty string, as the dashboard groups them.
   if (f.category !== undefined) {
     conditions.push(f.category === "" ? or(isNull(expensesTable.category), eq(expensesTable.category, ""))! : eq(expensesTable.category, f.category));
   }

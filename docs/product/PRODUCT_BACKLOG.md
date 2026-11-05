@@ -347,9 +347,11 @@ Removed or not planned: GPU tools, LLM router, benchmark "market intelligence", 
 
 P0-16 (ledger integrity): Batch 2 verified the existing indexes cover the new queries; `updated_at` moves to Batch 4 with the activity log (P1-06). Amount precision waits for the D3 decimal-model proposal.
 
-**Follow-ups found in Batch 1 (done in Batch 2):**
-- On phones the expense and member tables scroll inside their card, so the amount column is off-screen until scrolled. Use a stacked row layout below `sm`.
-- Dashboard totals still use `toFixed(2)`, which misformats zero-decimal currencies such as JPY. Replace with currency-aware formatting as part of P0-06.
+**Follow-ups found in Batch 1:**
+- **Done (Batch 2):** expenses use a stacked row layout below `sm`, so the amount is always visible.
+- **Done (Batch 2):** dashboard totals use `formatMoney` with each currency's minor units (JPY without decimals, unless cents were recorded).
+- **Open:** the Team page's member table still scrolls inside its card on phones; give it a stacked layout below `sm`.
+- **Open (from the PR #16 review):** PDF export renders up to 50,000 rows synchronously and blocks the API process while it runs. Render in batches that yield to the event loop, or in a worker. Acceptance: other requests are served during a 50,000-row PDF export, and the output is unchanged.
 
 ### Batch 1 acceptance tests
 

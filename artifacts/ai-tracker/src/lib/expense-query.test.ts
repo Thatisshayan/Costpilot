@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EMPTY_QUERY, activeFilterCount, hasActiveFilters, parseExpenseQuery, serializeExpenseQuery, toExportFilters, toSearchParams, validateExpenseQuery,
+  EMPTY_QUERY, MAX_PAGE, activeFilterCount, hasActiveFilters, parseExpenseQuery, serializeExpenseQuery, toExportFilters, toSearchParams, validateExpenseQuery,
 } from "./expense-query";
 
 describe("expense query string", () => {
@@ -50,5 +50,18 @@ describe("active filter count", () => {
     expect(activeFilterCount(EMPTY_QUERY)).toBe(0);
     expect(activeFilterCount({ ...EMPTY_QUERY, q: "aws" })).toBe(0);
     expect(activeFilterCount(parseExpenseQuery("?from=2026-09-01&category=&entryType=credit&sort=amount_asc&page=4"))).toBe(4);
+  });
+});
+
+describe("deep-link limits", () => {
+  it("clamps the page so the offset stays within the API limit", () => {
+    expect(MAX_PAGE).toBe(40001);
+    const query = parseExpenseQuery("?page=999999");
+    expect(query.page).toBe(40001);
+    expect(toSearchParams(query, null).offset).toBe(1_000_000);
+  });
+
+  it("accepts dates in years 0-99 instead of treating them as 1900-1999", () => {
+    expect(validateExpenseQuery({ ...EMPTY_QUERY, from: "0096-02-29" })).toEqual({});
   });
 });

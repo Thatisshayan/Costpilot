@@ -4,6 +4,9 @@ import { formatMoney, formatSignedMoney, isNegative } from "./money-format";
 describe("currency-aware formatting", () => {
   it("uses each currency's minor units", () => {
     expect(formatMoney("1500.00", "JPY", "en-US")).toBe("¥1,500");
+    // Recorded cents are never hidden, even for a zero-decimal currency.
+    expect(formatMoney("1500.49", "JPY", "en-US")).toBe("¥1,500.49");
+    expect(formatMoney(-0.5, "JPY", "en-US")).toBe("-¥0.50");
     expect(formatMoney("80.30", "USD", "en-US")).toBe("$80.30");
     expect(formatMoney("50.00", "EUR", "en-US")).toBe("€50.00");
     expect(formatMoney("1.5", "KWD", "en-US").replace(/\s/g, " ")).toBe("KWD 1.500");
