@@ -69,6 +69,12 @@ export function hasActiveFilters(query: ExpenseQuery): boolean {
   return TEXT_KEYS.some(key => Boolean(query[key])) || query.category !== undefined || Boolean(query.entryType);
 }
 
+/** Filters other than the search text (shown behind the phone "Filters" toggle). */
+export function activeFilterCount(query: ExpenseQuery): number {
+  const keys = TEXT_KEYS.filter(key => key !== "q" && Boolean(query[key])).length;
+  return keys + (query.category !== undefined ? 1 : 0) + (query.entryType ? 1 : 0) + (query.sort !== "date_desc" ? 1 : 0);
+}
+
 export type FilterErrors = Partial<Record<"from" | "to" | "minAmount" | "maxAmount" | "currency", string>>;
 
 function isCalendarDate(value: string): boolean {
