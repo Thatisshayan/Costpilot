@@ -13,7 +13,8 @@
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
     "test": "vitest run",
     "migrate": "drizzle-kit migrate --config ./drizzle.config.ts",
-    "rehearsal": "tsx scripts/launch-rehearsal.ts"
+    "rehearsal": "tsx scripts/launch-rehearsal.ts",
+    "rehearsal:migration-guard": "tsx scripts/migration-guard-rehearsal.ts"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

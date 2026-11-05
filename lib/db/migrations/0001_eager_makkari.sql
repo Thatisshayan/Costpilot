@@ -31,4 +31,10 @@ ALTER TABLE "budget_policies" ADD CONSTRAINT "budget_policies_workspace_id_works
 ALTER TABLE "budget_policies" ADD CONSTRAINT "budget_policies_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "expenses_user_date_idx" ON "expenses" USING btree ("user_id","date");--> statement-breakpoint
 CREATE INDEX "expenses_workspace_date_idx" ON "expenses" USING btree ("workspace_id","date");--> statement-breakpoint
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM "workspace_members" GROUP BY "workspace_id", "user_id" HAVING count(*) > 1) THEN
+    RAISE EXCEPTION 'CostPilot migration 0001 stopped: duplicate (workspace_id, user_id) rows exist in workspace_members. No data was changed. Review them with: SELECT workspace_id, user_id, count(*) FROM workspace_members GROUP BY 1, 2 HAVING count(*) > 1; then resolve them with the data owner and rerun the migration.';
+  END IF;
+END $$;--> statement-breakpoint
 CREATE UNIQUE INDEX "workspace_members_workspace_user_unique" ON "workspace_members" USING btree ("workspace_id","user_id");
