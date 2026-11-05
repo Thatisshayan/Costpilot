@@ -47,3 +47,7 @@ The Expo 58 advisory report was 0 critical, 0 high, 2 moderate, 1 low. A targete
 ### Core write follow-through
 
 Added native personal expense editing/deletion, refresh-on-focus, explicit currency and correct local calendar defaults/rendering. Mobile bearer requests reject foreign origins. Corrected the remaining historical screen StatusBar prop variants. Invitation creation now locks the workspace and writes both records in one transaction, with a second duplicate check under the lock. Project/platform deletes use returning rows and report 404 on denied/missing targets. Export bodies are strict and reject unsupported dateRange instead of generating misleading report labels. Extended the PostgreSQL rehearsal with concurrent invitation creation, viewer/missing deletion and unsupported export filter assertions. These changes require fresh CI; actual device checks remain open.
+
+### Identity boundary completion
+
+The patched lockfile audit now reports **zero advisories at every severity** (`pnpm audit --json`, 2026-11-04). Added foreign-origin token-leak regression coverage for mobile. Clerk default-workspace provisioning now tolerates duplicate/concurrent signed deliveries using conflict-safe inserts, checks existing workspace ownership before membership creation, and preserves the transaction. The production smoke now checks actual RSA token expiry/authorized-party rejection, query-token rejection and concurrent signed webhook delivery. Fresh exact-SHA verification is required for these additions.

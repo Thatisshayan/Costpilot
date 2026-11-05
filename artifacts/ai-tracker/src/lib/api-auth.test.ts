@@ -41,4 +41,15 @@ describe("authenticated client requests", () => {
       "Bearer mobile-session-token",
     );
   });
+  it("does not attach a mobile session to a foreign API origin", async () => {
+    vi.stubEnv("EXPO_PUBLIC_API_ORIGIN", "https://mobile-api.example.test");
+    vi.resetModules();
+    const { apiResponse, setApiAuthTokenGetter } = await import("../../../mobile-app/src/lib/api");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    setApiAuthTokenGetter(async () => "mobile-session-token");
+    await expect(apiResponse("https://foreign.example.test/expenses")).rejects.toThrow("configured origin");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
 });

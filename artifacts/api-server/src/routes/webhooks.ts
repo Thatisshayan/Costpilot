@@ -223,21 +223,25 @@ router.post("/clerk", async (req, res) => {
 
     try {
       await db.transaction(async (tx) => {
-        const [workspace] = await tx
+        const [created] = await tx
           .insert(workspacesTable)
           .values({
             name: workspaceName,
             slug,
             ownerId: userId,
           })
+          .onConflictDoNothing({ target: workspacesTable.slug })
           .returning();
+        const workspace = created ?? (await tx.select().from(workspacesTable)
+          .where(and(eq(workspacesTable.slug, slug), eq(workspacesTable.ownerId, userId))))[0];
+        if (!workspace) throw new Error("Workspace provisioning conflict");
 
         await tx.insert(workspaceMembersTable).values({
           workspaceId: workspace.id,
           userId,
           role: "owner",
           email,
-        });
+        }).onConflictDoNothing({ target: [workspaceMembersTable.workspaceId, workspaceMembersTable.userId] });
       });
 
       logger.info({ userId, slug }, "Clerk webhook: default workspace and member owner provisioned successfully");
