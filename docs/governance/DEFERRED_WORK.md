@@ -17,11 +17,11 @@ Rule 12 / Rule 11. This register survives the session. Future agents resume from
 - [2026-08-02] CI: deployment action and masked audit failure — **CLOSED 2026-11-04**. `deploy.yml` uses `actions/setup-node@v4` and `pnpm/action-setup@v4`; `pnpm audit --audit-level=moderate` now fails the job on audit errors. Evidence: `.github/workflows/deploy.yml`.
 - [2026-08-02] integration: web/mobile API authentication and client configuration — **IMPLEMENTED 2026-11-04**. Both clients use Clerk session token getters, configurable API origins, and bearer-authenticated API helpers; fake mobile sign-in/guest access and simulated-user headers were removed. Client helper tests verify origin and bearer headers. The supplied test publishable key is configured in ignored client files and the GitHub build variable. Live sign-in still requires approved web/API origins, matching server configuration and the Clerk Native API setting. Evidence: `artifacts/ai-tracker/src/main.tsx`, `artifacts/mobile-app/src/app/_layout.tsx`, `artifacts/mobile-app/src/lib/api.ts`, `artifacts/ai-tracker/src/lib/api-auth.test.ts`.
 
-## Proposed plan for remaining work
+## Plan for remaining work
 
-1. **Complete and verify client authentication.** Clerk token wiring, configurable API origins, query-token removal, and client bearer-header tests are implemented. Test publishable keys are configured; confirm approved origins and enable Clerk Native API before a live mobile sign-in check.
-2. **Complete expense workspace authorization.** Personal/shared behavior, membership checks, same-scope project/platform validation, and focused authorization tests are implemented.
-3. **Close the lockfile policy decision.** Node 22 and the root engine requirement are implemented. Shayan approved removing the stale npm lockfile; removal is complete. Keep pnpm frozen installs as the supported setup.
+1. **Verify live client authentication.** The test publishable keys are configured. Confirm approved web/API URLs, matching server credentials/domain configuration and Clerk Native API, then verify two real accounts on web and a physical device.
+2. **Complete policy and operations acceptance.** The contact is approved. Confirm operator identity, data practices/retention/deletion/backup policy, on-call owner and monitoring delivery, then run the release preflight and real-environment acceptance.
+3. **Approve the release.** Keep all final exact-SHA checks green, preserve frozen pnpm installs, and obtain Shayan's merge/release approval. Expense authorization implementation and the npm-lockfile decision are completed, not remaining implementation tasks.
 
 The closed auth and expense items have targeted tests: 30 API auth/expense tests and 2 web/mobile client-helper tests passed on 2026-11-04. Live Clerk sign-in is still unverified: the supplied key belongs to a test instance; approved staging origins, matching server configuration and Native API settings remain environment gates. Runtime webhook delivery remains outside this change.
 
