@@ -53,3 +53,12 @@ Added native personal expense editing/deletion, refresh-on-focus, explicit curre
 The patched lockfile audit now reports **zero advisories at every severity** (`pnpm audit --json`, 2026-11-04). Added foreign-origin token-leak regression coverage for mobile. Clerk default-workspace provisioning now tolerates duplicate/concurrent signed deliveries using conflict-safe inserts, checks existing workspace ownership before membership creation, and preserves the transaction. The production smoke now checks actual RSA token expiry/authorized-party rejection, query-token rejection and concurrent signed webhook delivery. Fresh exact-SHA verification is required for these additions.
 
 The 8cbdd43 disposable PostgreSQL/restore/container rehearsal passed, including new invitation-creation concurrency and denied-delete checks. Full build/typecheck passed, but API unit verification exposed an outdated platform delete test double lacking Drizzle returning(); corrected the double and added failure-response coverage. Both web and mobile request helpers now reject foreign API origins before obtaining/attaching session tokens, with regression coverage. Full fresh verification remains required.
+
+### Verified core checkpoint — ab017b0
+
+- [Governance 41947753763](https://github.com/Thatisshayan/Costpilot/actions/runs/41947753763): `bash scripts/verify.sh` passed, including secret scan, doc freshness, frozen install, full build/typecheck, 138 API tests and 43 web/client tests.
+- [Launch verification 41947747115](https://github.com/Thatisshayan/Costpilot/actions/runs/41947747115): code generation/diff, build/tests, native lint tooling and Android export passed.
+- [Launch rehearsal 41947753723](https://github.com/Thatisshayan/Costpilot/actions/runs/41947753723): repeated migrations, PostgreSQL concurrency/isolation, restore and expanded production RSA/webhook replay smoke passed.
+- [API CI 41947753729](https://github.com/Thatisshayan/Costpilot/actions/runs/41947753729): passed.
+
+The following setup-doc/mobile-default revision (9594a50) triggered the older CI secret scanner on the literal example encryption placeholder in both templates; that string is not a key. The template now leaves the value empty and documents private local generation. No scanner rule was disabled or allowlisted. New exact-revision checks remain required.
