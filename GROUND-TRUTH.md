@@ -1,4 +1,6 @@
-# Ground Truth: CostPilot Project State
+# Historical project state — September 2026
+
+**Superseded for current release decisions.** See [launch execution evidence](audits/2026-11-04_Codex_LaunchExecution_Audit.md), [launch plan](docs/governance/LAUNCH_PLAN.md), and [release runbook](docs/governance/RELEASE_RUNBOOK.md). Counts and environment requirements below describe the historical checkpoint.
 
 Last updated: September 3, 2026
 

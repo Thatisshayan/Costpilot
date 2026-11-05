@@ -1,6 +1,6 @@
 export type ApiAuthTokenGetter = () => Promise<string | null> | string | null;
 
-const API_ORIGIN = (process.env.EXPO_PUBLIC_API_ORIGIN || "https://costpilot-production.up.railway.app")
+const API_ORIGIN = (process.env.EXPO_PUBLIC_API_ORIGIN || "")
   .replace(/\/+$/, "");
 let authTokenGetter: ApiAuthTokenGetter | null = null;
 
@@ -16,6 +16,7 @@ export async function apiResponse(
   endpoint: string,
   options?: RequestInit & { params?: Record<string, string> }
 ): Promise<Response> {
+  if (!API_ORIGIN) throw new Error("The API origin has not been configured for this build");
   const { params, headers: headersInit, ...init } = options ?? {};
   const path = /^https?:\/\//i.test(endpoint)
     ? endpoint
