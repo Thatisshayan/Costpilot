@@ -707,6 +707,7 @@ export const DeleteBudgetResponse = zod.void()
 
 export const previewImportBodyFileNameMax = 200;
 
+export const previewImportBodyRowsItemRowNumberMax = 1000000;
 
 export const previewImportBodyRowsItemDateMax = 200;
 
@@ -727,13 +728,15 @@ export const previewImportBodyRowsItemExternalIdMax = 2000;
 export const previewImportBodyRowsMax = 500;
 
 
+export const previewImportBodyConfirmDuplicateRowsMax = 500;
+
 
 
 export const PreviewImportBody = zod.object({
   "workspaceId": zod.int().min(1).nullish().describe('Omit or null for Personal'),
   "fileName": zod.string().min(1).max(previewImportBodyFileNameMax),
   "rows": zod.array(zod.object({
-  "rowNumber": zod.int().min(1).describe('Line in the file, used in the report'),
+  "rowNumber": zod.int().min(1).max(previewImportBodyRowsItemRowNumberMax).describe('Line in the file, used in the report'),
   "date": zod.string().max(previewImportBodyRowsItemDateMax).describe('YYYY-MM-DD'),
   "amount": zod.string().max(previewImportBodyRowsItemAmountMax).describe('Exact decimal; negative for refunds/credits'),
   "currency": zod.string().max(previewImportBodyRowsItemCurrencyMax),
@@ -743,7 +746,7 @@ export const PreviewImportBody = zod.object({
   "project": zod.string().max(previewImportBodyRowsItemProjectMax).optional().describe('Name of an existing project in the scope'),
   "externalId": zod.string().max(previewImportBodyRowsItemExternalIdMax).optional().describe('The source\'s transaction ID; prevents importing it twice')
 }).describe('Over-long text is reported on its row (stored limits: description 500, category 100, vendor/project/transaction ID 200).')).min(1).max(previewImportBodyRowsMax),
-  "confirmDuplicateRows": zod.array(zod.int().min(1)).optional().describe('Row numbers of possible duplicates to import anyway')
+  "confirmDuplicateRows": zod.array(zod.int().min(1)).max(previewImportBodyConfirmDuplicateRowsMax).optional().describe('Row numbers of possible duplicates to import anyway')
 })
 
 export const PreviewImportResponse = zod.object({
@@ -791,6 +794,7 @@ export const ListImportsResponse = zod.array(ListImportsResponseItem)
 
 export const createImportBodyFileNameMax = 200;
 
+export const createImportBodyRowsItemRowNumberMax = 1000000;
 
 export const createImportBodyRowsItemDateMax = 200;
 
@@ -811,13 +815,15 @@ export const createImportBodyRowsItemExternalIdMax = 2000;
 export const createImportBodyRowsMax = 500;
 
 
+export const createImportBodyConfirmDuplicateRowsMax = 500;
+
 
 
 export const CreateImportBody = zod.object({
   "workspaceId": zod.int().min(1).nullish().describe('Omit or null for Personal'),
   "fileName": zod.string().min(1).max(createImportBodyFileNameMax),
   "rows": zod.array(zod.object({
-  "rowNumber": zod.int().min(1).describe('Line in the file, used in the report'),
+  "rowNumber": zod.int().min(1).max(createImportBodyRowsItemRowNumberMax).describe('Line in the file, used in the report'),
   "date": zod.string().max(createImportBodyRowsItemDateMax).describe('YYYY-MM-DD'),
   "amount": zod.string().max(createImportBodyRowsItemAmountMax).describe('Exact decimal; negative for refunds/credits'),
   "currency": zod.string().max(createImportBodyRowsItemCurrencyMax),
@@ -827,7 +833,7 @@ export const CreateImportBody = zod.object({
   "project": zod.string().max(createImportBodyRowsItemProjectMax).optional().describe('Name of an existing project in the scope'),
   "externalId": zod.string().max(createImportBodyRowsItemExternalIdMax).optional().describe('The source\'s transaction ID; prevents importing it twice')
 }).describe('Over-long text is reported on its row (stored limits: description 500, category 100, vendor/project/transaction ID 200).')).min(1).max(createImportBodyRowsMax),
-  "confirmDuplicateRows": zod.array(zod.int().min(1)).optional().describe('Row numbers of possible duplicates to import anyway')
+  "confirmDuplicateRows": zod.array(zod.int().min(1)).max(createImportBodyConfirmDuplicateRowsMax).optional().describe('Row numbers of possible duplicates to import anyway')
 })
 
 export const CreateImportResponse = zod.object({

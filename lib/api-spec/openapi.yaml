@@ -491,7 +491,7 @@ paths:
         "403":
           description: Workspace owner or admin role required
         "404":
-          description: Not found
+          description: Not found (including a malformed id)
     delete:
       operationId: deleteBudget
       tags: [budgets]
@@ -1782,7 +1782,7 @@ components:
       additionalProperties: false
       description: "Over-long text is reported on its row (stored limits: description 500, category 100, vendor/project/transaction ID 200)."
       properties:
-        rowNumber: { type: integer, minimum: 1, description: "Line in the file, used in the report" }
+        rowNumber: { type: integer, minimum: 1, maximum: 1000000, description: "Line in the file, used in the report" }
         date: { type: string, maxLength: 200, description: "YYYY-MM-DD" }
         amount: { type: string, maxLength: 200, description: "Exact decimal; negative for refunds/credits" }
         currency: { type: string, maxLength: 200 }
@@ -1800,7 +1800,7 @@ components:
         workspaceId: { type: ["integer", "null"], minimum: 1, description: "Omit or null for Personal" }
         fileName: { type: string, minLength: 1, maxLength: 200 }
         rows: { type: array, minItems: 1, maxItems: 500, items: { $ref: "#/components/schemas/ImportRow" } }
-        confirmDuplicateRows: { type: array, items: { type: integer, minimum: 1 }, description: "Row numbers of possible duplicates to import anyway" }
+        confirmDuplicateRows: { type: array, maxItems: 500, items: { type: integer, minimum: 1 }, description: "Row numbers of possible duplicates to import anyway" }
 
     ImportRowResult:
       type: object

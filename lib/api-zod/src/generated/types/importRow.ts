@@ -13,6 +13,7 @@ export interface ImportRow {
   /**
      * Line in the file, used in the report
      * @minimum 1
+     * @maximum 1000000
      */
   rowNumber: number;
   /**

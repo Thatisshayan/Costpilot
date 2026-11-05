@@ -14,6 +14,8 @@ const router = Router();
 const WRITE_ROLES = new Set(["owner", "admin"]);
 
 type Scope = { userId: string; workspaceId: number | null };
+/** The shared pool or an open transaction; analysis runs inside the import transaction. */
+type Executor = Pick<typeof db, "select">;
 type Resolved = CleanRow & { platformId: number | null; projectId: number | null };
 
 function badRequest(res: Response, error: z.ZodError) {
@@ -28,7 +30,7 @@ async function canWrite(scope: Scope): Promise<"ok" | "forbidden" | "read_only">
 }
 
 /** Lower-cased name -> ids of the vendors/projects in exactly this scope. */
-async function namesInScope(scope: Scope) {
+async function namesInScope(ex: Executor, scope: Scope) {
   const platformScope = scope.workspaceId === null
     ? and(isNull(platformsTable.workspaceId), eq(platformsTable.userId, scope.userId))
     : eq(platformsTable.workspaceId, scope.workspaceId);
@@ -36,8 +38,8 @@ async function namesInScope(scope: Scope) {
     ? and(isNull(projectsTable.workspaceId), eq(projectsTable.userId, scope.userId))
     : eq(projectsTable.workspaceId, scope.workspaceId);
   const [vendors, projects] = await Promise.all([
-    db.select({ id: platformsTable.id, name: platformsTable.name }).from(platformsTable).where(platformScope),
-    db.select({ id: projectsTable.id, name: projectsTable.name }).from(projectsTable).where(projectScope),
+    ex.select({ id: platformsTable.id, name: platformsTable.name }).from(platformsTable).where(platformScope),
+    ex.select({ id: projectsTable.id, name: projectsTable.name }).from(projectsTable).where(projectScope),
   ]);
   const index = (rows: { id: number; name: string }[]) => {
     const map = new Map<string, number[]>();
@@ -54,9 +56,9 @@ async function namesInScope(scope: Scope) {
  * Validates every row against the fields, the scope's vendors/projects, earlier rows in the
  * file and the scope's existing expenses. Returns the per-row report and the rows to insert.
  */
-async function analyze(scope: Scope, input: z.infer<typeof ImportRequest>) {
+async function analyze(ex: Executor, scope: Scope, input: z.infer<typeof ImportRequest>) {
   const confirmed = new Set(input.confirmDuplicateRows ?? []);
-  const names = await namesInScope(scope);
+  const names = await namesInScope(ex, scope);
   const results: RowResult[] = [];
   const candidates: Resolved[] = [];
 
@@ -86,9 +88,9 @@ async function analyze(scope: Scope, input: z.infer<typeof ImportRequest>) {
   const externalIds = [...new Set(candidates.map(c => c.externalId).filter((v): v is string => Boolean(v)))];
   const dates = [...new Set(candidates.map(c => c.date))];
   const [imported, existing] = await Promise.all([
-    externalIds.length === 0 ? [] : db.select({ externalId: expensesTable.externalId }).from(expensesTable)
+    externalIds.length === 0 ? [] : ex.select({ externalId: expensesTable.externalId }).from(expensesTable)
       .where(and(where, eq(expensesTable.source, "import"), inArray(expensesTable.externalId, externalIds))),
-    dates.length === 0 ? [] : db.select({
+    dates.length === 0 ? [] : ex.select({
       date: expensesTable.date, amount: sql<string>`${expensesTable.amount}::text`, currency: expensesTable.currency,
       platformId: expensesTable.platformId, projectId: expensesTable.projectId, description: expensesTable.description,
     }).from(expensesTable).where(and(where, inArray(expensesTable.date, dates))),
@@ -155,7 +157,7 @@ router.post("/preview", async (req, res) => {
   if (!parsed.success) { badRequest(res, parsed.error); return; }
   const scope = await authorizedScope(req, res, parsed.data.workspaceId ?? null);
   if (!scope) return;
-  const { rows, counts, insert } = await analyze(scope, parsed.data);
+  const { rows, counts, insert } = await analyze(db, scope, parsed.data);
   res.json({ rows, counts, importableCount: insert.length });
 });
 
@@ -164,30 +166,58 @@ router.post("/", async (req, res) => {
   if (!parsed.success) { badRequest(res, parsed.error); return; }
   const scope = await authorizedScope(req, res, parsed.data.workspaceId ?? null);
   if (!scope) return;
-  const { rows, counts, insert } = await analyze(scope, parsed.data);
-  if (insert.length === 0) {
-    res.json({ batch: null, insertedCount: 0, skippedCount: parsed.data.rows.length, rows, counts });
-    return;
-  }
-  // All or nothing: a database error leaves neither the batch nor any of its rows.
-  const batch = await db.transaction(async tx => {
+  // All or nothing, and one import per scope at a time: the scope lock makes a concurrent
+  // import of the same file (with or without transaction IDs) see this one's rows, so
+  // look-alikes still need confirmation and nothing is duplicated.
+  const outcome = await db.transaction(async tx => {
+    const lockKey = scope.workspaceId === null ? `import:user:${scope.userId}` : `import:workspace:${scope.workspaceId}`;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`);
+    const analysis = await analyze(tx, scope, parsed.data);
+    if (analysis.insert.length === 0) return { analysis, batch: null };
     const [created] = await tx.insert(importBatchesTable).values({
       userId: scope.userId, workspaceId: scope.workspaceId, fileName: parsed.data.fileName,
       rowCount: parsed.data.rows.length, insertedCount: 0, skippedCount: 0,
     }).returning();
-    // A concurrent import of the same external id loses the race quietly instead of duplicating.
-    const inserted = await tx.insert(expensesTable).values(insert.map(r => ({
+    // The unique external-id index stays as a backstop (for example the legacy import-batch route).
+    const inserted = await tx.insert(expensesTable).values(analysis.insert.map(r => ({
       userId: scope.userId, workspaceId: scope.workspaceId, platformId: r.platformId, projectId: r.projectId,
       amount: fromCents(r.amountCents), currency: r.currency, date: r.date, description: r.description ?? null,
       category: r.category ?? null, source: "import", externalId: r.externalId ?? null, importBatchId: created.id,
-    }))).onConflictDoNothing().returning({ id: expensesTable.id });
+    }))).onConflictDoNothing().returning({ externalId: expensesTable.externalId });
+    if (inserted.length < analysis.insert.length) {
+      // Report rows that lost to a concurrent write instead of calling them imported.
+      const landed = new Set(inserted.map(r => r.externalId).filter(Boolean));
+      for (const row of analysis.insert) {
+        if (!row.externalId || landed.has(row.externalId)) continue;
+        const result = analysis.rows.find(r => r.rowNumber === row.rowNumber)!;
+        analysis.counts[result.status]--;
+        result.status = "already_imported";
+        result.messages.push(`External ID "${row.externalId}" was imported by another request at the same time; skipped.`);
+        analysis.counts.already_imported++;
+      }
+    }
+    if (inserted.length === 0) throw new NothingImported(analysis);
     const [final] = await tx.update(importBatchesTable)
       .set({ insertedCount: inserted.length, skippedCount: parsed.data.rows.length - inserted.length })
       .where(eq(importBatchesTable.id, created.id)).returning();
-    return final;
+    return { analysis, batch: final };
+  }).catch(error => {
+    if (error instanceof NothingImported) return { analysis: error.analysis, batch: null };
+    throw error;
   });
+  const { rows, counts } = outcome.analysis;
+  if (!outcome.batch) {
+    res.json({ batch: null, insertedCount: 0, skippedCount: parsed.data.rows.length, rows, counts });
+    return;
+  }
+  const batch = outcome.batch;
   res.status(201).json({ batch: serializeBatch(batch), insertedCount: batch.insertedCount, skippedCount: batch.skippedCount, rows, counts });
 });
+
+/** Rolls back an empty batch record when every row lost a race. */
+class NothingImported extends Error {
+  constructor(readonly analysis: Awaited<ReturnType<typeof analyze>>) { super("nothing imported"); }
+}
 
 const ListQuery = z.object({ workspaceId: z.coerce.number().int().positive().optional() }).strict();
 

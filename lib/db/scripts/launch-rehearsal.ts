@@ -419,11 +419,20 @@ try {
   const confirmedRes = await (await call("launch-a", "/imports", "POST", file([{ ...lookalike[0], rowNumber: 2 }], { confirmDuplicateRows: [2] }))).json() as ImportJson;
   assert.equal(confirmedRes.insertedCount, 1, "two identical charges can both be kept when confirmed");
 
+  // Two simultaneous imports of the same file without transaction IDs cannot both insert it.
+  const raceFile = file([{ rowNumber: 2, date: "2026-05-02", amount: "7.77", currency: "USD", description: "race" }, { rowNumber: 3, date: "2026-05-03", amount: "8.88", currency: "USD", description: "race" }]);
+  const raced = await Promise.all([1, 2, 3].map(() => call("launch-a", "/imports", "POST", raceFile).then(r => r.json() as Promise<ImportJson>)));
+  assert.deepEqual(raced.map(r => r.insertedCount).sort(), [0, 0, 2], "the scope lock lets exactly one concurrent import insert the rows");
+  // A NUL byte (typical of a UTF-16 export) is reported on its row instead of failing the import.
+  const nul = await (await call("launch-a", "/imports/preview", "POST", file([{ rowNumber: 2, date: "2026-05-04", amount: "1.00", currency: "USD", description: "bad\u0000cell" }]))).json() as ImportJson;
+  assert.equal(nul.rows[0].status, "invalid");
+  assert.equal((await call("launch-a", "/imports", "POST", { ...file([{ rowNumber: 2, date: "2026-05-04", amount: "1.00", currency: "USD" }]), fileName: "a\u0000.csv" })).status, 400);
+
   // Personal scope has its own repeat-import protection (NULL workspace partial index).
   const personalFile = { fileName: "mine.csv", rows: [{ rowNumber: 2, date: "2026-06-03", amount: "10.00", currency: "USD", externalId: "inv-1" }] };
   assert.equal(((await (await call("launch-b", "/imports", "POST", personalFile)).json()) as ImportJson).insertedCount, 1, "the same external id is independent per scope");
   assert.equal(((await (await call("launch-b", "/imports", "POST", personalFile)).json()) as ImportJson).insertedCount, 0, "and cannot be imported twice into Personal");
-  assert.equal(await wsCount(), before + 9, "Personal imports never write workspace rows");
+  assert.equal(await wsCount(), before + 11, "Personal imports never write workspace rows");
 
   // Batches are listed for members and undone only by owners/admins, exactly once.
   const importList = await (await call("launch-c", `/imports?workspaceId=${ws2.id}`)).json() as { id: number; insertedCount: number; undoneAt: string | null }[];
@@ -435,7 +444,7 @@ try {
   assert.equal(undo.status, 200);
   assert.deepEqual(await undo.json(), { deletedCount: 7 });
   assert.equal((await call("launch-a", `/imports/${first.batch!.id}`, "DELETE")).status, 409, "an import is undone once");
-  assert.equal(await wsCount(), before + 2, "undo removes exactly that batch's rows");
+  assert.equal(await wsCount(), before + 4, "undo removes exactly that batch's rows");
 
   // Exports name the source of every row.
   const juneExport = await (await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { from: "2026-06-01", to: "2026-06-30" } })).text();

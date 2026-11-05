@@ -123,7 +123,13 @@ function RowReport({ preview, confirmed, onToggle }: { preview: ImportPreview; c
   );
 }
 
+/** Remounts per scope so a file, report or confirmation never carries over to another workspace. */
 export default function CsvImport() {
+  const { activeWorkspaceId } = useWorkspace();
+  return <ImportForScope key={activeWorkspaceId ?? "personal"} />;
+}
+
+function ImportForScope() {
   const { activeWorkspaceId, activeWorkspace, canWrite, activeRole } = useWorkspace();
   const cache = useQueryClient();
   const previewImport = usePreviewImport();

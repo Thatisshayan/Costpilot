@@ -329,6 +329,7 @@ export interface ImportRow {
   /**
      * Line in the file, used in the report
      * @minimum 1
+     * @maximum 1000000
      */
   rowNumber: number;
   /**
@@ -383,6 +384,7 @@ export interface ImportRequest {
   rows: ImportRow[];
   /**
      * Row numbers of possible duplicates to import anyway
+     * @maxItems 500
      * @items.minimum 1
      */
   confirmDuplicateRows?: number[];

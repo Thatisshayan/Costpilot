@@ -34,7 +34,7 @@ export type ImportRowInput = z.infer<typeof ImportRow>;
 
 export const ImportRequest = z.object({
   workspaceId: z.number().int().positive().nullable().optional(),
-  fileName: z.string().trim().min(1).max(200),
+  fileName: z.string().trim().min(1).max(200).refine(v => !v.includes("\u0000"), "fileName contains an invalid character"),
   rows: z.array(ImportRow).min(1).max(MAX_IMPORT_ROWS, `at most ${MAX_IMPORT_ROWS} rows per import`),
   confirmDuplicateRows: z.array(z.number().int().min(1)).max(MAX_IMPORT_ROWS).optional(),
 }).strict().superRefine((value, ctx) => {
@@ -59,6 +59,10 @@ const AMOUNT = /^-?\d{1,8}(\.\d{1,2})?$/;
 /** Field checks only (no database). Returns the cleaned row or the reasons it is invalid. */
 export function checkRowFields(row: ImportRowInput): { row: CleanRow } | { messages: string[] } {
   const messages: string[] = [];
+  // PostgreSQL text cannot store NUL (often a sign of a UTF-16 export); report it on the row.
+  if (Object.values(row).some(v => typeof v === "string" && v.includes("\u0000"))) {
+    return { messages: ["The row contains an invalid (NUL) character. Save the file as UTF-8 CSV and try again."] };
+  }
   const date = row.date.trim();
   if (!isCalendarDate(date)) messages.push("Date must be a real calendar date in YYYY-MM-DD format.");
   const amount = row.amount.trim();

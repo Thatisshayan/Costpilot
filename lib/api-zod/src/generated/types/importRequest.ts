@@ -26,6 +26,7 @@ export interface ImportRequest {
   rows: ImportRow[];
   /**
      * Row numbers of possible duplicates to import anyway
+     * @maxItems 500
      * @items.minimum 1
      */
   confirmDuplicateRows?: number[];

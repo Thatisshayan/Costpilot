@@ -24,6 +24,12 @@ describe("CSV row fields", () => {
     expect("messages" in result && result.messages).toEqual(["Description must be at most 500 characters.", "Transaction ID must be at most 200 characters."]);
   });
 
+  it("reports a NUL character on the row instead of failing the import", () => {
+    const result = checkRowFields(row({ description: "bad\u0000text" }) as never);
+    expect("messages" in result && result.messages[0]).toMatch(/NUL/);
+    expect(ImportRequest.safeParse({ fileName: "a\u0000.csv", rows: [row()] }).success).toBe(false);
+  });
+
   it("reports every problem in a row at once", () => {
     const result = checkRowFields(row({ amount: "x", date: "x", currency: "x" }) as never);
     expect("messages" in result && result.messages).toHaveLength(3);

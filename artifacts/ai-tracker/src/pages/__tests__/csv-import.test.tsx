@@ -126,6 +126,21 @@ describe("mapping, report and import", () => {
   });
 });
 
+describe("scope changes", () => {
+  it("drops the previewed file and confirmations when the workspace changes", async () => {
+    const view = render(<CsvImport />);
+    upload();
+    await screen.findByLabelText("Amount (required)");
+    fireEvent.click(screen.getByRole("button", { name: "Check rows" }));
+    fireEvent.click(await screen.findByLabelText(/Import line 3 anyway/));
+    ws.value = { activeWorkspaceId: 8, activeWorkspace: { id: 8, name: "Other" }, activeRole: "owner", canWrite: true };
+    view.rerender(<CsvImport />);
+    expect(screen.queryByRole("button", { name: /^Import \d+ rows? into/ })).toBeNull();
+    expect(screen.queryByLabelText("Amount (required)")).toBeNull();
+    expect(screen.getByText("Other", { selector: "strong" })).toBeTruthy();
+  });
+});
+
 describe("roles and undo", () => {
   it("hides the upload from viewers but lists imports without undo", () => {
     ws.value = { ...ws.value, activeRole: "viewer", canWrite: false };

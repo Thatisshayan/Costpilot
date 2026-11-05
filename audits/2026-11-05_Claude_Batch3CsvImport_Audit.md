@@ -55,6 +55,17 @@
 | Web | Import page (9 tests), mapping (3), navigation (updated) |
 | Phone width | 32 route/role/scope combinations fit 375px, including `/import` (screenshot inspected) |
 
+## Independent review (before opening the PRs)
+
+A separate reviewer found no critical or high issues. All six findings were fixed:
+
+1. **Medium – concurrent imports could duplicate rows without transaction IDs.** The look-alike check now runs inside the import transaction, under a per-scope lock (`pg_advisory_xact_lock`). The rehearsal fires 3 simultaneous imports of one file: exactly one inserts. The test fails when the lock is removed.
+2. **Medium – the import page kept a previewed file and its confirmations after a workspace switch.** It now remounts per scope (web test).
+3. **Low/Medium – a NUL byte caused a 500.** It is now a row error; NUL in a file name or budget name gives 400 (unit and rehearsal tests).
+4. **Low – the row report could call a row "valid" after it lost a race.** Such rows are now reported as already imported, and a batch where nothing landed is rolled back.
+5. **Low – the budget form kept a project from the previous scope.** The budgets page also remounts per scope (web test).
+6. **Low – spec drift.** The OpenAPI spec now states `rowNumber` maximum, `confirmDuplicateRows` `maxItems` and 404 for malformed budget ids.
+
 ## Owner decisions
 
 1. **Unknown vendors/projects:** currently a row error ("add it on the Vendors page"). Alternative: offer to create them during import.
