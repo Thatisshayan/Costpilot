@@ -63,39 +63,63 @@ describe("Auth Middleware", () => {
       });
     });
 
-    describe("development bypass", () => {
-      const originalEnv = process.env.NODE_ENV;
-
-      beforeEach(() => {
-        process.env.NODE_ENV = "development";
-      });
+    describe("test identity bypass", () => {
+      const saved = { ...process.env };
 
       afterEach(() => {
-        process.env.NODE_ENV = originalEnv;
+        for (const key of ["NODE_ENV", "AUTH_TEST_BYPASS", "CLERK_SECRET_KEY"]) {
+          if (saved[key] === undefined) delete process.env[key]; else process.env[key] = saved[key];
+        }
       });
 
-      it("should bypass auth with x-user-id header", async () => {
+      it("honours x-user-id only with AUTH_TEST_BYPASS=1 on a test runtime", async () => {
+        process.env.NODE_ENV = "test";
+        process.env.AUTH_TEST_BYPASS = "1";
+        process.env.CLERK_SECRET_KEY = "sk_test_fixture";
         req.headers = { "x-user-id": "user_123" };
         await requireAuth(req as Request, res as Response, nextFn);
         expect(req.userId).toBe("user_123");
         expect(nextFn).toHaveBeenCalled();
       });
 
-      it("should bypass auth with simulatedUserId query param", async () => {
-        req.query = { simulatedUserId: "user_456" };
+      it.each(["development", "test", "staging", undefined])(
+        "ignores x-user-id without the explicit opt-in (NODE_ENV=%s)", async (nodeEnv) => {
+          if (nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = nodeEnv;
+          delete process.env.AUTH_TEST_BYPASS;
+          req.headers = { "x-user-id": "user_123" };
+          await requireAuth(req as Request, res as Response, nextFn);
+          expect(req.userId).toBeUndefined();
+          expect(nextFn).not.toHaveBeenCalled();
+          expect(res.status).toHaveBeenCalledWith(401);
+        });
+
+      it("ignores x-user-id in production even with the opt-in set", async () => {
+        process.env.NODE_ENV = "production";
+        process.env.AUTH_TEST_BYPASS = "1";
+        req.headers = { "x-user-id": "user_123" };
         await requireAuth(req as Request, res as Response, nextFn);
-        expect(req.userId).toBe("user_456");
-        expect(nextFn).toHaveBeenCalled();
+        expect(req.userId).toBeUndefined();
+        expect(res.status).toHaveBeenCalledWith(401);
       });
 
-      it("should reject request without token in production mode", async () => {
-        process.env.NODE_ENV = "production";
+      it("ignores x-user-id when a live Clerk key is configured", async () => {
+        process.env.NODE_ENV = "development";
+        process.env.AUTH_TEST_BYPASS = "1";
+        process.env.CLERK_SECRET_KEY = "sk_live_fixture";
+        req.headers = { "x-user-id": "user_123" };
         await requireAuth(req as Request, res as Response, nextFn);
+        expect(req.userId).toBeUndefined();
         expect(res.status).toHaveBeenCalledWith(401);
-        expect(res.json).toHaveBeenCalledWith({
-          error: "Unauthorized",
-          message: "Authentication token missing",
-        });
+      });
+
+      it("never accepts the old simulatedUserId query parameter", async () => {
+        process.env.NODE_ENV = "test";
+        process.env.AUTH_TEST_BYPASS = "1";
+        process.env.CLERK_SECRET_KEY = "sk_test_fixture";
+        req.query = { simulatedUserId: "user_456" };
+        await requireAuth(req as Request, res as Response, nextFn);
+        expect(req.userId).toBeUndefined();
+        expect(res.status).toHaveBeenCalledWith(401);
       });
     });
 

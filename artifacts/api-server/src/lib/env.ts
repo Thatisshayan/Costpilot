@@ -18,7 +18,16 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().url().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).optional(),
+  AUTH_TEST_BYPASS: z.enum(["0", "1"]).optional(),
 }).superRefine((env, ctx) => {
+  if (env.AUTH_TEST_BYPASS === "1") {
+    if (env.NODE_ENV !== "development" && env.NODE_ENV !== "test") {
+      ctx.addIssue({ code: "custom", path: ["AUTH_TEST_BYPASS"], message: "Test identity bypass is only allowed with NODE_ENV=development or test" });
+    }
+    if (env.CLERK_SECRET_KEY.startsWith("sk_live_")) {
+      ctx.addIssue({ code: "custom", path: ["AUTH_TEST_BYPASS"], message: "Test identity bypass cannot run with a live Clerk key" });
+    }
+  }
   if (!env.KMS_MASTER_KEY && !env.ENCRYPTION_KEY) ctx.addIssue({ code: "custom", path: ["KMS_MASTER_KEY"], message: "An encryption master key is required" });
   if (env.NODE_ENV === "production") {
     for (const key of ["ALLOWED_ORIGINS", "CLERK_WEBHOOK_SIGNING_SECRET"] as const) {
@@ -52,6 +61,7 @@ export function validateEnv(): Env {
     SENTRY_DSN: process.env.SENTRY_DSN,
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
     LOG_LEVEL: process.env.LOG_LEVEL,
+    AUTH_TEST_BYPASS: process.env.AUTH_TEST_BYPASS,
   };
 
   const result = envSchema.safeParse(raw);

@@ -21,6 +21,17 @@ declare global {
 }
 
 /**
+ * The x-user-id test identity is honoured only when AUTH_TEST_BYPASS=1, NODE_ENV
+ * is development or test, and no live Clerk key is configured. Startup
+ * validation (lib/env.ts) refuses any other combination.
+ */
+export function testAuthBypassEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.AUTH_TEST_BYPASS === "1"
+    && (env.NODE_ENV === "development" || env.NODE_ENV === "test")
+    && !(env.CLERK_SECRET_KEY ?? "").startsWith("sk_live_");
+}
+
+/**
  * Clerk Authentication Middleware
  * Populates req.userId from the verified session.
  */
@@ -33,11 +44,12 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     return next();
   }
 
-  // Development bypass: allow simulating a user via header or query param
-  if (process.env.NODE_ENV !== "production") {
-    const devUserId = (req.headers["x-user-id"] as string) || (req.query.simulatedUserId as string);
-    if (devUserId) {
-      req.userId = devUserId;
+  // Local test identity: only with an explicit opt-in on a dev/test runtime.
+  // A non-production NODE_ENV alone never enables it.
+  if (testAuthBypassEnabled()) {
+    const testUserId = req.headers["x-user-id"];
+    if (typeof testUserId === "string" && testUserId) {
+      req.userId = testUserId;
       return next();
     }
   }
