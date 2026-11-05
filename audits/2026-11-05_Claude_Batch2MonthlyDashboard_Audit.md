@@ -87,3 +87,8 @@ No migration was needed. On 200,000 local rows, the existing `expenses_user_date
 
 - **Phone filters — DONE (follow-up branch `agent/claude/batch2-completion`):** below `sm`, only Search shows by default. A "More filters" button (`aria-expanded`, `aria-controls`, with a count of active filters) reveals the rest. The panel stays open while a filter is invalid, so errors are never hidden. Tests: 2 page tests, 1 unit test (`activeFilterCount`); the 375px check passes in all 24 combinations.
 - **Live sign-in:** a real Clerk sign-in was not exercised here, so the phone-width check uses stubbed sign-in.
+- **Low-severity edge cases from the pre-merge review (no critical, high or medium findings):**
+  1. A dashboard drill-down link can list a different set than the card counted. This happens for legacy rows with an empty-string category, or with a vendor that belongs to another scope.
+  2. The month list uses the browser clock. A client ahead of the server across a UTC month boundary gets a 400 for the default month.
+  3. Search items return `amount` as a JSON number, as the existing `Expense` schema does. Totals are exact strings.
+  4. A whitespace-only `q` gives 400 rather than being ignored. The web client trims it.
