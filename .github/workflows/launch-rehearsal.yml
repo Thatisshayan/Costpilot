@@ -1,7 +1,7 @@
 name: Launch rehearsal
 on:
+  # Runs for every PR (including stacked PRs into release-candidate branches).
   pull_request:
-    branches: [main]
 permissions:
   contents: read
 jobs:

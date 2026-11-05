@@ -3,8 +3,8 @@ name: CI - API Server
 on:
   push:
     branches: [main]
+  # Runs for every PR (including stacked PRs into release-candidate branches).
   pull_request:
-    branches: [main]
 
 jobs:
   build-and-test:
