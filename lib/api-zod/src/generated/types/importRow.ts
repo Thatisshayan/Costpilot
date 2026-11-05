@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Over-long text is reported on its row (stored limits: description 500, category 100, vendor/project/transaction ID 200).
+ */
 export interface ImportRow {
   /**
      * Line in the file, used in the report
@@ -14,33 +17,33 @@ export interface ImportRow {
   rowNumber: number;
   /**
      * YYYY-MM-DD
-     * @maxLength 40
+     * @maxLength 200
      */
   date: string;
   /**
      * Exact decimal; negative for refunds/credits
-     * @maxLength 40
+     * @maxLength 200
      */
   amount: string;
-  /** @maxLength 10 */
+  /** @maxLength 200 */
   currency: string;
-  /** @maxLength 500 */
+  /** @maxLength 2000 */
   description?: string;
-  /** @maxLength 100 */
+  /** @maxLength 2000 */
   category?: string;
   /**
      * Name of an existing vendor in the scope
-     * @maxLength 200
+     * @maxLength 2000
      */
   vendor?: string;
   /**
      * Name of an existing project in the scope
-     * @maxLength 200
+     * @maxLength 2000
      */
   project?: string;
   /**
      * The source's transaction ID; prevents importing it twice
-     * @maxLength 200
+     * @maxLength 2000
      */
   externalId?: string;
 }

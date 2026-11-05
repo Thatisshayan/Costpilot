@@ -1780,16 +1780,17 @@ components:
       type: object
       required: [rowNumber, date, amount, currency]
       additionalProperties: false
+      description: "Over-long text is reported on its row (stored limits: description 500, category 100, vendor/project/transaction ID 200)."
       properties:
         rowNumber: { type: integer, minimum: 1, description: "Line in the file, used in the report" }
-        date: { type: string, maxLength: 40, description: "YYYY-MM-DD" }
-        amount: { type: string, maxLength: 40, description: "Exact decimal; negative for refunds/credits" }
-        currency: { type: string, maxLength: 10 }
-        description: { type: string, maxLength: 500 }
-        category: { type: string, maxLength: 100 }
-        vendor: { type: string, maxLength: 200, description: "Name of an existing vendor in the scope" }
-        project: { type: string, maxLength: 200, description: "Name of an existing project in the scope" }
-        externalId: { type: string, maxLength: 200, description: "The source's transaction ID; prevents importing it twice" }
+        date: { type: string, maxLength: 200, description: "YYYY-MM-DD" }
+        amount: { type: string, maxLength: 200, description: "Exact decimal; negative for refunds/credits" }
+        currency: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 2000 }
+        category: { type: string, maxLength: 2000 }
+        vendor: { type: string, maxLength: 2000, description: "Name of an existing vendor in the scope" }
+        project: { type: string, maxLength: 2000, description: "Name of an existing project in the scope" }
+        externalId: { type: string, maxLength: 2000, description: "The source's transaction ID; prevents importing it twice" }
 
     ImportRequest:
       type: object

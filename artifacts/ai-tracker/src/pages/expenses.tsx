@@ -58,6 +58,7 @@ type Expense = {
   description?: string | null;
   category?: string | null;
   date: string;
+  source?: "manual" | "import";
   createdAt?: string;
 };
 
@@ -460,6 +461,7 @@ export default function Expenses() {
                         <p className="text-xs text-slate-300">{expense.projectName || "No project"} · {format(new Date(expense.date + "T12:00:00"), "MMM d, yyyy")}</p>
                         {expense.category && <p className="text-xs text-indigo-200">{expense.category}</p>}
                         {expense.description && <p className="text-xs text-slate-300 break-words">{expense.description}</p>}
+                        {expense.source === "import" && <p className="text-xs text-slate-400">Source: CSV import</p>}
                       </div>
                       <p className={`shrink-0 text-right font-mono font-semibold ${expense.amount < 0 ? "text-emerald-300" : "text-white"}`}>{amountCell(expense)}</p>
                     </div>
@@ -507,6 +509,7 @@ export default function Expenses() {
                           ) : (
                             <span className="text-slate-400">—</span>
                           )}
+                          {expense.source === "import" && <span className="block mt-1 text-[11px] text-slate-400">CSV import</span>}
                         </td>
                         <td className="py-4 text-slate-300 max-w-[250px] truncate" title={expense.description || undefined}>
                           {expense.description || <span className="text-slate-400">—</span>}

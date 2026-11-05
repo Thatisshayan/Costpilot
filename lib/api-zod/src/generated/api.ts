@@ -708,21 +708,21 @@ export const DeleteBudgetResponse = zod.void()
 export const previewImportBodyFileNameMax = 200;
 
 
-export const previewImportBodyRowsItemDateMax = 40;
+export const previewImportBodyRowsItemDateMax = 200;
 
-export const previewImportBodyRowsItemAmountMax = 40;
+export const previewImportBodyRowsItemAmountMax = 200;
 
-export const previewImportBodyRowsItemCurrencyMax = 10;
+export const previewImportBodyRowsItemCurrencyMax = 200;
 
-export const previewImportBodyRowsItemDescriptionMax = 500;
+export const previewImportBodyRowsItemDescriptionMax = 2000;
 
-export const previewImportBodyRowsItemCategoryMax = 100;
+export const previewImportBodyRowsItemCategoryMax = 2000;
 
-export const previewImportBodyRowsItemVendorMax = 200;
+export const previewImportBodyRowsItemVendorMax = 2000;
 
-export const previewImportBodyRowsItemProjectMax = 200;
+export const previewImportBodyRowsItemProjectMax = 2000;
 
-export const previewImportBodyRowsItemExternalIdMax = 200;
+export const previewImportBodyRowsItemExternalIdMax = 2000;
 
 export const previewImportBodyRowsMax = 500;
 
@@ -742,7 +742,7 @@ export const PreviewImportBody = zod.object({
   "vendor": zod.string().max(previewImportBodyRowsItemVendorMax).optional().describe('Name of an existing vendor in the scope'),
   "project": zod.string().max(previewImportBodyRowsItemProjectMax).optional().describe('Name of an existing project in the scope'),
   "externalId": zod.string().max(previewImportBodyRowsItemExternalIdMax).optional().describe('The source\'s transaction ID; prevents importing it twice')
-})).min(1).max(previewImportBodyRowsMax),
+}).describe('Over-long text is reported on its row (stored limits: description 500, category 100, vendor/project/transaction ID 200).')).min(1).max(previewImportBodyRowsMax),
   "confirmDuplicateRows": zod.array(zod.int().min(1)).optional().describe('Row numbers of possible duplicates to import anyway')
 })
 
@@ -792,21 +792,21 @@ export const ListImportsResponse = zod.array(ListImportsResponseItem)
 export const createImportBodyFileNameMax = 200;
 
 
-export const createImportBodyRowsItemDateMax = 40;
+export const createImportBodyRowsItemDateMax = 200;
 
-export const createImportBodyRowsItemAmountMax = 40;
+export const createImportBodyRowsItemAmountMax = 200;
 
-export const createImportBodyRowsItemCurrencyMax = 10;
+export const createImportBodyRowsItemCurrencyMax = 200;
 
-export const createImportBodyRowsItemDescriptionMax = 500;
+export const createImportBodyRowsItemDescriptionMax = 2000;
 
-export const createImportBodyRowsItemCategoryMax = 100;
+export const createImportBodyRowsItemCategoryMax = 2000;
 
-export const createImportBodyRowsItemVendorMax = 200;
+export const createImportBodyRowsItemVendorMax = 2000;
 
-export const createImportBodyRowsItemProjectMax = 200;
+export const createImportBodyRowsItemProjectMax = 2000;
 
-export const createImportBodyRowsItemExternalIdMax = 200;
+export const createImportBodyRowsItemExternalIdMax = 2000;
 
 export const createImportBodyRowsMax = 500;
 
@@ -826,7 +826,7 @@ export const CreateImportBody = zod.object({
   "vendor": zod.string().max(createImportBodyRowsItemVendorMax).optional().describe('Name of an existing vendor in the scope'),
   "project": zod.string().max(createImportBodyRowsItemProjectMax).optional().describe('Name of an existing project in the scope'),
   "externalId": zod.string().max(createImportBodyRowsItemExternalIdMax).optional().describe('The source\'s transaction ID; prevents importing it twice')
-})).min(1).max(createImportBodyRowsMax),
+}).describe('Over-long text is reported on its row (stored limits: description 500, category 100, vendor/project/transaction ID 200).')).min(1).max(createImportBodyRowsMax),
   "confirmDuplicateRows": zod.array(zod.int().min(1)).optional().describe('Row numbers of possible duplicates to import anyway')
 })
 

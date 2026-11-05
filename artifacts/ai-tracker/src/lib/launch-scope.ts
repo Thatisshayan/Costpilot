@@ -1,5 +1,5 @@
 // Screens with a supported launch journey. Preview implementations remain in source.
 export const launchPaths = new Set([
-  "/", "/expenses", "/budgets", "/projects", "/platforms", "/vendors",
+  "/", "/expenses", "/import", "/budgets", "/projects", "/platforms", "/vendors",
   "/collaboration", "/accept-invite", "/terms", "/privacy-policy",
 ]);

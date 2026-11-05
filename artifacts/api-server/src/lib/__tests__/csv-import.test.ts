@@ -18,6 +18,12 @@ describe("CSV row fields", () => {
     expect("messages" in result && result.messages.join(" ")).toMatch(message);
   });
 
+  it("reports an over-long cell on its own row instead of rejecting the file", () => {
+    const parsed = ImportRequest.parse({ fileName: "a.csv", rows: [row({ description: "x".repeat(501), externalId: "y".repeat(201) })] }).rows[0];
+    const result = checkRowFields(parsed);
+    expect("messages" in result && result.messages).toEqual(["Description must be at most 500 characters.", "Transaction ID must be at most 200 characters."]);
+  });
+
   it("reports every problem in a row at once", () => {
     const result = checkRowFields(row({ amount: "x", date: "x", currency: "x" }) as never);
     expect("messages" in result && result.messages).toHaveLength(3);
@@ -33,7 +39,7 @@ describe("import request limits", () => {
 
   it("rejects unknown keys, oversized text, empty files and repeated row numbers", () => {
     expect(ImportRequest.safeParse({ fileName: "a.csv", rows: [row({ evil: 1 })] }).success).toBe(false);
-    expect(ImportRequest.safeParse({ fileName: "a.csv", rows: [row({ description: "x".repeat(501) })] }).success).toBe(false);
+    expect(ImportRequest.safeParse({ fileName: "a.csv", rows: [row({ description: "x".repeat(2001) })] }).success).toBe(false);
     expect(ImportRequest.safeParse({ fileName: "a.csv", rows: [] }).success).toBe(false);
     expect(ImportRequest.safeParse({ fileName: "a.csv", rows: [row(), row()] }).success).toBe(false);
   });

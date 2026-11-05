@@ -15,17 +15,21 @@ const MAX_ABS_CENTS = 9_999_999_999n; // numeric(10,2)
 
 const text = (max: number) => z.string().max(max).optional().transform(v => (v === undefined ? undefined : v.trim() || undefined));
 
+// Hard request limits are generous so an over-long cell is reported on its own row (below)
+// instead of rejecting the whole file; the stored limits are TEXT_LIMITS.
 export const ImportRow = z.object({
   rowNumber: z.number().int().min(1).max(1_000_000),
-  date: z.string().max(40),
-  amount: z.string().max(40),
-  currency: z.string().max(10),
-  description: text(500),
-  category: text(100),
-  vendor: text(200),
-  project: text(200),
-  externalId: text(200),
+  date: z.string().max(200),
+  amount: z.string().max(200),
+  currency: z.string().max(200),
+  description: text(2000),
+  category: text(2000),
+  vendor: text(2000),
+  project: text(2000),
+  externalId: text(2000),
 }).strict();
+const TEXT_LIMITS = { description: 500, category: 100, vendor: 200, project: 200, externalId: 200 } as const;
+const TEXT_LABEL = { description: "Description", category: "Category", vendor: "Vendor", project: "Project", externalId: "Transaction ID" } as const;
 export type ImportRowInput = z.infer<typeof ImportRow>;
 
 export const ImportRequest = z.object({
@@ -66,6 +70,10 @@ export function checkRowFields(row: ImportRowInput): { row: CleanRow } | { messa
   }
   const currency = row.currency.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) messages.push("Currency must be a 3-letter ISO 4217 code such as USD.");
+  for (const key of Object.keys(TEXT_LIMITS) as (keyof typeof TEXT_LIMITS)[]) {
+    const value = row[key];
+    if (value !== undefined && value.length > TEXT_LIMITS[key]) messages.push(`${TEXT_LABEL[key]} must be at most ${TEXT_LIMITS[key]} characters.`);
+  }
   if (messages.length > 0) return { messages };
   return {
     row: {
