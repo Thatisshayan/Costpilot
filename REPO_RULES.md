@@ -1,6 +1,6 @@
 # Repository Rules
 
-Version: 1.0.2
+Version: 1.0.3
 Effective: 2026-11-05
 Owner: Shayan
 Applies to: Every human contributor and every agent (Hermes, Codex, etc.) working in this repository.
@@ -223,7 +223,7 @@ This file is versioned (semver + date). Audits review whether the rules are bein
 
 GitHub branch protection for `main` (set via Settings → Branches or `gh`):
 - Require a pull request before merging.
-- Require status checks to pass: `gate` (covers secret-scan, build, test, doc-freshness, deploy-dry).
+- Require status checks to pass: `gate` (covers secret-scan, mock-guard, build, test, doc-freshness, deploy-dry).
 - Require branches to be up to date before merging.
 - Dismiss stale approvals on new commits.
 - Require review (Shayan or CODEOWNERS).
@@ -238,7 +238,8 @@ Jobs / checks:
 1. `secret-scan` — gitleaks is required and fails closed: a missing scanner, an invalid commit range or any finding fails the gate. CI installs a pinned gitleaks release and verifies its SHA-256 before use. Every run scans (a) every commit introduced by the pull request (`base..head`) or push (`before..after`; a new branch or force-push scans everything not on `main`) and (b) the tracked files of the checked-out commit. A scheduled job scans the full history weekly. Exceptions are allowed only as exact gitleaks fingerprints in `.gitleaksignore`, each with a comment giving the evidence that it is not a credential and the owner's approval; rule-wide, path-wide or regex allowlists and weaker grep fallbacks are not accepted. Implementation: `scripts/secret-scan.mjs`.
 2. `doc-freshness` — README exists + link integrity; newest audit < 30 days; `docs/` md count ≥ baseline.
 3. `build` / `test` — repo-adaptive (Node / Python / Rust / static).
-4. `deploy-dry` — if a deploy target config is present (vercel/railway/eas/netlify), run its dry-run; otherwise the smoke build covers it.
+4. `mock-guard` — fails closed if any enabled surface (web `artifacts/ai-tracker/src/main.tsx`, API `artifacts/api-server/src/index.ts`, the mobile screens allowed by `artifacts/mobile-app/src/app/_layout.tsx`) can statically or dynamically import a denylisted mock module or a file containing fabrication markers (`MOCK_*` identifiers, `costpilotMockData`, `Math.random()`, faker). Unresolvable imports, missing entry points, a suspiciously small import graph or mobile screen-list drift also fail. Disabled/unrouted code and test fixtures are not scanned. Exceptions are exact file + marker entries with a reason in the `allowlist` of `scripts/mock-guard.mjs` (currently none). Implementation and tests: `scripts/mock-guard.mjs`, `scripts/__tests__/mock-guard.test.mjs` (`pnpm run mock-guard`, `pnpm run test:mock-guard`); it runs before the build.
+5. `deploy-dry` — if a deploy target config is present (vercel/railway/eas/netlify), run its dry-run; otherwise the smoke build covers it.
 
 All checks must be green to merge. See `scripts/verify.sh` / `scripts/verify.ps1` for the implementation.
 
