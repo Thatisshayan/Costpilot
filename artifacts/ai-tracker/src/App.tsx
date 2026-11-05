@@ -10,6 +10,7 @@ import { Layout } from "@/components/layout";
 import Dashboard from "@/pages/dashboard";
 import Expenses from "@/pages/expenses";
 import Projects from "@/pages/projects";
+import MonthlyBudgets from "@/pages/monthly-budgets";
 import Platforms from "@/pages/platforms";
 import Collaboration from "@/pages/collaboration";
 import AcceptInvite from "@/pages/accept-invite";
@@ -22,7 +23,7 @@ export default function App() {
     <TooltipProvider><WorkspaceProvider><ErrorBoundary><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Layout><Switch>
         <Route path="/" component={Dashboard} /><Route path="/expenses" component={Expenses} />
-        <Route path="/projects" component={Projects} /><Route path="/platforms" component={Platforms} />
+        <Route path="/projects" component={Projects} /><Route path="/budgets" component={MonthlyBudgets} /><Route path="/platforms" component={Platforms} />
         <Route path="/vendors" component={Platforms} /><Route path="/collaboration" component={Collaboration} />
         <Route path="/accept-invite" component={AcceptInvite} /><Route path="/terms" component={Terms} />
         <Route path="/privacy-policy" component={PrivacyPolicy} /><Route component={Unavailable} />

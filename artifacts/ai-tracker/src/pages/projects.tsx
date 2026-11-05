@@ -39,7 +39,7 @@ export default function Projects() {
       await cache.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setConfirmId(null);
       setDeleteError(null);
-      toast.success("Project deleted. Its expenses are kept without a project.");
+      toast.success("Project deleted. Its expenses are kept without a project; its budgets were removed.");
     } catch (error) {
       setDeleteError(apiErrorMessage(error, "The project could not be deleted."));
     }
@@ -91,7 +91,7 @@ export default function Projects() {
             <span className="flex items-center gap-2 text-white font-medium min-w-0 break-words"><Folder size={16} className="text-indigo-300 shrink-0" aria-hidden />{project.name}</span>
             {canWrite && (confirmId === project.id ? (
               <span className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-slate-300">Delete? Expenses stay, without a project.</span>
+                <span className="text-xs text-slate-300">Delete? Expenses stay, without a project; its budgets are removed.</span>
                 <button type="button" disabled={remove.isPending} onClick={() => void handleDelete(project.id)} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">Delete</button>
                 <button type="button" onClick={() => setConfirmId(null)} className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-200 text-xs font-bold">Cancel</button>
               </span>

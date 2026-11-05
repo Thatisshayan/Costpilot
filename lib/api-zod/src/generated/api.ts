@@ -525,6 +525,172 @@ export const GetSpendSummaryResponse = zod.object({
 })
 
 
+/**
+ * @summary Monthly budgets in one scope
+ */
+
+
+
+export const ListBudgetsQueryParams = zod.object({
+  "workspaceId": zod.coerce.number().int().min(1).optional().describe('Omit for Personal')
+})
+
+export const ListBudgetsResponseItem = zod.object({
+  "id": zod.int(),
+  "workspaceId": zod.int().nullable(),
+  "projectId": zod.int().nullable().describe('Null for a budget covering the whole scope'),
+  "projectName": zod.string().nullable(),
+  "name": zod.string(),
+  "period": zod.enum(['monthly']),
+  "currency": zod.string(),
+  "amount": zod.string().describe('Exact decimal with 2 places'),
+  "thresholds": zod.array(zod.int()).describe('Alert thresholds as percentages of the amount, ascending'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListBudgetsResponse = zod.array(ListBudgetsResponseItem)
+
+
+/**
+ * @summary Create a monthly budget (workspace owners and admins; Personal budgets by their owner)
+ */
+
+
+export const createBudgetBodyNameMax = 80;
+
+export const createBudgetBodyCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+export const createBudgetBodyAmountRegExp = new RegExp('^\\d{1,10}(\\.\\d{1,2})?$');
+export const createBudgetBodyThresholdsItemMax = 100;
+
+export const createBudgetBodyThresholdsMax = 5;
+
+
+
+export const CreateBudgetBody = zod.object({
+  "workspaceId": zod.int().min(1).nullish().describe('Omit or null for Personal'),
+  "projectId": zod.int().min(1).nullish().describe('Must belong to the same scope'),
+  "name": zod.string().min(1).max(createBudgetBodyNameMax),
+  "currency": zod.string().regex(createBudgetBodyCurrencyRegExp),
+  "amount": zod.string().regex(createBudgetBodyAmountRegExp).describe('Greater than zero, at most 2 decimals'),
+  "thresholds": zod.array(zod.int().min(1).max(createBudgetBodyThresholdsItemMax)).min(1).max(createBudgetBodyThresholdsMax).optional().describe('Strictly ascending; defaults to [50, 80, 100]')
+})
+
+export const CreateBudgetResponse = zod.object({
+  "id": zod.int(),
+  "workspaceId": zod.int().nullable(),
+  "projectId": zod.int().nullable().describe('Null for a budget covering the whole scope'),
+  "projectName": zod.string().nullable(),
+  "name": zod.string(),
+  "period": zod.enum(['monthly']),
+  "currency": zod.string(),
+  "amount": zod.string().describe('Exact decimal with 2 places'),
+  "thresholds": zod.array(zod.int()).describe('Alert thresholds as percentages of the amount, ascending'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Actual spend is computed in the database from stored expenses with the same rules as the
+ * spend summary: net = charges + refunds/credits (negative amounts), an expense counts in the
+ * month of its date, and the current month runs to today (UTC). Only expenses in the budget's
+ * currency count; nothing is converted. No forecast is made.
+ * @summary Spending against each budget for one month, in the budget's currency only
+ */
+
+export const getBudgetStatusQueryMonthRegExp = new RegExp('^\\d{4}-(0[1-9]|1[0-2])$');
+
+
+export const GetBudgetStatusQueryParams = zod.object({
+  "workspaceId": zod.coerce.number().int().min(1).optional().describe('Omit for Personal'),
+  "month": zod.coerce.string().regex(getBudgetStatusQueryMonthRegExp).optional().describe('YYYY-MM; defaults to the current month. Future months are rejected.')
+})
+
+export const GetBudgetStatusResponse = zod.object({
+  "workspaceId": zod.int().nullable(),
+  "period": zod.object({
+  "month": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "through": zod.string(),
+  "isPartial": zod.boolean()
+}),
+  "budgets": zod.array(zod.object({
+  "budget": zod.object({
+  "id": zod.int(),
+  "workspaceId": zod.int().nullable(),
+  "projectId": zod.int().nullable().describe('Null for a budget covering the whole scope'),
+  "projectName": zod.string().nullable(),
+  "name": zod.string(),
+  "period": zod.enum(['monthly']),
+  "currency": zod.string(),
+  "amount": zod.string().describe('Exact decimal with 2 places'),
+  "thresholds": zod.array(zod.int()).describe('Alert thresholds as percentages of the amount, ascending'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "net": zod.string().describe('Charges plus refunds/credits in the budget\'s currency for the period'),
+  "charges": zod.string(),
+  "credits": zod.string().describe('Zero or negative'),
+  "count": zod.int(),
+  "remaining": zod.string().describe('Amount minus net; negative when over budget'),
+  "percentUsed": zod.number().describe('net / amount × 100, rounded half away from zero to 0.1'),
+  "thresholdReached": zod.int().nullable().describe('Highest threshold reached, if any'),
+  "state": zod.enum(['ok', 'alert', 'over']).describe('over when net exceeds the amount; alert when a threshold is reached')
+}))
+})
+
+
+/**
+ * @summary Change a budget's name, amount or thresholds (scope, project and currency are fixed)
+ */
+
+
+
+export const UpdateBudgetParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateBudgetBodyNameMax = 80;
+
+export const updateBudgetBodyAmountRegExp = new RegExp('^\\d{1,10}(\\.\\d{1,2})?$');
+export const updateBudgetBodyThresholdsItemMax = 100;
+
+export const updateBudgetBodyThresholdsMax = 5;
+
+
+
+export const UpdateBudgetBody = zod.object({
+  "name": zod.string().min(1).max(updateBudgetBodyNameMax).optional(),
+  "amount": zod.string().regex(updateBudgetBodyAmountRegExp).optional(),
+  "thresholds": zod.array(zod.int().min(1).max(updateBudgetBodyThresholdsItemMax)).min(1).max(updateBudgetBodyThresholdsMax).optional()
+})
+
+export const UpdateBudgetResponse = zod.object({
+  "id": zod.int(),
+  "workspaceId": zod.int().nullable(),
+  "projectId": zod.int().nullable().describe('Null for a budget covering the whole scope'),
+  "projectName": zod.string().nullable(),
+  "name": zod.string(),
+  "period": zod.enum(['monthly']),
+  "currency": zod.string(),
+  "amount": zod.string().describe('Exact decimal with 2 places'),
+  "thresholds": zod.array(zod.int()).describe('Alert thresholds as percentages of the amount, ascending'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const DeleteBudgetParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteBudgetResponse = zod.void()
+
+
 export const ListSubscriptionsResponseItem = zod.object({
   "id": zod.int(),
   "platformId": zod.int(),

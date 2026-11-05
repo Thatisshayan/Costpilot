@@ -13,6 +13,7 @@ import {
   DollarSign,
   Folder,
   AlertTriangle,
+  Target,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WorkspaceSwitcher } from "./workspace-switcher";
@@ -24,6 +25,7 @@ import { useHealthCheck } from "@/hooks/use-health-check";
 export const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Expenses", href: "/expenses", icon: DollarSign },
+  { name: "Budgets", href: "/budgets", icon: Target },
   { name: "Projects", href: "/projects", icon: Folder },
   { name: "Vendors", href: "/vendors", icon: Building },
   { name: "Team", href: "/collaboration", icon: Users },

@@ -38,6 +38,16 @@ const fixtures = role => ({
     total: 63, limit: 25, offset: 0,
     totals: [{ currency: "EUR", net: "-120.00", count: 1 }, { currency: "JPY", net: "1500.00", count: 1 }, { currency: "USD", net: "18234.55", count: 61 }],
   },
+  "/api/budgets/status": {
+    workspaceId: 5,
+    period: { month: "2026-11", start: "2026-11-01", end: "2026-11-30", through: "2026-11-05", isPartial: true },
+    budgets: [
+      { budget: { id: 1, workspaceId: 5, projectId: 1, projectName: "Checkout service with a deliberately long project name for wrapping", name: "Cloud infrastructure for the checkout service", period: "monthly", currency: "USD", amount: "15000.00", thresholds: [50, 80, 100], createdAt: "2026-11-01T00:00:00Z", updatedAt: "2026-11-01T00:00:00Z" },
+        net: "18234.55", charges: "18234.55", credits: "0.00", count: 61, remaining: "-3234.55", percentUsed: 121.6, thresholdReached: 100, state: "over" },
+      { budget: { id: 2, workspaceId: 5, projectId: null, projectName: null, name: "AI APIs", period: "monthly", currency: "EUR", amount: "500.00", thresholds: [80], createdAt: "2026-11-01T00:00:00Z", updatedAt: "2026-11-01T00:00:00Z" },
+        net: "-120.00", charges: "0.00", credits: "-120.00", count: 1, remaining: "620.00", percentUsed: -24, thresholdReached: null, state: "ok" },
+    ],
+  },
   "/api/spend/summary": {
     workspaceId: 5,
     period: { month: "2026-11", start: "2026-11-01", end: "2026-11-30", through: "2026-11-05", isPartial: true },
@@ -73,7 +83,7 @@ try {
         else localStorage.setItem("costpilot.activeWorkspace.e2e-owner", String(id));
       }, scope);
       const page = await context.newPage();
-      for (const route of ["/", "/expenses", "/projects", "/vendors", "/collaboration", "/accept-invite?token=" + "a".repeat(64)]) {
+      for (const route of ["/", "/expenses", "/budgets", "/projects", "/vendors", "/collaboration", "/accept-invite?token=" + "a".repeat(64)]) {
         await page.goto(origin + route, { waitUntil: "networkidle" });
         await page.waitForTimeout(300);
         const { scrollWidth, innerWidth } = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));

@@ -320,6 +320,73 @@ try {
   assert.equal((await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { evil: 1 } })).status, 400);
   assert.equal((await call("launch-a", "/exports/generate", "POST", { module: "expenses", format: "csv", workspaceId: ws2.id, filters: { minAmount: "10", maxAmount: "9.99" } })).status, 400, "an impossible amount range is rejected, not exported empty");
 
+  // ---- Batch 3: monthly budgets, per currency, refunds included, role-checked ----
+  type BudgetJson = { id: number; amount: string; projectName: string | null; thresholds: number[] };
+  type StatusJson = { period: { month: string }; budgets: { budget: BudgetJson; net: string; charges: string; credits: string; count: number; remaining: string; percentUsed: number; thresholdReached: number | null; state: string }[] };
+  const createBudget = (user: string, body: Record<string, unknown>) => call(user, "/budgets", "POST", body);
+  const wsBudgetRes = await createBudget("launch-a", { workspaceId: ws2.id, name: "Cloud", currency: "USD", amount: "100" });
+  assert.equal(wsBudgetRes.status, 201);
+  const wsBudget = await wsBudgetRes.json() as BudgetJson;
+  assert.deepEqual([wsBudget.amount, wsBudget.thresholds, wsBudget.projectName], ["100.00", [50, 80, 100], null]);
+  const projectBudget = await (await createBudget("launch-a", { workspaceId: ws2.id, projectId: checkout.id, name: "Checkout", currency: "USD", amount: "100.00", thresholds: [90, 100] })).json() as BudgetJson;
+  assert.equal(projectBudget.projectName, "Checkout");
+  await createBudget("launch-a", { workspaceId: ws2.id, name: "AI", currency: "EUR", amount: "40.00" });
+  const status = await (await call("launch-c", `/budgets/status?workspaceId=${ws2.id}&month=2026-09`)).json() as StatusJson;
+  const byId = new Map(status.budgets.map(b => [b.budget.id, b]));
+  const wsStatus = byId.get(wsBudget.id)!;
+  assert.deepEqual([wsStatus.net, wsStatus.charges, wsStatus.credits, wsStatus.count, wsStatus.remaining, wsStatus.percentUsed, wsStatus.thresholdReached, wsStatus.state],
+    ["80.30", "100.30", "-20.00", 3, "19.70", 80.3, 80, "alert"], "the workspace USD budget matches the summary net (refund included); EUR/JPY never count");
+  const projectStatus = byId.get(projectBudget.id)!;
+  assert.deepEqual([projectStatus.net, projectStatus.remaining, projectStatus.percentUsed, projectStatus.state], ["100.10", "-0.10", 100.1, "over"], "a project budget counts only that project");
+  assert.deepEqual(status.budgets.map(b => b.budget.amount), ["40.00", "100.00", "100.00"], "workspace budgets first (by currency), then project budgets");
+  assert.equal(status.budgets.find(b => b.budget.amount === "40.00")!.state, "over", "EUR 50.00 against EUR 40.00");
+  const october = await (await call("launch-a", `/budgets/status?workspaceId=${ws2.id}&month=2026-10`)).json() as StatusJson;
+  assert.deepEqual(october.budgets.find(b => b.budget.id === wsBudget.id)!.net, "5.00", "the next month starts again (2026-09-30 counts only in September)");
+  assert.equal((await call("launch-a", `/budgets/status?workspaceId=${ws2.id}&month=2999-01`)).status, 400, "future months are rejected");
+
+  // Roles: viewers read, only owners/admins write; non-members see nothing.
+  assert.equal((await call("launch-c", `/budgets?workspaceId=${ws2.id}`)).status, 200);
+  assert.equal((await createBudget("launch-c", { workspaceId: ws2.id, name: "Viewer", currency: "GBP", amount: "1" })).status, 403);
+  assert.equal((await call("launch-c", `/budgets/${wsBudget.id}`, "PATCH", { amount: "1" })).status, 403);
+  assert.equal((await call("launch-c", `/budgets/${wsBudget.id}`, "DELETE")).status, 403);
+  assert.equal((await call("launch-b", `/budgets?workspaceId=${ws2.id}`)).status, 403);
+  assert.equal((await call("launch-b", `/budgets/status?workspaceId=${ws2.id}`)).status, 403);
+  assert.equal((await call("launch-b", `/budgets/${wsBudget.id}`, "PATCH", { amount: "1" })).status, 404, "non-members cannot tell a budget exists");
+  assert.equal((await call("launch-b", `/budgets/${wsBudget.id}`, "DELETE")).status, 404);
+
+  // Personal budgets belong to their owner only.
+  const bBudget = await (await createBudget("launch-b", { name: "Mine", currency: "USD", amount: "1000.00" })).json() as BudgetJson;
+  const bStatus = await (await call("launch-b", "/budgets/status?month=2026-09")).json() as StatusJson;
+  assert.deepEqual(bStatus.budgets.map(b => [b.budget.id, b.net, b.state]), [[bBudget.id, "999.99", "alert"]], "Personal status uses only the owner's Personal rows");
+  assert.equal((await call("launch-a", `/budgets/${bBudget.id}`, "PATCH", { amount: "1" })).status, 404);
+  assert.deepEqual(((await (await call("launch-a", "/budgets")).json()) as BudgetJson[]).map(b => b.id).includes(bBudget.id), false);
+
+  // Validation, duplicates and cross-scope references.
+  assert.equal((await createBudget("launch-a", { workspaceId: ws2.id, name: "Again", currency: "USD", amount: "5" })).status, 409, "one budget per scope, project and currency");
+  assert.equal((await createBudget("launch-b", { name: "Mine again", currency: "USD", amount: "5" })).status, 409, "Personal duplicates are caught too (NULL workspace)");
+  const [aPersonalProject] = await db.insert(projects).values({ userId: "launch-a", name: "Personal project" }).returning();
+  assert.equal((await createBudget("launch-a", { workspaceId: ws2.id, projectId: aPersonalProject.id, name: "Leak", currency: "USD", amount: "5" })).status, 400, "a project from another scope is rejected");
+  for (const bad of [{ amount: "0" }, { amount: "-5" }, { amount: "1.234" }, { currency: "usd" }, { thresholds: [80, 50] }, { thresholds: [0] }, { name: "" }, { name: "bad\u0000name" }, { evil: 1 }]) {
+    assert.equal((await createBudget("launch-a", { workspaceId: ws2.id, name: "Bad", currency: "CAD", amount: "5", ...bad })).status, 400, `rejects ${JSON.stringify(bad)}`);
+  }
+
+  // Updating the amount changes the status; scope and currency cannot be changed.
+  const patched = await call("launch-a", `/budgets/${wsBudget.id}`, "PATCH", { amount: "200", thresholds: [50, 75] });
+  assert.equal(patched.status, 200);
+  const after = (await (await call("launch-a", `/budgets/status?workspaceId=${ws2.id}&month=2026-09`)).json() as StatusJson).budgets.find(b => b.budget.id === wsBudget.id)!;
+  assert.deepEqual([after.remaining, after.percentUsed, after.thresholdReached, after.state], ["119.70", 40.2, null, "ok"]);
+  assert.equal((await call("launch-a", `/budgets/${wsBudget.id}`, "PATCH", { currency: "EUR" })).status, 400);
+  assert.equal((await call("launch-a", "/budgets/99999999999", "DELETE")).status, 404, "an id beyond the integer range is not found, not a 500");
+  assert.equal((await call("launch-a", "/budgets?workspaceId=99999999999")).status, 400);
+  assert.equal((await createBudget("launch-a", { workspaceId: 99999999999, name: "Big", currency: "USD", amount: "1" })).status, 400);
+
+  // Deleting a project deletes its budget instead of widening it to the whole workspace.
+  const [temp] = await db.insert(projects).values({ userId: "launch-a", workspaceId: ws2.id, name: "Temporary" }).returning();
+  const tempBudget = await (await createBudget("launch-a", { workspaceId: ws2.id, projectId: temp.id, name: "Temp", currency: "USD", amount: "10" })).json() as BudgetJson;
+  assert.equal((await call("launch-a", `/projects/${temp.id}`, "DELETE")).status, 204);
+  assert.equal((await call("launch-a", `/budgets/${tempBudget.id}`, "DELETE")).status, 404);
+  assert.equal((await call("launch-a", `/budgets/${projectBudget.id}`, "DELETE")).status, 204);
+
   // Export size is capped so one request cannot build an unbounded file (Codacy DoS finding).
   await db.execute(sql`INSERT INTO expenses (user_id, amount, currency, date)
     SELECT 'launch-d', 1.00, 'USD', to_char(date '2025-01-01' + (g % 365), 'YYYY-MM-DD') FROM generate_series(1, 50001) g`);

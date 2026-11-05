@@ -29,6 +29,10 @@ import type {
   AcceptInviteBody,
   AiAudit,
   AnalyticsForecast,
+  Budget,
+  BudgetInput,
+  BudgetStatusReport,
+  BudgetUpdate,
   CalendarEvent,
   CicdRun,
   CicdValidationResult,
@@ -45,6 +49,7 @@ import type {
   ExpenseSearchResult,
   ExpenseUpdate,
   GenerateExpenseExportBody,
+  GetBudgetStatusParams,
   GetIntelligenceActivity200Item,
   GetSpendSummaryParams,
   GpuTelemetry,
@@ -53,6 +58,7 @@ import type {
   ImportExpensesBatchBody,
   InvitePreview,
   InviteToWorkspaceBody,
+  ListBudgetsParams,
   ListConnectedSources200Item,
   MessageResponse,
   MonthlySpending,
@@ -1901,6 +1907,471 @@ export function useGetSpendSummary<TData = Awaited<ReturnType<typeof getSpendSum
 
 
 
+
+export const getListBudgetsUrl = (params?: ListBudgetsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/budgets?${stringifiedParams}` : `/api/budgets`
+}
+
+/**
+ * @summary Monthly budgets in one scope
+ */
+export const listBudgets = async (params?: ListBudgetsParams, options?: Parameters<typeof customFetch>[1]): Promise<Budget[]> => {
+
+  return customFetch<Budget[]>(getListBudgetsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBudgetsQueryKey = (params?: ListBudgetsParams,) => {
+    return [
+    `/api/budgets`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListBudgetsQueryOptions = <TData = Awaited<ReturnType<typeof listBudgets>>, TError = ErrorType<void>>(params?: ListBudgetsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBudgetsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBudgets>>> = ({ signal }) => listBudgets(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListBudgetsQueryResult = NonNullable<Awaited<ReturnType<typeof listBudgets>>>
+export type ListBudgetsQueryError = ErrorType<void>
+
+
+export function useListBudgets<TData = Awaited<ReturnType<typeof listBudgets>>, TError = ErrorType<void>>(
+ params: undefined |  ListBudgetsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listBudgets>>,
+          TError,
+          Awaited<ReturnType<typeof listBudgets>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListBudgets<TData = Awaited<ReturnType<typeof listBudgets>>, TError = ErrorType<void>>(
+ params?: ListBudgetsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listBudgets>>,
+          TError,
+          Awaited<ReturnType<typeof listBudgets>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListBudgets<TData = Awaited<ReturnType<typeof listBudgets>>, TError = ErrorType<void>>(
+ params?: ListBudgetsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Monthly budgets in one scope
+ */
+
+export function useListBudgets<TData = Awaited<ReturnType<typeof listBudgets>>, TError = ErrorType<void>>(
+ params?: ListBudgetsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListBudgetsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBudgetUrl = () => {
+
+
+
+
+  return `/api/budgets`
+}
+
+/**
+ * @summary Create a monthly budget (workspace owners and admins; Personal budgets by their owner)
+ */
+export const createBudget = async (budgetInput: BudgetInput, options?: Parameters<typeof customFetch>[1]): Promise<Budget> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Budget>(getCreateBudgetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(budgetInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBudgetMutationKey = () => ['createBudget'] as const;
+
+export const getCreateBudgetMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBudget>>, TError,CreateBudgetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBudget>>, TError,CreateBudgetMutationVariables, TContext> => {
+
+const mutationKey = getCreateBudgetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBudget>>, CreateBudgetMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBudget(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBudgetMutationResult = NonNullable<Awaited<ReturnType<typeof createBudget>>>
+    export type CreateBudgetMutationBody = BodyType<BudgetInput>
+    export type CreateBudgetMutationError = ErrorType<void>
+    export type CreateBudgetMutationVariables = {data: BodyType<BudgetInput>}
+
+    /**
+ * @summary Create a monthly budget (workspace owners and admins; Personal budgets by their owner)
+ */
+export const useCreateBudget = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBudget>>, TError,CreateBudgetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createBudget>>,
+        TError,
+        CreateBudgetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateBudgetMutationOptions(options), queryClient);
+    }
+
+export const getGetBudgetStatusUrl = (params?: GetBudgetStatusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/budgets/status?${stringifiedParams}` : `/api/budgets/status`
+}
+
+/**
+ * Actual spend is computed in the database from stored expenses with the same rules as the
+ * spend summary: net = charges + refunds/credits (negative amounts), an expense counts in the
+ * month of its date, and the current month runs to today (UTC). Only expenses in the budget's
+ * currency count; nothing is converted. No forecast is made.
+ * @summary Spending against each budget for one month, in the budget's currency only
+ */
+export const getBudgetStatus = async (params?: GetBudgetStatusParams, options?: Parameters<typeof customFetch>[1]): Promise<BudgetStatusReport> => {
+
+  return customFetch<BudgetStatusReport>(getGetBudgetStatusUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBudgetStatusQueryKey = (params?: GetBudgetStatusParams,) => {
+    return [
+    `/api/budgets/status`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetBudgetStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBudgetStatus>>, TError = ErrorType<void>>(params?: GetBudgetStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBudgetStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBudgetStatusQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBudgetStatus>>> = ({ signal }) => getBudgetStatus(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBudgetStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetBudgetStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBudgetStatus>>>
+export type GetBudgetStatusQueryError = ErrorType<void>
+
+
+export function useGetBudgetStatus<TData = Awaited<ReturnType<typeof getBudgetStatus>>, TError = ErrorType<void>>(
+ params: undefined |  GetBudgetStatusParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBudgetStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBudgetStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getBudgetStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBudgetStatus<TData = Awaited<ReturnType<typeof getBudgetStatus>>, TError = ErrorType<void>>(
+ params?: GetBudgetStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBudgetStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBudgetStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getBudgetStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBudgetStatus<TData = Awaited<ReturnType<typeof getBudgetStatus>>, TError = ErrorType<void>>(
+ params?: GetBudgetStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBudgetStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Spending against each budget for one month, in the budget's currency only
+ */
+
+export function useGetBudgetStatus<TData = Awaited<ReturnType<typeof getBudgetStatus>>, TError = ErrorType<void>>(
+ params?: GetBudgetStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBudgetStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetBudgetStatusQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateBudgetUrl = (id: number,) => {
+
+
+
+
+  return `/api/budgets/${id}`
+}
+
+/**
+ * @summary Change a budget's name, amount or thresholds (scope, project and currency are fixed)
+ */
+export const updateBudget = async (id: number,
+    budgetUpdate: BudgetUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Budget> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Budget>(getUpdateBudgetUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(budgetUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateBudgetMutationKey = () => ['updateBudget'] as const;
+
+export const getUpdateBudgetMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBudget>>, TError,UpdateBudgetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBudget>>, TError,UpdateBudgetMutationVariables, TContext> => {
+
+const mutationKey = getUpdateBudgetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBudget>>, UpdateBudgetMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateBudget(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBudgetMutationResult = NonNullable<Awaited<ReturnType<typeof updateBudget>>>
+    export type UpdateBudgetMutationBody = BodyType<BudgetUpdate>
+    export type UpdateBudgetMutationError = ErrorType<void>
+    export type UpdateBudgetMutationVariables = {id: number;data: BodyType<BudgetUpdate>}
+
+    /**
+ * @summary Change a budget's name, amount or thresholds (scope, project and currency are fixed)
+ */
+export const useUpdateBudget = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBudget>>, TError,UpdateBudgetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateBudget>>,
+        TError,
+        UpdateBudgetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateBudgetMutationOptions(options), queryClient);
+    }
+
+export const getDeleteBudgetUrl = (id: number,) => {
+
+
+
+
+  return `/api/budgets/${id}`
+}
+
+export const deleteBudget = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteBudgetUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteBudgetMutationKey = () => ['deleteBudget'] as const;
+
+export const getDeleteBudgetMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBudget>>, TError,DeleteBudgetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBudget>>, TError,DeleteBudgetMutationVariables, TContext> => {
+
+const mutationKey = getDeleteBudgetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBudget>>, DeleteBudgetMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteBudget(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBudgetMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBudget>>>
+
+    export type DeleteBudgetMutationError = ErrorType<void>
+    export type DeleteBudgetMutationVariables = {id: number}
+
+    export const useDeleteBudget = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBudget>>, TError,DeleteBudgetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBudget>>,
+        TError,
+        DeleteBudgetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteBudgetMutationOptions(options), queryClient);
+    }
 
 export const getListSubscriptionsUrl = () => {
 

@@ -4,9 +4,11 @@ import type { SpendCurrency, SpendSummary } from "@workspace/api-client-react";
 
 const ws = vi.hoisted(() => ({ value: { activeWorkspaceId: 7 as number | null, activeWorkspace: { id: 7, name: "Platform" } as { id: number; name: string } | null, canWrite: true } }));
 const summaryHook = vi.hoisted(() => ({ calls: [] as unknown[], result: {} as Record<string, unknown> }));
+const budgetHook = vi.hoisted(() => ({ calls: [] as unknown[], budgets: [] as unknown[], isError: false, refetch: vi.fn() }));
 vi.mock("@/context/workspace-context", () => ({ useWorkspace: () => ws.value }));
 vi.mock("@workspace/api-client-react", () => ({
   useGetSpendSummary: (params: unknown) => { summaryHook.calls.push(params); return summaryHook.result; },
+  useGetBudgetStatus: (params: unknown) => { budgetHook.calls.push(params); return budgetHook.isError ? { data: undefined, isError: true, refetch: budgetHook.refetch } : { data: { budgets: budgetHook.budgets }, isError: false, refetch: budgetHook.refetch }; },
 }));
 
 import Dashboard, { comparisonText, recentMonths } from "../dashboard";
@@ -24,7 +26,7 @@ const summary = (currencies: SpendCurrency[], partial = false): SpendSummary => 
 });
 const ok = (data: SpendSummary) => ({ data, isLoading: false, isError: false, error: null, refetch: vi.fn() });
 
-beforeEach(() => { summaryHook.calls = []; ws.value = { activeWorkspaceId: 7, activeWorkspace: { id: 7, name: "Platform" }, canWrite: true }; });
+beforeEach(() => { budgetHook.calls = []; budgetHook.budgets = []; budgetHook.isError = false; budgetHook.refetch.mockClear(); summaryHook.calls = []; ws.value = { activeWorkspaceId: 7, activeWorkspace: { id: 7, name: "Platform" }, canWrite: true }; });
 afterEach(cleanup);
 
 describe("monthly dashboard", () => {
@@ -145,6 +147,44 @@ describe("monthly dashboard", () => {
     const options = [...(screen.getByLabelText("Month") as HTMLSelectElement).options];
     expect(options[0].text).toMatch(/September 2026 \(month to date\)/);
     expect(options.map(o => o.value)).toContain("2026-07");
+  });
+});
+
+describe("budget alerts on the dashboard", () => {
+  const status = (state: string, extra: Record<string, unknown>) => ({
+    budget: { id: Math.random(), name: "Cloud", projectName: null, currency: "USD", amount: "100.00", thresholds: [50, 80, 100] },
+    net: "80.30", charges: "100.30", credits: "-20.00", count: 3, remaining: "19.70", percentUsed: 80.3, thresholdReached: 80, state, ...extra,
+  });
+
+  it("shows nothing when every budget is within its thresholds", () => {
+    summaryHook.result = ok(summary([]));
+    budgetHook.budgets = [status("ok", { thresholdReached: null, percentUsed: 10 })];
+    render(<Dashboard />);
+    expect(screen.queryByRole("region", { name: "Budget alerts" })).toBeNull();
+    expect(budgetHook.calls.at(-1)).toEqual({ workspaceId: 7 });
+  });
+
+  it("says when budget alerts could not be loaded instead of showing nothing", () => {
+    summaryHook.result = ok(summary([]));
+    budgetHook.isError = true;
+    render(<Dashboard />);
+    const alert = screen.getAllByRole("alert").find(el => el.textContent?.includes("Budget alerts could not be loaded"))!;
+    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(budgetHook.refetch).toHaveBeenCalled();
+  });
+
+  it("lists reached thresholds and over-budget amounts in each budget's own currency", () => {
+    summaryHook.result = ok(summary([]));
+    budgetHook.budgets = [
+      status("alert", {}),
+      status("over", { budget: { id: 2, name: "AI", projectName: "Checkout", currency: "JPY", amount: "1000.00", thresholds: [100] }, remaining: "-500.00", percentUsed: 150, thresholdReached: 100 }),
+    ];
+    render(<Dashboard />);
+    const alerts = screen.getByRole("region", { name: "Budget alerts" });
+    expect(alerts.textContent).toContain("2 budgets need attention");
+    expect(alerts.textContent).toContain("Cloud (whole scope, USD): 80.3% used — the 80% threshold is reached.");
+    expect(alerts.textContent).toContain("AI (Checkout, JPY): over budget by ¥500 — 150% used.");
+    expect(within(alerts).getByRole("link", { name: "Review budgets" }).getAttribute("href")).toBe("/budgets");
   });
 });
 

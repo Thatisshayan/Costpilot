@@ -11,3 +11,4 @@ export * from "./cicd";
 export * from "./remediation";
 export * from "./audits";
 export * from "./budgets";
+export * from "./spend_budgets";

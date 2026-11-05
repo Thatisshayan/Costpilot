@@ -180,6 +180,135 @@ export interface SpendSummary {
   currencies: SpendCurrency[];
 }
 
+export type BudgetPeriod = typeof BudgetPeriod[keyof typeof BudgetPeriod];
+
+
+export const BudgetPeriod = {
+  monthly: 'monthly',
+} as const;
+
+export interface Budget {
+  id: number;
+  /** @nullable */
+  workspaceId: number | null;
+  /**
+     * Null for a budget covering the whole scope
+     * @nullable
+     */
+  projectId: number | null;
+  /** @nullable */
+  projectName: string | null;
+  name: string;
+  period: BudgetPeriod;
+  currency: string;
+  /** Exact decimal with 2 places */
+  amount: string;
+  /** Alert thresholds as percentages of the amount, ascending */
+  thresholds: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetInput {
+  /**
+     * Omit or null for Personal
+     * @minimum 1
+     * @nullable
+     */
+  workspaceId?: number | null;
+  /**
+     * Must belong to the same scope
+     * @minimum 1
+     * @nullable
+     */
+  projectId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name: string;
+  /** @pattern ^[A-Z]{3}$ */
+  currency: string;
+  /**
+     * Greater than zero, at most 2 decimals
+     * @pattern ^\d{1,10}(\.\d{1,2})?$
+     */
+  amount: string;
+  /**
+     * Strictly ascending; defaults to [50, 80, 100]
+     * @minItems 1
+     * @maxItems 5
+     * @items.minimum 1
+     * @items.maximum 100
+     */
+  thresholds?: number[];
+}
+
+export interface BudgetUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name?: string;
+  /** @pattern ^\d{1,10}(\.\d{1,2})?$ */
+  amount?: string;
+  /**
+     * @minItems 1
+     * @maxItems 5
+     * @items.minimum 1
+     * @items.maximum 100
+     */
+  thresholds?: number[];
+}
+
+/**
+ * over when net exceeds the amount; alert when a threshold is reached
+ */
+export type BudgetStatusState = typeof BudgetStatusState[keyof typeof BudgetStatusState];
+
+
+export const BudgetStatusState = {
+  ok: 'ok',
+  alert: 'alert',
+  over: 'over',
+} as const;
+
+export interface BudgetStatus {
+  budget: Budget;
+  /** Charges plus refunds/credits in the budget's currency for the period */
+  net: string;
+  charges: string;
+  /** Zero or negative */
+  credits: string;
+  count: number;
+  /** Amount minus net; negative when over budget */
+  remaining: string;
+  /** net / amount × 100, rounded half away from zero to 0.1 */
+  percentUsed: number;
+  /**
+     * Highest threshold reached, if any
+     * @nullable
+     */
+  thresholdReached: number | null;
+  /** over when net exceeds the amount; alert when a threshold is reached */
+  state: BudgetStatusState;
+}
+
+export type BudgetStatusReportPeriod = {
+  month: string;
+  start: string;
+  end: string;
+  through: string;
+  isPartial: boolean;
+};
+
+export interface BudgetStatusReport {
+  /** @nullable */
+  workspaceId: number | null;
+  period: BudgetStatusReportPeriod;
+  budgets: BudgetStatus[];
+}
+
 export interface MessageResponse {
   message: string;
 }
@@ -808,6 +937,27 @@ export const SearchExpensesSort = {
 } as const;
 
 export type GetSpendSummaryParams = {
+  /**
+   * Omit for Personal
+   * @minimum 1
+   */
+  workspaceId?: number;
+  /**
+   * YYYY-MM; defaults to the current month. Future months are rejected.
+   * @pattern ^\d{4}-(0[1-9]|1[0-2])$
+   */
+  month?: string;
+};
+
+export type ListBudgetsParams = {
+  /**
+   * Omit for Personal
+   * @minimum 1
+   */
+  workspaceId?: number;
+};
+
+export type GetBudgetStatusParams = {
   /**
    * Omit for Personal
    * @minimum 1

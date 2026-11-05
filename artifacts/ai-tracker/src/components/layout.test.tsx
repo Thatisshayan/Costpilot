@@ -17,7 +17,7 @@ describe("navigation", () => {
   it("lists only live, routed screens", () => {
     const app = readFileSync(resolve(__dirname, "../App.tsx"), "utf8");
     const routed = new Set([...app.matchAll(/<Route path="([^"]+)"/g)].map(m => m[1]));
-    expect(navigation.map(n => n.name)).toEqual(["Dashboard", "Expenses", "Projects", "Vendors", "Team"]);
+    expect(navigation.map(n => n.name)).toEqual(["Dashboard", "Expenses", "Budgets", "Projects", "Vendors", "Team"]);
     for (const item of navigation) {
       expect(launchPaths.has(item.href)).toBe(true);
       expect(routed.has(item.href)).toBe(true);
