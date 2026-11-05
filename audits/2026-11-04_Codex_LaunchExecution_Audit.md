@@ -70,3 +70,7 @@ Validated PR review findings against source: nonempty workspace deletion previou
 ### Approved hosting direction
 
 Shayan selected the existing GitHub Pages web URL and confirmed the API host does not exist yet. Updated handoff/configuration guidance accordingly; no infrastructure was provisioned or billed. Web builds now emit an identical 404.html SPA entry for direct-link/refresh handling, and launch verification checks that artifact. Corrected the web environment example's nonexistent local-proxy assumption: configure localhost:8080 explicitly, with Vite's default localhost:3000 allowed. Local server origins now also include the approved Pages origin; hosted server/Clerk configuration remains pending. Exact-SHA checks and deployed routing acceptance remain required.
+
+### API hosting preparation
+
+Inspection of the existing staging config exposed pre-existing unsupported multi-service keys, rejected NODE_ENV=staging, and an incorrect health path. Replaced both Railway service definitions with the official per-service build/deploy structure, correct `/api/healthz`, bounded failure restarts and graceful-draining time. Python jsonschema validated both files against the downloaded official Railway schema. No database, service, secret, migration or deployment was created; provisioning/region/spend approval and real environment acceptance remain open.
