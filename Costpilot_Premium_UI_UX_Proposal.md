@@ -1,5 +1,7 @@
 # Costpilot Premium UI/UX Transformation Proposal: Breathing Life into the Financial Experience
 
+> **Status (2026-11-05): historical proposal, not the live product.** The "premium" mobile and `artifacts/web-dashboard` screens described here are not routed or built; the live mobile home is a plain two-button screen and the hidden premium screens use fabricated figures. Current status and priorities: [product assessment](audits/2026-11-05_Claude_ProductAssessment_Audit.md) and [product backlog](docs/product/PRODUCT_BACKLOG.md).
+
 ## 1. Executive Summary: Elevating Costpilot to a Premium Financial Cockpit
 
 This proposal outlines a comprehensive UI/UX transformation for the Costpilot mobile application, moving beyond functional utility to deliver a high-end, intuitive, and emotionally engaging financial management experience. Our objective is to infuse the application with a sense of intelligent serenity, where complex financial data is presented with clarity, elegance, and subtle dynamism. By focusing on a bespoke design system, sophisticated micro-interactions, and a refined visual language, Costpilot will evolve into a premium digital product that not only meets user needs but anticipates and delights them, fostering trust and engagement in both dark and light modes.

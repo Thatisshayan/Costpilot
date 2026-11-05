@@ -65,13 +65,13 @@ Primary customers are development teams and businesses managing cloud and AI/API
 6. **Public beta evaluation.**
 7. **AI cost analytics and optimization.** Simulated AI, provider sync, payments and remediation stay disabled until each is approved.
 
-## Product assessment and pre-infrastructure roadmap (2026-11-05)
+## Product development first (owner direction, 2026-11-05)
 
-The live product is a manual, multi-currency spend ledger shared across workspaces; no reachable screen shows fabricated data. Owner direction is to finish product work before infrastructure spend. Priority order (details, evidence and estimates in the [product assessment](../../audits/2026-11-05_Claude_ProductAssessment_Audit.md)):
+Infrastructure spending and public launch are on hold until product milestones are met. The live product is a manual, multi-currency spend ledger shared across workspaces; no reachable screen shows fabricated data.
 
-- **P1 — usable by a team:** persistent workspace scope, honest onboarding, CSV import with dedupe, an expenses list with filters/pagination, a period dashboard by vendor/project per currency.
-- **P2 — recurring-cost control:** workspace-scoped subscriptions/renewals, budgets with period and threshold states, activity log, amount precision and integrity fixes.
-- **P3 — honesty and hygiene:** correct over-claiming copy; remove mock-backed preview code (deletion needs owner approval).
+- **Priorities** (P0 core completeness, P1 B2B cost management, P2 provider-integration readiness, P3 intelligence), with acceptance criteria and delivery batches, are maintained only in [the product backlog](../product/PRODUCT_BACKLOG.md).
+- **Evidence:** [product assessment](../../audits/2026-11-05_Claude_ProductAssessment_Audit.md) and [market research](../product/MARKET_RESEARCH.md).
+- **Proposals kept for later evaluation:** hosting and AWS designs.
 
 ## Remaining sequence
 

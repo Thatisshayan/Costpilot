@@ -1,5 +1,7 @@
 # Costpilot Mobile App UI/UX Audit Report - Post Premium Transformation
 
+> **Status (2026-11-05): historical proposal, not the live product.** The "premium" mobile and `artifacts/web-dashboard` screens described here are not routed or built; the live mobile home is a plain two-button screen and the hidden premium screens use fabricated figures. Current status and priorities: [product assessment](audits/2026-11-05_Claude_ProductAssessment_Audit.md) and [product backlog](docs/product/PRODUCT_BACKLOG.md).
+
 ## 1. Introduction
 
 This report presents an updated comprehensive UI/UX audit of the Costpilot mobile application frontend, now incorporating the premium UI/UX transformation. The primary objective is to evaluate the current user interface and experience, highlight the improvements made, and identify any remaining opportunities for further enhancement.
