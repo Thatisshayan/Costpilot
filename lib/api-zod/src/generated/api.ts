@@ -108,7 +108,7 @@ export const UpdatePlatformBody = zod.object({
   "logoUrl": zod.string().optional(),
   "category": zod.string().optional(),
   "email": zod.string().optional(),
-  "apiKey": zod.string().optional(),
+  "apiKey": zod.string().nullish().describe('Omit to keep the stored credential; send null to clear it. Masked placeholders are rejected.'),
   "notes": zod.string().optional()
 })
 

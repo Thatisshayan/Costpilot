@@ -5,12 +5,11 @@ import {
   useCreatePlatform,
   useUpdatePlatform,
   useDeletePlatform,
-  useSyncPlatformUsage,
   getListPlatformsQueryKey,
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Plus, Pencil, Trash2, RefreshCw, Key, Shield } from "lucide-react";
+import { ExternalLink, Plus, Pencil, Trash2, Key } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +35,6 @@ type FormState = {
   category: string;
   website: string;
   logoUrl: string;
-  apiKey: string;
   notes: string;
 };
 
@@ -45,7 +43,6 @@ const emptyForm = (): FormState => ({
   category: "LLM Provider",
   website: "",
   logoUrl: "",
-  apiKey: "",
   notes: "",
 });
 
@@ -57,13 +54,11 @@ export default function Platforms() {
   const createMutation = useCreatePlatform();
   const updateMutation = useUpdatePlatform();
   const deleteMutation = useDeletePlatform();
-  const syncMutation = useSyncPlatformUsage();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editTarget, setEditTarget] = useState<Platform | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
-  const [syncingId, setSyncingId] = useState<number | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getListPlatformsQueryKey() });
@@ -83,7 +78,6 @@ export default function Platforms() {
       category: p.category ?? "LLM Provider",
       website: p.website ?? "",
       logoUrl: p.logoUrl ?? "",
-      apiKey: p.apiKey ?? "",
       notes: p.notes ?? "",
     });
     setDialogOpen(true);
@@ -99,7 +93,6 @@ export default function Platforms() {
       ...(form.category ? { category: form.category } : {}),
       ...(form.website ? { website: form.website } : {}),
       ...(form.logoUrl ? { logoUrl: form.logoUrl } : {}),
-      ...(form.apiKey ? { apiKey: form.apiKey } : {}),
       ...(form.notes ? { notes: form.notes } : {}),
     };
     try {
@@ -126,10 +119,6 @@ export default function Platforms() {
       toast.error("Failed to delete platform.");
     }
     setDeleteId(null);
-  };
-
-  const handleSync = async (_id: number) => {
-    toast.info("Provider synchronization is not enabled in this release.");
   };
 
   return (
@@ -208,9 +197,9 @@ export default function Platforms() {
                 </p>
 
                 {platform.apiKey && (
-                  <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-emerald-400">
+                  <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-slate-400">
                     <Key size={12} />
-                    <span>API Connection Configured</span>
+                    <span>Credential stored (provider sync disabled)</span>
                   </div>
                 )}
               </div>
@@ -230,17 +219,6 @@ export default function Platforms() {
                   <span className="text-xs text-slate-600">No website</span>
                 )}
 
-                {/* Only display Sync trigger if API Key is populated */}
-                {platform.apiKey && (
-                  <button
-                    disabled={syncingId !== null}
-                    onClick={() => handleSync(platform.id)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    <RefreshCw size={11} className={syncingId === platform.id ? "animate-spin" : ""} />
-                    {syncingId === platform.id ? "Syncing…" : "Auto-Sync"}
-                  </button>
-                )}
               </div>
             </div>
           ))}
@@ -306,24 +284,6 @@ export default function Platforms() {
                   placeholder="Logo image URL"
                   value={form.logoUrl}
                   onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-                />
-              </div>
-
-              <div className="col-span-2 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <Key size={12} className="text-indigo-400" /> API Secret Key
-                  </label>
-                  <span className="text-[10px] text-slate-500 flex items-center gap-1 font-medium">
-                    <Shield size={10} className="text-slate-500" /> Kept secure & encrypted
-                  </span>
-                </div>
-                <input
-                  type="password"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono text-emerald-400"
-                  placeholder="sk-proj-..."
-                  value={form.apiKey}
-                  onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
                 />
               </div>
 

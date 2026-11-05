@@ -9,7 +9,7 @@ process.env.DATABASE_URL = connection;
 process.env.NODE_ENV = "production";
 process.env.KMS_MASTER_KEY = "1".repeat(64);
 const { db, pool, workspacesTable: ws, workspaceMembersTable: members,
-  workspaceInvitesTable: invites, expensesTable: expenses, projectsTable: projects } = await import("../src/index");
+  workspaceInvitesTable: invites, expensesTable: expenses, projectsTable: projects, platformsTable: platforms } = await import("../src/index");
 const { eq, and } = await import("drizzle-orm");
 const { authConfig } = await import("../../../artifacts/api-server/src/middlewares/auth");
 authConfig.verifyToken = (async (token: string) => {
@@ -95,6 +95,20 @@ try {
   assert.equal((await call("launch-a", `/workspaces/members/${revokedMember.id}`, "DELETE")).status, 200);
   assert.equal((await call("launch-f", "/workspaces/accept-invite", "POST", { token: revoked.token })).status, 400);
   assert.equal((await call("launch-f", `/expenses/${sharedExpense.id}`)).status, 404);
+  // Stored provider credentials survive unrelated edits and are never echoed.
+  const platformResponse = await call("launch-a", "/platforms", "POST", { name: "Key holder", apiKey: "sk-rehearsal-secret" });
+  assert.equal(platformResponse.status, 201);
+  const platform = await platformResponse.json() as { id: number; apiKey: string };
+  const [beforeEdit] = await db.select().from(platforms).where(eq(platforms.id, platform.id));
+  assert.equal((await call("launch-a", `/platforms/${platform.id}`, "PATCH", { notes: "edited", apiKey: platform.apiKey })).status, 400);
+  assert.equal((await call("launch-a", `/platforms/${platform.id}`, "PATCH", { notes: "edited" })).status, 200);
+  const [afterEdit] = await db.select().from(platforms).where(eq(platforms.id, platform.id));
+  assert.equal(afterEdit.apiKey, beforeEdit.apiKey);
+  const listed = await (await call("launch-a", "/platforms?reveal=true")).text();
+  assert(!listed.includes("sk-rehearsal-secret"));
+  assert.equal((await call("launch-a", `/platforms/${platform.id}`, "PATCH", { apiKey: null })).status, 200);
+  const [cleared] = await db.select().from(platforms).where(eq(platforms.id, platform.id));
+  assert.equal(cleared.apiKey, null);
   const projectResponse = await call("launch-a", "/projects", "POST", { name: "Shared project", workspaceId: workspace.id });
   assert.equal(projectResponse.status, 201);
   const project = await projectResponse.json();
