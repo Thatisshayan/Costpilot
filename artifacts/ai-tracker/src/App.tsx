@@ -15,7 +15,7 @@ import Collaboration from "@/pages/collaboration";
 import AcceptInvite from "@/pages/accept-invite";
 import Terms from "@/pages/terms";
 import PrivacyPolicy from "@/pages/privacy-policy";
-function Unavailable() { return <main className="p-8"><h1>Feature unavailable</h1><p>This preview feature is not part of the current release.</p><Link href="/">Return to expenses overview</Link></main>; }
+function Unavailable() { return <div className="p-8 space-y-3 text-slate-200"><h1 className="text-2xl font-bold text-white">Page not available</h1><p>This page is not part of the current release.</p><Link href="/" className="underline text-indigo-300">Return to the dashboard</Link></div>; }
 export default function App() {
   const [queryClient] = useState(() => new QueryClient());
   return <ThemeProvider defaultTheme="dark" storageKey="ai-tracker-theme"><QueryClientProvider client={queryClient}>

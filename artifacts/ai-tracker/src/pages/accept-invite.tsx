@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { CheckCircle2, XCircle, Loader2, Users, Clock, ArrowRight, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAcceptInvite, useGetInviteByToken } from '@workspace/api-client-react';
+import { getListWorkspacesQueryKey, useAcceptInvite, useGetInviteByToken } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useWorkspace } from '@/context/workspace-context';
+import { apiErrorMessage } from '@/lib/api-error';
 
 export default function AcceptInvite() {
   const [location, setLocation] = useLocation();
@@ -14,6 +17,8 @@ export default function AcceptInvite() {
   });
 
   const acceptInviteMutation = useAcceptInvite();
+  const queryClient = useQueryClient();
+  const { setActiveWorkspaceId } = useWorkspace();
 
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,10 +34,13 @@ export default function AcceptInvite() {
   const handleAccept = async () => {
     try {
       const result = await acceptInviteMutation.mutateAsync({ data: { token } });
+      // Refresh the workspace list, then switch straight into the joined workspace.
+      await queryClient.invalidateQueries({ queryKey: getListWorkspacesQueryKey() });
+      setActiveWorkspaceId(result.member.workspaceId);
       setAccepted(true);
       toast.success('You have joined the workspace!');
-    } catch (err: any) {
-      const message = err?.data?.error || 'Failed to accept invite. The link may have expired.';
+    } catch (err: unknown) {
+      const message = apiErrorMessage(err, 'Failed to accept invite. The link may have expired.');
       setError(message);
       toast.error(message);
     }
@@ -105,10 +113,10 @@ export default function AcceptInvite() {
             You've successfully joined <span className="text-white font-bold">{invite?.workspaceName}</span>.
           </p>
           <button
-            onClick={() => setLocation('/collaboration')}
+            onClick={() => setLocation('/')}
             className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 rounded-xl text-white font-bold text-sm transition-all inline-flex items-center gap-2"
           >
-            Go to Workspace
+            Go to workspace overview
             <ArrowRight size={16} />
           </button>
         </div>

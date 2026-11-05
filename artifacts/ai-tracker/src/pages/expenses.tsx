@@ -8,20 +8,24 @@ import {
   useListPlatforms,
   useListProjects,
   getListExpensesQueryKey,
-  getGetDashboardSummaryQueryKey,
-  useUploadReceipt,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ArrowUpRight, Plus, Pencil, Trash2, Calendar, Folder, Scan, Loader2, FileSpreadsheet } from "lucide-react";
-import { formatCurrency } from "../lib/currency";
+import { Plus, Pencil, Trash2, Folder, AlertTriangle, Eye } from "lucide-react";
 import { ExportButtons } from "@/components/export-buttons";
 import { ENTRY_TYPE_LABEL, entryTypeOf, formatEntryAmount, signedAmount, type EntryType } from "@/lib/entry-type";
-
-import { Link } from "wouter";
+import { apiErrorMessage, apiFieldErrors } from "@/lib/api-error";
+import {
+  categoryOptions,
+  currencyOptions,
+  fieldForServerMessage,
+  validateExpenseForm,
+  type ExpenseFieldErrors,
+} from "@/lib/expense-form";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -53,45 +57,64 @@ type FormState = {
   date: string;
 };
 
-const emptyForm = (): FormState => ({
+const emptyForm = (currency = "USD"): FormState => ({
   platformId: "",
   projectId: "",
   entryType: "expense",
   amount: "",
-  currency: "USD",
+  currency,
   description: "",
-  category: "API Usage",
+  category: "AI / LLM API",
   date: format(new Date(), "yyyy-MM-dd"),
 });
 
+const inputClass = "w-full bg-white/[0.03] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors aria-[invalid=true]:border-red-400";
+const labelClass = "text-xs font-semibold text-slate-300 uppercase tracking-wider";
+
+/** Newest first by expense date, then most recently created. */
+export function sortExpensesNewestFirst<T extends { date: string; id: number }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id));
+}
+
 export default function Expenses() {
   const qc = useQueryClient();
-  const { data: accessibleExpenses = [], isLoading, isError } = useListExpenses();
+  const { data: accessibleExpenses = [], isLoading, isError, error, refetch } = useListExpenses();
   const { data: accessiblePlatforms = [] } = useListPlatforms();
   const { data: accessibleProjects = [] } = useListProjects();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, canWrite, activeRole } = useWorkspace();
   const platforms = accessiblePlatforms.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
   const projects = accessibleProjects.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
-  const expenses = accessibleExpenses.filter(e => (e.workspaceId ?? null) === activeWorkspaceId);
+  const expenses = sortExpensesNewestFirst(accessibleExpenses.filter(e => (e.workspaceId ?? null) === activeWorkspaceId));
   const createMutation = useCreateExpense();
-
   const updateMutation = useUpdateExpense();
   const deleteMutation = useDeleteExpense();
-  const { mutateAsync: uploadReceipt, isPending: isUploading } = useUploadReceipt();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<Expense | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [fieldErrors, setFieldErrors] = useState<ExpenseFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const saving = createMutation.isPending || updateMutation.isPending;
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: getListExpensesQueryKey() });
-    qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+  const invalidate = () => qc.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+
+  const update = (patch: Partial<FormState>) => {
+    setForm(f => ({ ...f, ...patch }));
+    setFieldErrors(errors => {
+      const next = { ...errors };
+      for (const key of Object.keys(patch)) delete next[key as keyof ExpenseFieldErrors];
+      return next;
+    });
+    setFormError(null);
   };
 
   const openAdd = () => {
     setEditTarget(null);
-    setForm(emptyForm());
+    setForm(emptyForm(expenses[0]?.currency ?? "USD"));
+    setFieldErrors({});
+    setFormError(null);
     setDialogOpen(true);
   };
 
@@ -104,27 +127,26 @@ export default function Expenses() {
       amount: String(Math.abs(e.amount)),
       currency: e.currency ?? "USD",
       description: e.description ?? "",
-      category: e.category ?? "API Usage",
+      category: e.category ?? "Other",
       date: e.date,
     });
+    setFieldErrors({});
+    setFormError(null);
     setDialogOpen(true);
   };
 
   const handleSubmit = async () => {
-    if (!form.amount || !form.date) {
-      toast.error("Amount and date are required.");
-      return;
-    }
-    const magnitude = Number(form.amount);
-    if (!Number.isFinite(magnitude) || magnitude <= 0) {
-      toast.error("Enter a positive amount; choose Refund / credit for money returned.");
+    const errors = validateExpenseForm(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      setFormError("Please fix the highlighted fields.");
       return;
     }
     const payload = {
       platformId: form.platformId ? Number(form.platformId) : null,
       projectId: form.projectId ? Number(form.projectId) : null,
-      amount: signedAmount(magnitude, form.entryType),
-      currency: form.currency || "USD",
+      amount: signedAmount(Number(form.amount), form.entryType),
+      currency: form.currency.trim().toUpperCase(),
       description: form.description,
       category: form.category,
       date: form.date,
@@ -132,15 +154,20 @@ export default function Expenses() {
     try {
       if (editTarget) {
         await updateMutation.mutateAsync({ id: editTarget.id, data: payload });
-        toast.success("Expense updated successfully.");
+        toast.success("Expense updated.");
       } else {
         await createMutation.mutateAsync({ data: { ...payload, ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}) } });
-        toast.success("Expense logged successfully.");
+        toast.success("Expense saved.");
       }
-      invalidate();
+      await invalidate();
       setDialogOpen(false);
-    } catch {
-      toast.error("Failed to save expense.");
+    } catch (err) {
+      // The dialog stays open with the entered values so nothing looks saved when it was not.
+      const message = apiErrorMessage(err, "The expense was not saved. Please try again.");
+      const byField = apiFieldErrors(err) as ExpenseFieldErrors;
+      const field = fieldForServerMessage(message);
+      setFieldErrors(field ? { ...byField, [field]: message } : byField);
+      setFormError(`Not saved: ${message}`);
     }
   };
 
@@ -148,271 +175,268 @@ export default function Expenses() {
     try {
       await deleteMutation.mutateAsync({ id });
       toast.success("Expense deleted.");
-      invalidate();
-    } catch {
-      toast.error("Failed to delete expense.");
+      await invalidate();
+      setDeleteId(null);
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, "The expense was not deleted. Please try again."));
     }
-    setDeleteId(null);
   };
 
-  const handleFileChange = async (_e: React.ChangeEvent<HTMLInputElement>) => {
-    toast.error("Receipt scanning is not enabled for this release. Enter expenses manually.");
-  };
+  const describedBy = (field: keyof ExpenseFieldErrors) => (fieldErrors[field] ? `expense-${field}-error` : undefined);
+  const fieldError = (field: keyof ExpenseFieldErrors) =>
+    fieldErrors[field] ? <p id={`expense-${field}-error`} className="text-xs text-red-300">{fieldErrors[field]}</p> : null;
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-      {/* Header */}
-      <header className="flex justify-between items-center mb-10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">CostPilot Ledger</h1>
-          <p className="text-sm text-slate-400 mt-1">Track your granular API costs and tool purchases.</p>
+    <div className="pb-20">
+      <header className="flex flex-wrap justify-between items-start gap-4 mb-8">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold tracking-tight text-white">Expenses</h1>
+          <p className="text-sm text-slate-300 mt-1">
+            {activeWorkspaceId === null ? "Your personal expenses, visible only to you." : "Expenses shared with this workspace."}{" "}
+            Amounts are shown in their original currency and never converted.
+          </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <ExportButtons workspaceId={activeWorkspaceId} />
-          <button
-            onClick={openAdd}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
-          >
-            <Plus size={16} />
-            Log Expense
-          </button>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={openAdd}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              <Plus size={16} aria-hidden />
+              Add expense
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Glass Container */}
-      <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-md">
-        <h2 className="text-lg font-semibold text-white mb-5">Expense History</h2>
-        
-        {isError ? <p role="alert">Expenses could not be loaded. Please refresh and try again.</p> : isLoading ? (
-          <div className="text-center py-12 text-slate-500 font-medium">Loading history...</div>
-        ) : expenses && expenses.length > 0 ? (
+      {!canWrite && activeRole !== null && (
+        <p className="mb-4 text-sm text-slate-300 flex items-center gap-2"><Eye size={14} aria-hidden /> You have read-only access to this workspace.</p>
+      )}
+
+      <section aria-labelledby="expense-history" className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 sm:p-6 backdrop-blur-md">
+        <h2 id="expense-history" className="text-lg font-semibold text-white mb-5">Expense history</h2>
+
+        {isError ? (
+          <div role="alert" className="py-8 text-sm text-amber-200 flex flex-wrap items-center gap-3">
+            <AlertTriangle size={16} aria-hidden />
+            <span>Expenses could not be loaded: {apiErrorMessage(error, "please try again.")}</span>
+            <button type="button" onClick={() => void refetch()} className="underline text-indigo-300">Try again</button>
+          </div>
+        ) : isLoading ? (
+          <div role="status" className="text-center py-12 text-slate-300 font-medium">Loading expenses…</div>
+        ) : expenses.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
+            <table className="w-full min-w-[720px] border-collapse text-left">
+              <caption className="sr-only">Expenses, newest first</caption>
               <thead>
-                <tr className="border-b border-white/[0.06] text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <th className="pb-3 pl-2">Platform / Project</th>
-                  <th className="pb-3">Category</th>
-                  <th className="pb-3">Description</th>
-                  <th className="pb-3">Date</th>
-                  <th className="pb-3 text-right pr-2">Amount</th>
-                  <th className="pb-3" />
+                <tr className="border-b border-white/[0.06] text-xs font-medium text-slate-300 uppercase tracking-wider">
+                  <th scope="col" className="pb-3 pl-2">Vendor / project</th>
+                  <th scope="col" className="pb-3">Category</th>
+                  <th scope="col" className="pb-3">Description</th>
+                  <th scope="col" className="pb-3">Date</th>
+                  <th scope="col" className="pb-3 text-right pr-2">Amount</th>
+                  {canWrite && <th scope="col" className="pb-3 text-right pr-2"><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04] text-sm">
-                {[...expenses].reverse().map((expense) => (
-                  <tr key={expense.id} className="group hover:bg-white/[0.01] transition-colors">
-                    <td className="py-4 pl-2 flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg ${getHashColor(expense.platformName || "Unknown")} flex items-center justify-center font-semibold text-white text-xs shadow-sm shrink-0`}>
-                        {(expense.platformName || "U").charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="font-medium text-white flex items-center gap-1.5">
-                          {expense.platformName || "Unknown Platform"}
-                          <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition text-slate-500" />
+                {expenses.map((expense) => {
+                  const label = `${expense.platformName || "expense"} on ${expense.date}`;
+                  return (
+                    <tr key={expense.id} className="hover:bg-white/[0.01] transition-colors">
+                      <td className="py-4 pl-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg ${getHashColor(expense.platformName || "No vendor")} flex items-center justify-center font-semibold text-white text-xs shrink-0`} aria-hidden>
+                            {(expense.platformName || "–").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-medium text-white">{expense.platformName || "No vendor"}</div>
+                            <span className="text-xs text-slate-300 font-medium flex items-center gap-1">
+                              <Folder size={10} aria-hidden />
+                              {expense.projectName || "No project"}
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
-                          <Folder size={10} className="text-slate-500" />
-                          {expense.projectName || "General"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 text-slate-300 font-medium">
-                      {expense.category ? (
-                        <span className="px-2.5 py-1 text-xs font-medium bg-white/[0.04] border border-white/[0.08] rounded-lg text-indigo-300">
-                          {expense.category}
-                        </span>
-                      ) : (
-                        <span className="text-slate-500">—</span>
+                      </td>
+                      <td className="py-4 text-slate-200">
+                        {expense.category ? (
+                          <span className="px-2.5 py-1 text-xs font-medium bg-white/[0.04] border border-white/[0.08] rounded-lg text-indigo-200">{expense.category}</span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-4 text-slate-300 max-w-[250px] truncate" title={expense.description || undefined}>
+                        {expense.description || <span className="text-slate-400">—</span>}
+                      </td>
+                      <td className="py-4 text-slate-300 font-medium whitespace-nowrap">
+                        {format(new Date(expense.date + "T12:00:00"), "MMM d, yyyy")}
+                      </td>
+                      <td className={`py-4 text-right pr-2 font-mono font-semibold text-base whitespace-nowrap ${expense.amount < 0 ? "text-emerald-300" : "text-white"}`}>
+                        {formatEntryAmount(expense.amount, expense.currency ?? "USD")}
+                      </td>
+                      {canWrite && (
+                        <td className="py-4 pr-2">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(expense)}
+                              aria-label={`Edit ${label}`}
+                              className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                            >
+                              <Pencil size={14} aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setDeleteError(null); setDeleteId(expense.id); }}
+                              aria-label={`Delete ${label}`}
+                              className="p-2 rounded-lg hover:bg-red-500/10 text-slate-300 hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                            >
+                              <Trash2 size={14} aria-hidden />
+                            </button>
+                          </div>
+                        </td>
                       )}
-                    </td>
-                    <td className="py-4 text-slate-400 max-w-[250px] truncate" title={expense.description || undefined}>
-                      {expense.description || <span className="text-slate-600">No description</span>}
-                    </td>
-                    <td className="py-4 text-slate-400 font-medium">
-                      {format(new Date(expense.date + "T12:00:00"), "MMM d, yyyy")}
-                    </td>
-                    <td className={`py-4 text-right pr-2 font-mono font-semibold text-base ${expense.amount < 0 ? "text-emerald-400" : "text-white"}`}>
-                      {formatEntryAmount(expense.amount, expense.currency ?? "USD")}
-                    </td>
-                    <td className="py-4 pr-2">
-                      <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => openEdit(expense)}
-                          className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-white transition-colors"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(expense.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="text-center py-12 text-slate-500 font-medium">No expenses logged yet.</div>
+          <div className="text-center py-12 space-y-3">
+            <p className="text-slate-200 font-medium">No expenses recorded in this scope yet.</p>
+            {canWrite && (
+              <button type="button" onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl">
+                <Plus size={16} aria-hidden /> Add your first expense
+              </button>
+            )}
+          </div>
         )}
-      </div>
+      </section>
 
-      {/* Add / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-zinc-950/90 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
+      <Dialog open={dialogOpen} onOpenChange={open => { if (!saving) setDialogOpen(open); }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto bg-zinc-950/95 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-white tracking-tight">
-              {editTarget ? "Edit Expense Log" : "Log API or SaaS Expense"}
-            </DialogTitle>
+            <DialogTitle className="text-xl font-bold text-white tracking-tight">{editTarget ? "Edit expense" : "Add expense"}</DialogTitle>
+            <DialogDescription className="text-sm text-slate-300">Fields marked * are required.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Platform</label>
-                <select
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  value={form.platformId}
-                  onChange={(e) => setForm({ ...form, platformId: e.target.value })}
-                >
-                  <option value="" className="bg-zinc-950 text-slate-400">General platform / Independent</option>
-                  {platforms.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-zinc-950 text-white">
-                      {p.name}
-                    </option>
-                  ))}
+          <form
+            noValidate
+            onSubmit={e => { e.preventDefault(); void handleSubmit(); }}
+            className="space-y-4 py-2"
+          >
+            {formError && <p role="alert" className="text-sm text-red-200 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{formError}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 space-y-1.5">
+                <label htmlFor="expense-vendor" className={labelClass}>Vendor</label>
+                <select id="expense-vendor" className={inputClass} value={form.platformId} onChange={e => update({ platformId: e.target.value })}>
+                  <option value="" className="bg-zinc-950">No vendor</option>
+                  {platforms.map(p => <option key={p.id} value={p.id} className="bg-zinc-950">{p.name}</option>)}
                 </select>
               </div>
-
-              <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Project</label>
-                <select
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  value={form.projectId}
-                  onChange={(e) => setForm({ ...form, projectId: e.target.value })}
-                >
-                  <option value="" className="bg-zinc-950 text-slate-400">No linked project</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-zinc-950 text-white">
-                      {p.name}
-                    </option>
-                  ))}
+              <div className="sm:col-span-2 space-y-1.5">
+                <label htmlFor="expense-project" className={labelClass}>Project</label>
+                <select id="expense-project" className={inputClass} value={form.projectId} onChange={e => update({ projectId: e.target.value })}>
+                  <option value="" className="bg-zinc-950">No project</option>
+                  {projects.map(p => <option key={p.id} value={p.id} className="bg-zinc-950">{p.name}</option>)}
                 </select>
               </div>
-
               <div className="space-y-1.5">
-                <label htmlFor="expense-entry-type" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Type</label>
-                <select
-                  id="expense-entry-type"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  value={form.entryType}
-                  onChange={(e) => setForm({ ...form, entryType: e.target.value as EntryType })}
-                >
-                  {(Object.keys(ENTRY_TYPE_LABEL) as EntryType[]).map(type => (
-                    <option key={type} value={type}>{ENTRY_TYPE_LABEL[type]}</option>
-                  ))}
+                <label htmlFor="expense-entry-type" className={labelClass}>Type</label>
+                <select id="expense-entry-type" className={inputClass} value={form.entryType} onChange={e => update({ entryType: e.target.value as EntryType })}>
+                  {(Object.keys(ENTRY_TYPE_LABEL) as EntryType[]).map(type => <option key={type} value={type} className="bg-zinc-950">{ENTRY_TYPE_LABEL[type]}</option>)}
                 </select>
               </div>
-
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount *</label>
+                <label htmlFor="expense-amount" className={labelClass}>Amount *</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                  id="expense-amount"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  className={`${inputClass} font-mono`}
                   placeholder="0.00"
                   value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  aria-invalid={fieldErrors.amount ? true : undefined}
+                  aria-describedby={describedBy("amount")}
+                  onChange={e => update({ amount: e.target.value })}
                 />
+                {fieldError("amount")}
               </div>
-
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</label>
+                <label htmlFor="expense-currency" className={labelClass}>Currency *</label>
                 <select
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  id="expense-currency"
+                  className={inputClass}
+                  value={form.currency}
+                  aria-invalid={fieldErrors.currency ? true : undefined}
+                  aria-describedby={describedBy("currency")}
+                  onChange={e => update({ currency: e.target.value })}
                 >
-                  <option value="API Usage" className="bg-zinc-950 text-white">API Usage</option>
-                  <option value="Model Fine-Tuning" className="bg-zinc-950 text-white">Model Fine-Tuning</option>
-                  <option value="SaaS Subscription" className="bg-zinc-950 text-white">SaaS Subscription</option>
-                  <option value="Compute Server" className="bg-zinc-950 text-white">Compute Server</option>
-                  <option value="Domain / Operations" className="bg-zinc-950 text-white">Domain / Operations</option>
+                  {currencyOptions(form.currency).map(code => <option key={code} value={code} className="bg-zinc-950">{code}</option>)}
+                </select>
+                {fieldError("currency")}
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="expense-date" className={labelClass}>Date *</label>
+                <input
+                  id="expense-date"
+                  type="date"
+                  className={inputClass}
+                  value={form.date}
+                  aria-invalid={fieldErrors.date ? true : undefined}
+                  aria-describedby={describedBy("date")}
+                  onChange={e => update({ date: e.target.value })}
+                />
+                {fieldError("date")}
+              </div>
+              <div className="sm:col-span-2 space-y-1.5">
+                <label htmlFor="expense-category" className={labelClass}>Category</label>
+                <select id="expense-category" className={inputClass} value={form.category} onChange={e => update({ category: e.target.value })}>
+                  {categoryOptions(form.category).map(c => <option key={c} value={c} className="bg-zinc-950">{c}</option>)}
                 </select>
               </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Currency</label>
+              <div className="sm:col-span-2 space-y-1.5">
+                <label htmlFor="expense-description" className={labelClass}>Description</label>
                 <input
+                  id="expense-description"
                   type="text"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  placeholder="USD"
-                  value={form.currency}
-                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Expense Date *</label>
-                <input
-                  type="date"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                />
-              </div>
-
-              <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</label>
-                <input
-                  type="text"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  placeholder="e.g. Fine-tuning GPT-4o usage log"
+                  className={inputClass}
+                  placeholder="e.g. October AWS invoice"
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  aria-invalid={fieldErrors.description ? true : undefined}
+                  aria-describedby={describedBy("description")}
+                  onChange={e => update({ description: e.target.value })}
                 />
+                {fieldError("description")}
               </div>
             </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <button
-              onClick={() => setDialogOpen(false)}
-              className="px-4.5 py-2.5 text-sm font-semibold text-slate-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={createMutation.isPending || updateMutation.isPending}
-              className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
-            >
-              {createMutation.isPending || updateMutation.isPending ? "Saving…" : editTarget ? "Save Changes" : "Log Expense"}
-            </button>
-          </DialogFooter>
+            <DialogFooter className="gap-2 pt-2">
+              <button type="button" onClick={() => setDialogOpen(false)} disabled={saving} className="px-4 py-2.5 text-sm font-semibold text-slate-300 hover:text-white">
+                Cancel
+              </button>
+              <button type="submit" disabled={saving} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl">
+                {saving ? "Saving…" : editTarget ? "Save changes" : "Save expense"}
+              </button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
-      <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent className="sm:max-w-sm bg-zinc-950/90 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
+      <Dialog open={deleteId !== null} onOpenChange={open => { if (!open && !deleteMutation.isPending) setDeleteId(null); }}>
+        <DialogContent className="sm:max-w-sm bg-zinc-950/95 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-white tracking-tight">Delete expense log?</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-white tracking-tight">Delete this expense?</DialogTitle>
+            <DialogDescription className="text-sm text-slate-300">This is permanent and removes the expense from totals and exports.</DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-slate-400 mt-2">This action is permanent and will remove this expense from your aggregates.</p>
+          {deleteError && <p role="alert" className="text-sm text-red-200">{deleteError}</p>}
           <DialogFooter className="gap-2 mt-4">
+            <button type="button" onClick={() => setDeleteId(null)} disabled={deleteMutation.isPending} className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white">Cancel</button>
             <button
-              onClick={() => setDeleteId(null)}
-              className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => deleteId !== null && handleDelete(deleteId)}
+              type="button"
+              onClick={() => deleteId !== null && void handleDelete(deleteId)}
               disabled={deleteMutation.isPending}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-red-600/15"
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
             >
               {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </button>

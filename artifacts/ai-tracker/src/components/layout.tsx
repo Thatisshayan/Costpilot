@@ -1,137 +1,41 @@
 import { launchPaths } from "@/lib/launch-scope";
 import { UserButton } from "@clerk/react";
 import { Link, useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard,
-  Receipt,
-  CreditCard,
   Download,
   Menu,
   ChevronLeft,
-  TrendingUp,
   Users,
-  Search,
-  Wallet,
-  CalendarCheck,
   Building,
-  BarChart3,
-  BarChart4,
-  Settings,
-  ShieldCheck,
-  Shield,
   Compass,
-  Cpu,
-  Link2,
-  CheckSquare,
-  Shuffle,
-  Terminal,
-  LayoutGrid,
-  Mail,
-  Activity,
-  Hexagon,
-  Server,
-  BrainCircuit,
-  HardDrive,
-  Lock,
-  Target,
-  Zap,
-  Tag,
-  Flame,
-  Handshake,
-  Settings2,
-  MousePointer2,
-  Sparkles,
   DollarSign,
-  GitBranch,
-  Globe,
-  BarChart2,
-  Layers,
-  ClipboardList,
-  Bell,
-  Moon,
-  PiggyBank,
-  Repeat,
-  Sun,
+  Folder,
+  AlertTriangle,
 } from "lucide-react";
-import { useTheme } from "./theme-provider";
-import { useState, useEffect, useRef } from "react";
-import { useWorkspace } from "@/context/workspace-context";
+import { useState, useEffect } from "react";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useHealthCheck } from "@/hooks/use-health-check";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, shortcut: "⌘D" },
-  { name: "Projects", href: "/projects", icon: Building },
-  { name: "Expenses", href: "/expenses", icon: DollarSign, shortcut: "⌘E" },
-  { name: "Subscriptions", href: "/subscriptions", icon: Repeat, shortcut: "⌘S" },
-  { name: "API Usage", href: "/api-usage", icon: TrendingUp },
-  { name: "Trials", href: "/trials", icon: CalendarCheck },
+// Only screens with a supported, data-backed journey. Disabled preview features are
+// deliberately absent so they cannot be exposed by accident (see lib/launch-scope.ts).
+export const navigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Expenses", href: "/expenses", icon: DollarSign },
+  { name: "Projects", href: "/projects", icon: Folder },
   { name: "Vendors", href: "/vendors", icon: Building },
-  { name: "Budgets", href: "/budgets", icon: PiggyBank, shortcut: "⌘B" },
-  { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "ROI Tracking", href: "/roi", icon: BarChart4 },
-  { name: "Approvals", href: "/approvals", icon: CheckSquare },
-  { name: "AI Switcher", href: "/switcher", icon: Shuffle },
-  { name: "Developer API", href: "/api-docs", icon: Terminal },
-  { name: "Workspaces", href: "/entities", icon: LayoutGrid },
-  { name: "CostPilot Intelligence", href: "/intelligence", icon: Sparkles },
-  { name: "Remediation Center", href: "/remediation", icon: MousePointer2 },
-  { name: "Autonomous Router", href: "/llm-router", icon: Zap },
-  { name: "CI/CD Integration", href: "/cicd", icon: GitBranch },
-  { name: "Unit Economics", href: "/unit-economics", icon: DollarSign },
-  { name: "GPU Waste Detector", href: "/gpu-waste", icon: Activity },
-  { name: "Market Benchmarks", href: "/market-intelligence", icon: Globe },
-  { name: "Analytics", href: "/analytics", icon: BarChart2 },
-  { name: "Weekly Digest", href: "/digest", icon: Mail },
-  { name: "Azure AI", href: "/azure-ai", icon: Server },
-  { name: "GCP Vertex AI", href: "/gcp-vertex", icon: Hexagon },
-  { name: "Fine-tuning ROI", href: "/fine-tuning", icon: BrainCircuit },
-  { name: "GPU Estimator", href: "/gpu-calculator", icon: HardDrive },
-  { name: "Compliance", href: "/compliance", icon: ShieldCheck },
-  { name: "Privacy Hub", href: "/privacy", icon: Lock },
-  { name: "Search Hub", href: "/search", icon: Search },
-  { name: "Founder Mode", href: "/founder", icon: Target },
-  { name: "Budget Auto-Pilot", href: "/auto-pilot", icon: Zap },
-  { name: "Tagging Rules", href: "/tagging-rules", icon: Tag },
-  { name: "Credit Burn", href: "/credit-burn", icon: Flame },
-  { name: "Contracts", href: "/contracts", icon: Handshake },
-  { name: "Advanced Settings", href: "/advanced-settings", icon: Settings2 },
-  { name: "Usage Heatmap", href: "/heatmap", icon: MousePointer2 },
-  { name: "Cost Centers", href: "/cost-centers", icon: Layers },
-  { name: "Model Comparison", href: "/comparison", icon: Cpu },
-  { name: "Public Status", href: "/status", icon: Activity },
-  { name: "Notifications", href: "/bot-settings", icon: Bell },
-  { name: "Integrations", href: "/integrations", icon: Link2 },
-  { name: "Audit Logs", href: "/audit", icon: ClipboardList },
-  { name: "SSO Config", href: "/sso", icon: Shield },
-  { name: "Import Data", href: "/import", icon: Download },
-  { name: "Collaboration", href: "/collaboration", icon: Users },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Team", href: "/collaboration", icon: Users },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [location, navigate] = useLocation();
-  const { theme, setTheme } = useTheme();
+  const [location] = useLocation();
+  const reduceMotion = useReducedMotion();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const { isHealthy, isLoading } = useHealthCheck();
-  const lastSyncRef = useRef(Date.now());
-  const [, forceSyncRender] = useState(0);
-
-  useEffect(() => {
-    if (!isLoading) {
-      lastSyncRef.current = Date.now();
-      forceSyncRender(n => n + 1);
-    }
-  }, [isLoading]);
-
-  useEffect(() => {
-    const interval = setInterval(() => forceSyncRender(n => n + 1), 60_000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -166,29 +70,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen relative z-10">
         
         {/* --- MOBILE HEADER --- */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#09090b]/80 backdrop-blur-xl border-b border-white/[0.06] z-50 px-6 flex items-center justify-between">
+        <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#09090b]/80 backdrop-blur-xl border-b border-white/[0.06] z-50 px-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-lg">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-lg" aria-hidden>
               <Compass size={18} />
             </div>
             <span className="font-bold text-white tracking-tight">CostPilot</span>
           </div>
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={() => navigate("/search")}
-              className="p-2 text-slate-400 hover:text-white"
-              aria-label="Search"
-            >
-              <Search size={20} />
-            </button>
-            <button 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 text-slate-400 hover:text-white"
-              aria-label="Toggle Menu"
-            >
-              <Menu size={24} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 text-slate-300 hover:text-white"
+            aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="primary-sidebar"
+          >
+            <Menu size={24} aria-hidden />
+          </button>
         </div>
 
         {/* --- MOBILE OVERLAY --- */}
@@ -200,7 +98,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* --- SIDEBAR --- */}
-        <aside className={`
+        <aside id="primary-sidebar" aria-label="Primary" className={`
           fixed lg:static inset-y-0 left-0 z-[60] lg:z-auto
           border-r border-white/[0.06] bg-[#09090b] lg:bg-[#09090b]/60 backdrop-blur-xl 
           flex flex-col transition-all duration-300 ease-in-out
@@ -218,7 +116,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {!isCollapsed && (
                 <div className="flex flex-col">
                   <span className="font-bold text-lg tracking-tight text-white leading-tight">CostPilot</span>
-                  <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-[0.2em]">Spend Intelligence</span>
+                  <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-[0.2em]">Tech spend ledger</span>
                 </div>
               )}
             </div>
@@ -226,24 +124,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {/* Workspace Switcher */}
             <UserButton />
           <WorkspaceSwitcher isCollapsed={isCollapsed} />
-
-            {/* Quick Search */}
-            {!isCollapsed && (
-              <div className="relative mb-2 mt-2">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Quick search... (⌘K)"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-8 pr-3 text-xs text-white/80 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.04] transition-all"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      navigate(`/search?q=${encodeURIComponent(e.currentTarget.value)}`);
-                      e.currentTarget.blur();
-                    }
-                  }}
-                />
-              </div>
-            )}
 
             {/* Navigation */}
             <nav className="space-y-1 w-full mt-2 lg:mt-0">
@@ -254,19 +134,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.name}
                     href={item.href}
+                    aria-current={isActive ? "page" : undefined}
+                    aria-label={isCollapsed && !isMobileMenuOpen ? item.name : undefined}
                     className={`flex items-center gap-3 group px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       isActive 
                         ? 'bg-white/[0.06] text-white shadow-inner border-t border-white/[0.05] relative before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-r-full before:bg-indigo-400 before:shadow-[0_0_8px_rgba(99,102,241,0.6)]' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] hover:translate-x-0.5'
+                        : 'text-slate-300 hover:text-white hover:bg-white/[0.03]'
                     } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
                   >
-                    <item.icon size={18} className={isActive ? 'text-indigo-400' : ''} />
+                    <item.icon size={18} className={isActive ? 'text-indigo-300' : ''} aria-hidden />
                     {(isMobileMenuOpen || !isCollapsed) && <span>{item.name}</span>}
-                    {(isMobileMenuOpen || !isCollapsed) && (item as any).shortcut && (
-                      <span className="ml-auto text-xs text-slate-500/40 hidden group-hover:inline">
-                        {(item as any).shortcut}
-                      </span>
-                    )}
                   </Link>
                 );
 
@@ -288,29 +165,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          {/* System Status */}
-          {!isCollapsed && (
-            <div className="px-4 py-2 mb-2 flex items-center gap-2 text-xs text-slate-500 border-t border-white/[0.06] pt-4">
-              <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-yellow-400' : isHealthy ? 'bg-green-400' : 'bg-red-400'}`} />
-              <span>
-                {isLoading ? 'Checking...' : isHealthy ? 'All Systems Operational' : 'Degraded Performance'}
-              </span>
-            </div>
-          )}
-          {!isCollapsed && (
-            <div className="px-4 py-1 mb-2 text-xs text-slate-600">
-              API last checked: {Math.floor((Date.now() - lastSyncRef.current) / 60000) < 1 ? "just now" : `${Math.floor((Date.now() - lastSyncRef.current) / 60000)}m ago`}
+          {/* Shown only when the API cannot be reached; no status claims otherwise. */}
+          {!isLoading && !isHealthy && (
+            <div role="status" className="px-4 py-3 mb-2 flex items-start gap-2 text-xs text-amber-200 border-t border-white/[0.06]">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" aria-hidden />
+              {!isCollapsed && <span>CostPilot cannot reach its server. Changes may not save until the connection returns.</span>}
             </div>
           )}
 
           {/* Bottom Actions */}
           <div className="w-full space-y-2 mt-auto">
              <button
+                type="button"
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className={`hidden lg:flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition-all duration-200 hover:translate-x-0.5 ${isCollapsed ? 'justify-center px-0' : ''}`}
-                title={isCollapsed ? "Expand" : "Collapse"}
+                className={`hidden lg:flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/[0.03] ${isCollapsed ? 'justify-center px-0' : ''}`}
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
-                {isCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
+                {isCollapsed ? <Menu size={18} aria-hidden /> : <ChevronLeft size={18} aria-hidden />}
                 {!isCollapsed && <span>Collapse</span>}
               </button>
 
@@ -325,28 +196,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </button>
             )}
             
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition-all duration-200 hover:translate-x-0.5 ${isCollapsed && !isMobileMenuOpen ? 'lg:justify-center lg:px-0' : ''}`}
-              title={isCollapsed ? "Toggle Theme" : undefined}
-            >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-              {(isMobileMenuOpen || !isCollapsed) && <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}
-            </button>
           </div>
         </aside>
 
         {/* --- MAIN CONTENT AREA --- */}
         <main className="flex-1 flex flex-col overflow-hidden w-full">
-          <div className="flex-1 overflow-y-auto p-6 lg:p-12 pt-24 lg:pt-12">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:p-12 pb-6 pt-24 lg:pt-12">
             <div className="max-w-6xl mx-auto h-full">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={location}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
                 >
                   {children}
                 </motion.div>
