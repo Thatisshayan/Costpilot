@@ -9,6 +9,7 @@ import {
 import { eq, and, or, count } from "drizzle-orm";
 import crypto from "crypto";
 import { requireWorkspaceMember } from "../middlewares/authz";
+import { hashInviteToken, isInviteToken } from "../lib/invite-token";
 import { CreateWorkspaceBody, UpdateWorkspaceBody, InviteToWorkspaceBody } from "@workspace/api-zod";
 
 const router = Router();
@@ -50,6 +51,8 @@ router.post("/", async (req, res) => {
 // List Members
 router.get("/:id/members", requireWorkspaceMember(["owner", "admin", "viewer"]), async (req, res) => {
   const workspaceId = parseInt(req.params.id as string);
+  // Pending invitations are management data: only owners/admins see them.
+  const canManage = req.workspaceRole === "owner" || req.workspaceRole === "admin";
 
   const members = await db
     .select({ id: workspaceMembersTable.id, workspaceId: workspaceMembersTable.workspaceId,
@@ -57,7 +60,9 @@ router.get("/:id/members", requireWorkspaceMember(["owner", "admin", "viewer"]),
       role: workspaceMembersTable.role, status: workspaceMembersTable.status,
       joinedAt: workspaceMembersTable.joinedAt, createdAt: workspaceMembersTable.createdAt })
     .from(workspaceMembersTable)
-    .where(eq(workspaceMembersTable.workspaceId, workspaceId));
+    .where(canManage
+      ? eq(workspaceMembersTable.workspaceId, workspaceId)
+      : and(eq(workspaceMembersTable.workspaceId, workspaceId), eq(workspaceMembersTable.status, "active")));
 
   res.json(members);
 });
@@ -83,7 +88,9 @@ router.post("/:id/invite", requireWorkspaceMember(["owner", "admin"]), async (re
     return;
   }
 
+  // The raw token is returned once to the inviter and only its hash is stored.
   const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashInviteToken(token);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   const invite = await db.transaction(async tx => {
@@ -94,10 +101,10 @@ router.post("/:id/invite", requireWorkspaceMember(["owner", "admin"]), async (re
       .where(and(eq(workspaceMembersTable.workspaceId, workspaceId), eq(workspaceMembersTable.email, email))).limit(1);
     if (pending) return null;
     const [created] = await tx.insert(workspaceInvitesTable).values({
-      workspaceId, email, role, token, invitedBy: req.userId!, expiresAt,
+      workspaceId, email, role, token: tokenHash, invitedBy: req.userId!, expiresAt,
     }).returning();
     await tx.insert(workspaceMembersTable).values({
-      workspaceId, userId: "pending-" + token, email, role, status: "pending", inviteToken: token,
+      workspaceId, userId: `pending-${crypto.randomUUID()}`, email, role, status: "pending", inviteToken: tokenHash,
     });
     return created;
   });
@@ -203,7 +210,14 @@ router.delete("/members/:memberId", async (req, res) => {
     return;
   }
 
-  await db.delete(workspaceMembersTable).where(eq(workspaceMembersTable.id, memberId));
+  await db.transaction(async tx => {
+    await tx.delete(workspaceMembersTable).where(eq(workspaceMembersTable.id, memberId));
+    // Removing a pending invitation also revokes its token.
+    if (memberToRemove.status === "pending" && memberToRemove.inviteToken) {
+      await tx.update(workspaceInvitesTable).set({ status: "expired" }).where(and(
+        eq(workspaceInvitesTable.token, memberToRemove.inviteToken), eq(workspaceInvitesTable.status, "pending")));
+    }
+  });
 
   res.json({ message: "Member removed successfully" });
 });
@@ -211,15 +225,16 @@ router.delete("/members/:memberId", async (req, res) => {
 // Accept Invite
 router.post("/accept-invite", async (req, res) => {
   const token = req.body?.token;
-  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+  if (!isInviteToken(token)) {
     res.status(400).json({ error: "A valid invite token is required" });
     return;
   }
+  const tokenHash = hashInviteToken(token);
   // The random invite token is a bearer capability. A signed-in account must
   // explicitly accept it; possession, not an unverified email claim, grants access.
   const result = await db.transaction(async tx => {
     const [invite] = await tx.select().from(workspaceInvitesTable)
-      .where(eq(workspaceInvitesTable.token, token)).for("update");
+      .where(eq(workspaceInvitesTable.token, tokenHash)).for("update");
     if (!invite || invite.status !== "pending" || invite.expiresAt <= new Date()) {
       return { status: 400, body: { error: "Invite is invalid, expired or already consumed" } };
     }
@@ -231,9 +246,10 @@ router.post("/accept-invite", async (req, res) => {
     if (existing) return { status: 409, body: { error: "Account already has a membership in this workspace" } };
     const [member] = await tx.update(workspaceMembersTable)
       .set({ userId: req.userId!, email: invite.email, status: "active", inviteToken: null })
-      .where(and(eq(workspaceMembersTable.inviteToken, token), eq(workspaceMembersTable.status, "pending")))
+      .where(and(eq(workspaceMembersTable.inviteToken, tokenHash), eq(workspaceMembersTable.status, "pending")))
       .returning();
-    if (!member) throw new Error("Pending invitation membership is missing");
+    // The pending membership was removed (invite revoked); never fall through to success.
+    if (!member) return { status: 400, body: { error: "Invite is invalid, expired or already consumed" } };
     await tx.update(workspaceInvitesTable).set({ status: "accepted" }).where(eq(workspaceInvitesTable.id, invite.id));
     return { status: 200, body: { message: "Invite accepted", member } };
   });
@@ -243,11 +259,15 @@ router.post("/accept-invite", async (req, res) => {
 // Get Workspace by invite token (for accept-invite page)
 router.get("/invite/:token", async (req, res) => {
   const { token } = req.params;
+  if (!isInviteToken(token)) {
+    res.status(404).json({ error: "Invite not found" });
+    return;
+  }
 
   const [invite] = await db
     .select()
     .from(workspaceInvitesTable)
-    .where(eq(workspaceInvitesTable.token, token));
+    .where(eq(workspaceInvitesTable.token, hashInviteToken(token)));
 
   if (!invite) {
     res.status(404).json({ error: "Invite not found" });
