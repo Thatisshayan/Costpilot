@@ -70,3 +70,18 @@ Recommended remediation, as a separate PR: move `packageManager`, workflows and 
 - The gitleaks history false positive needs an owner decision: a fingerprint-specific ignore or accept.
 - Invites are bearer capabilities not bound to email; this was Codex's documented design.
 - Existing plaintext invite tokens in any pre-existing database would stop working after this change. No such database is known to exist.
+
+## Follow-up — Codacy, legacy invites, refunds (same day)
+
+- **Codacy "2 new high security issues" (PR #8):** the rule IDs and lines are **not retrievable from this session**; `app.codacy.com` is outside the environment's allowed network domains. Local reproduction of Codacy's usual engines on the changed files:
+  - Semgrep open-source JavaScript/TypeScript rules: no security findings.
+  - ESLint `eslint-plugin-security`: new lines flagged are `detect-non-literal-fs-filename` ×2 (`lib/db/scripts/migration-guard-rehearsal.ts:25,27`, temp-dir paths, CI-only script, no external input) and `detect-object-injection` (export helper, now rewritten without a lookup; an auth test; generated client).
+  - Trivy was not run: downloading its binary was blocked by this session's safety policy.
+  - **The exact Codacy findings remain unconfirmed.** Do not treat PR #8 as Codacy-clean until they are read.
+- **Legacy plaintext invites:** lookups now hash the presented token, so a token stored before this change matches nothing: lookup returns 404, accept returns 400, and the row stays hidden from viewers. Removing its pending member expires it. This was proven in the PostgreSQL rehearsal. No database with such rows is known to exist; if one is found, expire its pending invites and re-issue them.
+- **Refunds/credits (owner decision: keep negatives):**
+  - Forms take a positive amount plus an explicit type.
+  - Lists and dashboard label credits, and totals are labelled net.
+  - CSV adds a Type column; PDF rows are suffixed.
+  - No conversion.
+- **Secret-scan correction:** pull-request runs check out one merge commit, so gitleaks scans a snapshot of the current tree, not each introduced commit. The recommended range-scan strategy is in the owner report; it is not implemented here because it makes PR #7's range include the `9594a50` placeholder and needs an owner decision on a fingerprint-specific allowlist.
