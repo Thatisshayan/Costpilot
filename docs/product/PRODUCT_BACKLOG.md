@@ -330,15 +330,15 @@ Removed or not planned: GPU tools, LLM router, benchmark "market intelligence", 
 
 | Batch | Items | Status |
 |---|---|---|
-| **1. Trustworthy core** | P0-01, P0-02 (UI part), P0-04, P0-05, P0-08, P0-10, P0-14, P0-15, P0-17 (guard) | **Implemented on `agent/claude/batch1-trustworthy-core`, awaiting owner review.** Evidence: [Batch 1 audit](../../audits/2026-11-05_Claude_Batch1TrustworthyCore_Audit.md) |
-| 2. Monthly financial view | P0-03 (server filters, sort, pagination), P0-06 (server per-currency totals, period selector, vendor/project/category breakdowns, six-month trend), P0-13 (export accuracy), export cap | **Implemented on `agent/claude/batch2-monthly-dashboard` (stacked on PR #14), awaiting owner review.** Evidence: [Batch 2 audit](../../audits/2026-11-05_Claude_Batch2MonthlyDashboard_Audit.md). No index migration needed (existing indexes verified) |
-| 3. Control and ingestion | P0-09 budgets and thresholds, P0-12 CSV import with P2-01 provenance and duplicate prevention, P0-07 projects, P0-11 first-run checklist | Planned |
+| **1. Trustworthy core** | P0-01, P0-02 (UI part), P0-04, P0-05, P0-08, P0-10, P0-14, P0-15, P0-17 (guard) | **Merged to `main` (PR #14, 2026-11-05).** Evidence: [Batch 1 audit](../../audits/2026-11-05_Claude_Batch1TrustworthyCore_Audit.md) |
+| 2. Monthly financial view | P0-03 (server filters, sort, pagination), P0-06 (server per-currency totals, period selector, vendor/project/category breakdowns, six-month trend), P0-13 (export accuracy), export cap | **Merged to `main` (PR #16, 2026-11-05)**; phone filter follow-up on `agent/claude/batch2-completion`. Evidence: [Batch 2 audit](../../audits/2026-11-05_Claude_Batch2MonthlyDashboard_Audit.md). No index migration needed (existing indexes verified) |
+| 3. Control and ingestion | P0-09 budgets and thresholds, P0-12 CSV import with P2-01 provenance and duplicate prevention, P0-07 projects, P0-11 first-run checklist | **Proposed** (plan and acceptance tests below); not started, needs owner approval to merge |
 | 4. Recurring spend and team | P1-04 subscriptions and renewals (D10), P1-02 in-app alerts (D8), P1-06 activity log, P0-02b contributor role (D2) | Planned |
 | 5. Integration readiness | P2-02 to P2-05, AWS design validation (D9; no live connection) | Planned |
 
 P0-16 (ledger integrity): Batch 2 verified the existing indexes cover the new queries; `updated_at` moves to Batch 4 with the activity log (P1-06). Amount precision waits for the D3 decimal-model proposal.
 
-**Follow-ups found in Batch 1 (Batch 2 scope):**
+**Follow-ups found in Batch 1 (done in Batch 2):**
 - On phones the expense and member tables scroll inside their card, so the amount column is off-screen until scrolled. Use a stacked row layout below `sm`.
 - Dashboard totals still use `toFixed(2)`, which misformats zero-decimal currencies such as JPY. Replace with currency-aware formatting as part of P0-06.
 
@@ -365,3 +365,109 @@ P0-16 (ledger integrity): Batch 2 verified the existing indexes cover the new qu
 11. **Contract:** a CI test passes showing every mounted API route is in `openapi.yaml`; generated clients are unchanged except for the newly documented endpoints.
 12. **Mock containment:** a CI test fails if a routed page or mounted route imports a mock module, and passes on the batch.
 13. **Regression:** all existing CI jobs green, including the PostgreSQL rehearsal and the isolation and money tests.
+
+## Batch 3 plan: budgets and CSV import (proposed)
+
+Scope: P0-09, P0-12 (with P2-01 provenance), P0-07, P0-11. One branch, `agent/claude/batch3-budgets-import`; nothing is merged without owner approval. Migrations are rehearsed on the local disposable database only; no production migration.
+
+### Findings in the existing code (not reused)
+
+- **`routes/budgets.ts` (unmounted):**
+  - sums every expense the user ever created, in all currencies, as one number;
+  - ignores the policy's workspace and project when summing;
+  - uses floats.
+
+  It stays unmounted, and the old `budget_policies` table is left untouched (D6).
+- **`pages/import.tsx` (unrouted):**
+  - turns an unreadable amount into `0` and a missing vendor into "Unknown";
+  - sends `{ expenses }` while the API expects `{ transactions }`;
+  - promises an "Intelligence Engine".
+
+  It will be rewritten.
+- **`POST /expenses/import-batch` (live):**
+  - validates each row and its authorization, but stops at the first bad row;
+  - has no provenance and no duplicate check.
+
+### Database changes (migration `0002`)
+
+| Change | Detail |
+|---|---|
+| New `budgets` table | `id`, `workspace_id` (FK, cascade; null for Personal with `user_id` owner), `project_id` and `platform_id` (optional FKs, cascade), `name` (1–80), `currency` (ISO 3 letters), `amount numeric(12,2) > 0`, `thresholds smallint[]` default `{50,80,100}` (each 1–100, ascending), `period` = `monthly` (check), `created_by`, `created_at`, `updated_at`. Unique `(workspace_id, user_id, project_id, platform_id, currency) NULLS NOT DISTINCT` |
+| New `import_batches` table | `id`, `user_id`, `workspace_id` (nullable), `file_name`, `row_count`, `inserted_count`, `skipped_count`, `created_at`, `undone_at` |
+| `expenses` provenance | `source text not null default 'manual'` (check `manual`/`import`), `external_id text`, `import_batch_id` (FK, set null), `fingerprint text` |
+| Duplicate guards | Unique `(workspace_id, source, external_id) WHERE workspace_id IS NOT NULL AND external_id IS NOT NULL`; unique `(user_id, source, external_id) WHERE workspace_id IS NULL AND external_id IS NOT NULL` (NULL workspace values are otherwise distinct); plain index on `(workspace_id, fingerprint)` and `(user_id, fingerprint)` for flagging |
+| Lock impact | `ADD COLUMN` with a constant default does not rewrite the table (PostgreSQL 11+). New indexes are built without `CONCURRENTLY` inside the migration; for a populated database, schedule a maintenance window (same note as migration 0001) |
+
+### API (OpenAPI first, contract-tested)
+
+- **`GET/POST/PATCH/DELETE /budgets`:**
+  - owners and admins write; members and viewers read;
+  - Personal budgets belong to their owner only;
+  - project and vendor must belong to the budget's scope.
+- **`GET /budgets/status?workspaceId&month`:** for each budget:
+  - actual net in the budget's currency only (refunds reduce it), using the Batch 2 spend semantics;
+  - remaining amount and percent used;
+  - highest threshold reached;
+  - other currencies are never counted;
+  - no forecast.
+- **`POST /imports/preview`** (no writes): validates up to 500 mapped rows and returns a per-row result:
+  - `valid`;
+  - `invalid` with field messages;
+  - `already imported` (same `external_id`);
+  - `possible duplicate` (same fingerprint).
+
+  Fingerprint = SHA-256 of normalized date, amount in cents, currency, vendor, project and description, within the scope.
+- **`POST /imports`:**
+  - inserts the valid rows in one transaction, with `source=import` and the batch id;
+  - possible duplicates are inserted only when the user confirms them by row number;
+  - already-imported rows are always skipped and counted.
+- **`GET /imports`, `DELETE /imports/{id}`:** list batches and undo one (removes that batch's rows; write role required).
+- **`POST /expenses/import-batch`:** kept for compatibility, routed through the same validation, and marked deprecated in the contract.
+
+### Web
+
+- **Budgets page** (new; no mock import):
+  - per-currency budget list with progress and threshold state;
+  - create and edit form with inline validation;
+  - read-only for members and viewers.
+
+  The dashboard shows budget status for the selected month.
+- **Import page:**
+  - upload, column mapping with a preview, then a per-row report (valid, invalid with reasons, duplicates to confirm);
+  - import and then undo;
+  - phone width supported.
+- **Projects:**
+  - rename and description;
+  - spend per currency for the selected month;
+  - delete shows the number of allocated expenses, which become "No project".
+- **First-run checklist:** on the empty dashboard, driven by real data (workspace, vendor, expenses, teammate). It disappears when complete and promises no disabled feature.
+
+### Batch 3 acceptance tests
+
+1. **Budget maths:** a USD budget of 100.00 with charges of 80.30 and a −20.00 refund in the month shows actual 60.30, remaining 39.70, 60.3% used, 50% threshold reached. A EUR charge in the same scope does not change it.
+2. **Period rollover:** a charge dated the last day of the month counts in that month only; the next month starts at 0.00.
+3. **Budget scope:** a project budget counts only that project; a vendor budget only that vendor. Unassigned spend counts only in workspace-level budgets.
+4. **Budget authorization:**
+   - owner and admin create, edit and delete; member and viewer get 403 on writes and can read;
+   - a non-member gets 403;
+   - Personal budgets are invisible to everyone else;
+   - a project or vendor from another scope gets 400.
+5. **Budget validation:** amount ≤ 0, more than 2 decimals, an invalid currency, or thresholds outside 1–100 or unsorted give 400 with a field message.
+6. **Import preview writes nothing:** row counts before and after a preview are equal.
+7. **Mixed file:** 10 rows (7 valid, 2 invalid amount or date, 1 unknown currency) give exactly 7 valid and 3 invalid, each with a row number and reason; no row is imported with `0` or "Unknown".
+8. **Re-import:** importing the same file with `external_id` twice creates 0 new rows the second time and reports 7 already imported, in Personal and in a workspace (partial-index case).
+9. **Possible duplicates:** a file repeating a charge without `external_id` flags it. It is imported only when confirmed, and two legitimate identical charges can both be kept.
+10. **Atomicity and limit:** a database error mid-import leaves no partial rows; 501 rows give 400.
+11. **Import authorization:** a viewer gets 403. Importing into a workspace never writes Personal rows, and the reverse also holds.
+12. **Undo:** undoing a batch removes exactly its rows; manual expenses and other batches are unchanged; a second undo gives 409.
+13. **Projects:** rename requires a write role; delete reports the allocated count; afterwards those expenses show "No project" and totals are unchanged.
+14. **Checklist:** each item reflects real data and disappears when done; none mentions disabled features.
+15. **Migration:** `0002` applies twice cleanly on the disposable database, the guard passes, and the existing rehearsal suite stays green.
+16. **Regression:** full gate (Gitleaks, mock guard, build, typecheck, API and web tests), 375px check on the new routes, contract test, and all CI jobs green.
+
+### Owner decisions needed before implementation
+
+1. **Personal budgets:** recommended **yes**, owner-only, same rules.
+2. **Undo window:** recommended **no time limit in v1**. Undo removes only rows still linked to the batch. An edited row stays linked, so it is also removed and the UI warns.
+3. **Possible duplicates:** recommended **flag and require confirmation** (as above), never silently dropped.
+4. **Budget alerts:** status on the dashboard and budgets page only. In-app notifications stay in Batch 4 (D8); no email.
