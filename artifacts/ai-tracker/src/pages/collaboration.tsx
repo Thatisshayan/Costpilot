@@ -301,7 +301,7 @@ export default function Collaboration() {
                         <div>
                           <div className="text-sm font-bold text-white flex items-center gap-2">
                             {member.email.split('@')[0]}
-                            {member.role === 'owner' && (
+                            {member.userId === userId && (
                               <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
                                 You
                               </span>
