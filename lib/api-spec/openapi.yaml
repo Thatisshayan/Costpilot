@@ -119,6 +119,7 @@ paths:
 
   /platforms/{id}/sync:
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: syncPlatformUsage
       tags: [platforms]
       summary: Sync usage data from platform API
@@ -300,8 +301,45 @@ paths:
         "204":
           description: Deleted
 
+  /expenses/import-batch:
+    post:
+      operationId: importExpensesBatch
+      tags: [expenses]
+      summary: Create up to 500 expenses in one all-or-nothing request
+      description: Every row is validated and authorized like a single create. Any invalid row rejects the whole batch.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [transactions]
+              properties:
+                transactions:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: All rows created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count:
+                    type: integer
+        "400":
+          description: A row failed validation or references a vendor/project outside its scope
+        "403":
+          description: Not a member with write access to a referenced workspace
+
   /subscriptions:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listSubscriptions
       tags: [subscriptions]
       responses:
@@ -314,6 +352,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/Subscription"
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: createSubscription
       tags: [subscriptions]
       requestBody:
@@ -332,6 +371,7 @@ paths:
 
   /subscriptions/{id}:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getSubscription
       tags: [subscriptions]
       parameters:
@@ -348,6 +388,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Subscription"
     patch:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: updateSubscription
       tags: [subscriptions]
       parameters:
@@ -370,6 +411,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Subscription"
     delete:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: deleteSubscription
       tags: [subscriptions]
       parameters:
@@ -384,6 +426,7 @@ paths:
 
   /tools:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listTools
       tags: [tools]
       responses:
@@ -396,6 +439,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/Tool"
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: createTool
       tags: [tools]
       requestBody:
@@ -414,6 +458,7 @@ paths:
 
   /tools/{id}:
     patch:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: updateTool
       tags: [tools]
       parameters:
@@ -436,6 +481,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Tool"
     delete:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: deleteTool
       tags: [tools]
       parameters:
@@ -450,6 +496,7 @@ paths:
 
   /credits:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listCreditPurchases
       tags: [credits]
       summary: List all credit top-up purchases
@@ -463,6 +510,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/CreditPurchase"
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: createCreditPurchase
       tags: [credits]
       summary: Log a credit top-up purchase
@@ -482,6 +530,7 @@ paths:
 
   /credits/{id}:
     patch:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: updateCreditPurchase
       tags: [credits]
       parameters:
@@ -504,6 +553,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/CreditPurchase"
     delete:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: deleteCreditPurchase
       tags: [credits]
       parameters:
@@ -518,6 +568,7 @@ paths:
 
   /dashboard/summary:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getDashboardSummary
       tags: [dashboard]
       responses:
@@ -530,6 +581,7 @@ paths:
 
   /dashboard/expiring-trials:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getExpiringTrials
       tags: [dashboard]
       responses:
@@ -544,6 +596,7 @@ paths:
 
   /dashboard/expenses-by-platform:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getExpensesByPlatform
       tags: [dashboard]
       responses:
@@ -558,6 +611,7 @@ paths:
 
   /dashboard/expenses-by-project:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getExpensesByProject
       tags: [dashboard]
       responses:
@@ -572,6 +626,7 @@ paths:
 
   /dashboard/monthly-spending:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getMonthlySpending
       tags: [dashboard]
       responses:
@@ -586,6 +641,7 @@ paths:
 
   /dashboard/calendar-events:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getCalendarEvents
       tags: [dashboard]
       summary: All events for calendar view (expenses, trials, renewals, credits)
@@ -601,6 +657,7 @@ paths:
 
   /receipts/upload:
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: uploadReceipt
       tags: [expenses]
       summary: Upload and parse a receipt using Vision AI
@@ -624,6 +681,7 @@ paths:
 
   /analytics/smart-suggestions:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getSmartSuggestions
       tags: [analytics]
       summary: Get AI-driven cost optimization suggestions
@@ -639,6 +697,7 @@ paths:
 
   /analytics/savings-opportunities:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listSavingsOpportunities
       tags: [analytics]
       summary: Get AI Waste Detection results
@@ -654,6 +713,7 @@ paths:
 
   /analytics/forecast:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getForecast
       tags: [analytics]
       summary: Get spending and credit exhaustion forecasts
@@ -667,6 +727,7 @@ paths:
 
   /dashboard/kpi-summary:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getKpiSummary
       tags: [dashboard]
       summary: Get high-level KPI metrics for the dashboard
@@ -680,6 +741,7 @@ paths:
 
   /dashboard/intelligence-activity:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getIntelligenceActivity
       tags: [dashboard]
       summary: Get recent intelligence activity
@@ -702,6 +764,7 @@ paths:
 
   /dashboard/connected-sources:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listConnectedSources
       tags: [dashboard]
       summary: Get status of connected data sources
@@ -723,6 +786,7 @@ paths:
 
   /analytics/export/csv:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: exportExpensesCsv
       tags: [analytics]
       summary: Export all expenses as CSV
@@ -838,6 +902,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Workspace"
+        "400":
+          description: No fields to update, or invalid name
+        "409":
+          description: Slug already in use
+    delete:
+      operationId: deleteWorkspaceById
+      tags: [workspaces]
+      summary: Delete an empty workspace (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Workspace deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Workspace not found
+        "409":
+          description: Workspace still has expenses, projects or vendors
 
   /workspaces/{id}/members:
     get:
@@ -892,8 +981,112 @@ paths:
               schema:
                 $ref: "#/components/schemas/WorkspaceInvitation"
 
+  /workspaces/{id}/leave:
+    post:
+      operationId: leaveWorkspace
+      tags: [workspaces]
+      summary: Leave a workspace (the sole owner cannot leave)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Left the workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: The caller is the sole owner
+        "403":
+          description: Not an active member
+
+  /workspaces/members/{memberId}:
+    delete:
+      operationId: removeMember
+      tags: [workspaces]
+      summary: Remove a member or revoke a pending invitation (owner/admin)
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Member removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Owners cannot be removed
+        "403":
+          description: Caller may not remove this member
+        "404":
+          description: Member not found
+
+  /workspaces/accept-invite:
+    post:
+      operationId: acceptInvite
+      tags: [workspaces]
+      summary: Accept an invitation with its one-time token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  pattern: "^[a-f0-9]{64}$"
+      responses:
+        "200":
+          description: Invitation accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, member]
+                properties:
+                  message:
+                    type: string
+                  member:
+                    $ref: "#/components/schemas/WorkspaceMember"
+        "400":
+          description: Invite is invalid, expired or already consumed
+        "409":
+          description: Account already has a membership in this workspace
+
+  /workspaces/invite/{token}:
+    get:
+      operationId: getInviteByToken
+      tags: [workspaces]
+      summary: Preview an invitation before accepting it
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invitation preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitePreview"
+        "404":
+          description: Invite not found
+
   /webhooks:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listWebhooks
       tags: [webhooks]
       summary: List all configured webhooks for the active workspace
@@ -907,6 +1100,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/Webhook"
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: createWebhook
       tags: [webhooks]
       summary: Add a new Slack or Discord webhook
@@ -926,6 +1120,7 @@ paths:
 
   /cicd/validate:
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: validateDeployment
       tags: [cicd]
       summary: Validate a deployment against project budget policies
@@ -952,6 +1147,7 @@ paths:
 
   /cicd/runs:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listCicdRuns
       tags: [cicd]
       summary: List recent CI/CD pipeline runs
@@ -967,6 +1163,7 @@ paths:
 
   /remediation:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listRemediationActions
       tags: [remediation]
       summary: List available remediation actions
@@ -982,6 +1179,7 @@ paths:
 
   /remediation/execute:
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: executeRemediation
       tags: [remediation]
       summary: Authorize and execute a remediation action
@@ -1007,6 +1205,7 @@ paths:
 
   /intelligence/query:
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: postIntelligenceQuery
       tags: [intelligence]
       summary: Ask the AI Co-pilot a question about spend
@@ -1032,6 +1231,7 @@ paths:
 
   /telemetry/gpu:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: getTelemetryGpu
       tags: [telemetry]
       summary: Get live GPU cluster utilization telemetry
@@ -1045,6 +1245,7 @@ paths:
 
   /telemetry/llm-route:
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: postTelemetryLlmRoute
       tags: [telemetry]
       summary: Record an LLM routing event
@@ -1072,6 +1273,7 @@ paths:
 
   /audits:
     get:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listAudits
       tags: [audits]
       summary: List all AI infrastructure audits
@@ -1087,6 +1289,7 @@ paths:
 
   /audits/scan:
     post:
+      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: startAuditScan
       tags: [audits]
       summary: Trigger a new AI infrastructure scan
@@ -1104,6 +1307,10 @@ components:
       type: object
       required: [id, name, slug, ownerId, createdAt, onboarded]
       properties:
+        role:
+          type: string
+          enum: [owner, admin, viewer]
+          description: The caller's role in this workspace (list and create responses).
         id:
           type: integer
         name:
@@ -1119,11 +1326,37 @@ components:
 
     CreateWorkspaceBody:
       type: object
-      required: [name, slug]
+      required: [name]
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 80
         slug:
+          type: string
+          deprecated: true
+          description: Ignored. The server generates a unique identifier; display names need not be unique.
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    InvitePreview:
+      type: object
+      required: [workspaceName, workspaceSlug, email, status, expiresAt]
+      properties:
+        workspaceName:
+          type: string
+        workspaceSlug:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+        expiresAt:
           type: string
 
     WorkspaceInvitation:
@@ -1161,6 +1394,11 @@ components:
         role:
           type: string
           enum: [owner, admin, viewer]
+        status:
+          type: string
+          enum: [active, pending, expired]
+        joinedAt:
+          type: ["string", "null"]
         createdAt:
           type: string
 

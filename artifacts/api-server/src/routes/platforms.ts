@@ -11,7 +11,6 @@ import {
   UpdatePlatformParams,
   DeletePlatformParams,
 } from "@workspace/api-zod";
-import syncRouter from "./sync";
 import { encrypt } from "../lib/kms-vault";
 
 const router = Router();
@@ -102,6 +101,8 @@ router.delete("/:id", async (req, res) => {
   res.status(204).send();
 });
 
-router.use("/:id", syncRouter);
+// Provider sync (routes/sync.ts -> lib/sync-engine.ts, simulated adapters) is intentionally not
+// mounted: it is disabled for launch and must not be reachable from an enabled route
+// (enforced by scripts/mock-guard.mjs). See docs/governance/DEFERRED_WORK.md.
 
 export default router;

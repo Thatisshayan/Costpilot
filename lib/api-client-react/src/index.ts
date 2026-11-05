@@ -3,5 +3,3 @@ export * from "./generated/api.schemas";
 
 export { setBaseUrl, setAuthTokenGetter, authenticatedFetch, customFetch } from "./custom-fetch";
 export type { AuthTokenGetter } from "./custom-fetch";
-
-export * from "./workspace-hooks";

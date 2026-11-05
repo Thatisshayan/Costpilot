@@ -5,8 +5,11 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { WorkspaceRole } from './workspaceRole';
 
 export interface Workspace {
+  /** The caller's role in this workspace (list and create responses). */
+  role?: WorkspaceRole;
   id: number;
   name: string;
   slug: string;

@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runSecretScan } from "./secret-scan.mjs";
+import { main as runMockGuard } from "./mock-guard.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(root);
@@ -16,6 +17,9 @@ const pm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 try {
   console.log("== secret-scan ==");
   runSecretScan();
+  console.log("== mock-guard ==");
+  runMockGuard(root);
+  run(process.execPath, ["--test", "scripts/__tests__/mock-guard.test.mjs"]);
   console.log("== doc-freshness ==");
   const readme = readFileSync("README.md", "utf8");
   for (const match of readme.matchAll(/\]\(([^)]+)\)/g)) {

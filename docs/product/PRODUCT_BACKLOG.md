@@ -30,20 +30,20 @@ This document is the **single source of truth for product priorities**. `LAUNCH_
 - No mock fallbacks.
 - Database changes are rehearsed on a disposable PostgreSQL 16 with the migration guard.
 
-## 0. Product decisions needed (they block or shape the items marked ⚑)
+## 0. Product decisions (owner, 2026-11-05)
 
-| # | Decision | Recommendation | Affects |
-|---|---|---|---|
-| D1 | Positioning | One ledger for cloud, AI API and SaaS subscription spend, for engineering teams spending up to ~$50k/month | All |
-| D2 | Add a contributor role (records and edits spend; no member or vendor admin)? | Yes: owner / admin / **member** / viewer | P0-02 |
-| D3 | Amount precision | Allow up to 4 decimals for usage-priced items (`numeric(14,4)`); keep 2 as the UI default | P0-16, P2 |
-| D4 | Reporting currency | Keep no conversion in P0/P1. Later: an optional reporting currency with a recorded FX rate, source and date (needs a free FX source decision) | P1-08 |
-| D5 | Mobile | Freeze; revisit as a companion after P1 | — |
-| D6 | Delete mock-backed preview code (Rule 14) | Approve deletion of the listed files after a reviewed list | P0-17 |
-| D7 | Light theme | Hide the toggle now (dark only); build a real light theme later | P0-05 |
-| D8 | Budget notifications | In-app states first; email/Slack delivery later (email needs a provider decision) | P1-02 |
-| D9 | First live integration after CSV import | Owner choice: AWS (designed, best security model) or OpenAI (AI differentiation) | P2 |
-| D10 | Workspace-scoped subscriptions in P0 or P1? | Early P1 (needs the data model from P0) | P1-04 |
+| # | Decision | Applies to |
+|---|---|---|
+| D1 | **Positioning:** a B2B platform for development teams, SaaS companies and businesses managing cloud, AI API and SaaS spend. It initially targets smaller teams (roughly $50k/month of tech spend or less). This is a market guideline, not a software limit. | All |
+| D2 | **Contributor ("member") role approved.** Members create and manage permitted financial records but cannot administer membership or sensitive settings. Before implementation: a written owner/admin/member/viewer authorization matrix with tests. Delivered in its own later batch with migration and regression tests; workspace isolation must not weaken. | P0-02b |
+| D3 | **Four-decimal support later, not a blanket change.** First propose a decimal model that separates unit prices, usage quantities, discounts, credits and posted charges. No schema change until that proposal is approved. | P0-16, P2 |
+| D4 | **Keep source currencies; never convert or sum across currencies silently.** An optional reporting currency may come later, with explicit rates, timestamps and calculation rules. | P1-08 |
+| D5 | **Mobile frozen** for feature work. Security, auth compatibility, bug fixes and builds are still maintained. The web app is the main B2B experience. | — |
+| D6 | **Inventory first, no deletion or activation without approval.** Inventory: [LEGACY_CODE_INVENTORY.md](LEGACY_CODE_INVENTORY.md). Disabled code must stay unreachable (enforced by `scripts/mock-guard.mjs`). | P0-17 |
+| D7 | **Hide the light-mode switch** until light mode is built and tested. | P0-05 (done in Batch 1) |
+| D8 | **In-app budget alerts first;** email and Slack later. | P1-02 |
+| D9 | **AWS is the preferred first integration to investigate, not approved for implementation.** CSV import and the core cost features come first. | P2 |
+| D10 | **SaaS subscriptions and renewals in early P1,** after the dashboard, budgets and CSV import. No Stripe billing or payment processing. | P1-04 |
 
 ## P0: core product completeness
 
@@ -63,7 +63,7 @@ This document is the **single source of truth for product priorities**. `LAUNCH_
   - existing isolation tests stay green.
 - **Size:** S. **Priority:** P0, Batch 1.
 
-### P0-02 Role-aware UI and contributor role ⚑D2
+### P0-02 Role-aware UI (done in Batch 1) and contributor role (P0-02b, later batch, ⚑D2)
 - **Status:** 2. Roles are owner/admin/viewer; write buttons show for viewers and fail with a generic error.
 - **Value:** high for B2B teams (engineers record spend; finance views).
 - **Dependencies:** D2 (contributor role needs an API contract and server change).
@@ -76,7 +76,7 @@ This document is the **single source of truth for product priorities**. `LAUNCH_
 - **Tests:**
   - API matrix (role × action) for expenses, projects and vendors in two workspaces;
   - web tests that the viewer sees no write controls.
-- **Size:** S (UI only) / M (with the new role). **Priority:** P0, Batch 1 (UI part).
+- **Size:** S (UI only) / M (with the new role). **Priority:** P0, Batch 1 (UI part). P0-02b (the `member` role, its authorization matrix, migration and regression tests) is a dedicated later batch per D2.
 
 ### P0-03 Expenses search, filter, sort and pagination
 - **Status:** 2. The API returns everything in ascending order; the UI reverses the array.
@@ -231,7 +231,8 @@ This document is the **single source of truth for product priorities**. `LAUNCH_
 - **Acceptance:**
   - Column mapping with a preview.
   - Per-row validation report (no `amount || 0` or "Unknown" defaults).
-  - Rows already imported with the same `external_id` or file-row fingerprint are skipped and reported.
+  - Rows already imported with the same `external_id` or file-row fingerprint are skipped and reported. The fingerprint is defined for rows without a provider transaction ID: a hash of normalized date, amount (in cents), currency, vendor, project and description, scoped to the workspace (or user for Personal). Exact repeats are flagged, not silently dropped, because two identical charges can be legitimate.
+  - Uniqueness covers Personal rows too: PostgreSQL treats NULL `workspace_id` values as distinct, so add a partial unique index on `(user_id, source, external_id) WHERE workspace_id IS NULL` alongside the workspace index.
   - Imported rows are labelled source=import.
   - A batch is undoable.
 - **Tests:**
@@ -306,7 +307,7 @@ This document is the **single source of truth for product priorities**. `LAUNCH_
 
 | ID | Item | Status | Acceptance (summary) | Size |
 |---|---|---|---|---|
-| P2-01 | Source attribution | 6 | `source`, `external_id` (unique per workspace and source) and `import_batch_id` on expenses; badges in the UI; manual and imported rows clearly distinguished | S–M |
+| P2-01 | Source attribution | 6 | `source`, `external_id` (unique per workspace and source, plus a partial unique index for Personal rows where `workspace_id IS NULL`) and `import_batch_id` on expenses; badges in the UI; manual and imported rows clearly distinguished | S–M |
 | P2-02 | Connections data model and UI | 6 | `provider_connections` and `sync_runs` per the AWS design §4; UI shows "Not connected" and setup instructions only; **never** a fake "Connected" | M |
 | P2-03 | Import and sync history with retry | 6 | Import batches listed with counts, errors, undo and retry; shared with future sync runs | M |
 | P2-04 | Duplicate detection across sources | 6 | Overlap warning when manual and imported rows match vendor, period and amount | M |
@@ -327,12 +328,19 @@ Removed or not planned: GPU tools, LLM router, benchmark "market intelligence", 
 
 ## Delivery batches (each a separate PR; none merged without owner approval)
 
-| Batch | Items | Why first |
+| Batch | Items | Status |
 |---|---|---|
-| **1. Trustworthy core** | P0-01, P0-02 (UI part), P0-04, P0-05, P0-08, P0-10, P0-14, P0-15, P0-17 (guard) | Fixes broken journeys and over-claims; one small API change (slug); no schema migration |
-| 2. Find and see spend | P0-03, P0-06, P0-13, P0-16 | Server aggregation and filters; first migration (indexes, `updated_at`, precision per D3) |
-| 3. Control | P0-07, P0-09, P0-11, P0-12 (with P2-01) | Budgets, import with provenance, activation checklist |
-| 4+ | P1 in order, then P2 | — |
+| **1. Trustworthy core** | P0-01, P0-02 (UI part), P0-04, P0-05, P0-08, P0-10, P0-14, P0-15, P0-17 (guard) | **Implemented on `agent/claude/batch1-trustworthy-core`, awaiting owner review.** Evidence: [Batch 1 audit](../../audits/2026-11-05_Claude_Batch1TrustworthyCore_Audit.md) |
+| 2. Monthly financial view | P0-03 (server filters, sort, pagination), P0-06 (server per-currency totals, period selector, vendor/project breakdowns, monthly trend), P0-13 (export accuracy), plus the follow-ups below | Next; awaiting approval |
+| 3. Control and ingestion | P0-09 budgets and thresholds, P0-12 CSV import with P2-01 provenance and duplicate prevention, P0-07 projects, P0-11 first-run checklist | Planned |
+| 4. Recurring spend and team | P1-04 subscriptions and renewals (D10), P1-02 in-app alerts (D8), P1-06 activity log, P0-02b contributor role (D2) | Planned |
+| 5. Integration readiness | P2-02 to P2-05, AWS design validation (D9; no live connection) | Planned |
+
+P0-16 (ledger integrity) moves into Batch 2 for indexes and `updated_at` only. Amount precision waits for the D3 decimal-model proposal.
+
+**Follow-ups found in Batch 1 (Batch 2 scope):**
+- On phones the expense and member tables scroll inside their card, so the amount column is off-screen until scrolled. Use a stacked row layout below `sm`.
+- Dashboard totals still use `toFixed(2)`, which misformats zero-decimal currencies such as JPY. Replace with currency-aware formatting as part of P0-06.
 
 ### Batch 1 acceptance tests
 

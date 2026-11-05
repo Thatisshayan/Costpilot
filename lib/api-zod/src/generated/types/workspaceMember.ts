@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { WorkspaceMemberRole } from './workspaceMemberRole';
+import type { WorkspaceMemberStatus } from './workspaceMemberStatus';
 
 export interface WorkspaceMember {
   id: number;
@@ -13,5 +14,8 @@ export interface WorkspaceMember {
   userId: string;
   email: string;
   role: WorkspaceMemberRole;
+  status?: WorkspaceMemberStatus;
+  /** @nullable */
+  joinedAt?: string | null;
   createdAt: string;
 }

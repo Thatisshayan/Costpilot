@@ -6,13 +6,14 @@ import {
   useUpdatePlatform,
   useDeletePlatform,
   getListPlatformsQueryKey,
-  getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Plus, Pencil, Trash2, Key } from "lucide-react";
+import { ExternalLink, Plus, Pencil, Trash2, Key, AlertTriangle, Eye } from "lucide-react";
+import { apiErrorMessage } from "@/lib/api-error";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -38,9 +39,30 @@ type FormState = {
   notes: string;
 };
 
+const VENDOR_CATEGORIES = ["Cloud infrastructure", "AI / LLM API", "SaaS tool", "Database / data", "Observability", "Hosting / compute", "Other"];
+
+/** Earlier categories stay selectable when editing older vendors. */
+function vendorCategoryOptions(current: string) {
+  return current && !VENDOR_CATEGORIES.includes(current) ? [current, ...VENDOR_CATEGORIES] : VENDOR_CATEGORIES;
+}
+
+/** Only http(s) links are rendered, so a stored javascript: or data: URL can never run. */
+export function safeHttpUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+const inputClass = "w-full bg-white/[0.03] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors aria-[invalid=true]:border-red-400";
+const labelClass = "text-xs font-semibold text-slate-300 uppercase tracking-wider";
+
 const emptyForm = (): FormState => ({
   name: "",
-  category: "LLM Provider",
+  category: "AI / LLM API",
   website: "",
   logoUrl: "",
   notes: "",
@@ -48,8 +70,8 @@ const emptyForm = (): FormState => ({
 
 export default function Platforms() {
   const qc = useQueryClient();
-  const { data: accessiblePlatforms = [], isLoading } = useListPlatforms();
-  const { activeWorkspaceId } = useWorkspace();
+  const { data: accessiblePlatforms = [], isLoading, isError, error, refetch } = useListPlatforms();
+  const { activeWorkspaceId, canWrite, activeRole } = useWorkspace();
   const platforms = accessiblePlatforms.filter(p => (p.workspaceId ?? null) === activeWorkspaceId);
   const createMutation = useCreatePlatform();
   const updateMutation = useUpdatePlatform();
@@ -59,15 +81,18 @@ export default function Platforms() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editTarget, setEditTarget] = useState<Platform | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [websiteError, setWebsiteError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const saving = createMutation.isPending || updateMutation.isPending;
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: getListPlatformsQueryKey() });
-    qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-  };
+  const invalidate = () => qc.invalidateQueries({ queryKey: getListPlatformsQueryKey() });
 
   const openAdd = () => {
     setEditTarget(null);
     setForm(emptyForm());
+    setNameError(null); setWebsiteError(null); setFormError(null);
     setDialogOpen(true);
   };
 
@@ -75,21 +100,23 @@ export default function Platforms() {
     setEditTarget(p);
     setForm({
       name: p.name,
-      category: p.category ?? "LLM Provider",
+      category: p.category ?? "Other",
       website: p.website ?? "",
       logoUrl: p.logoUrl ?? "",
       notes: p.notes ?? "",
     });
+    setNameError(null); setWebsiteError(null); setFormError(null);
     setDialogOpen(true);
   };
 
   const handleSubmit = async () => {
-    if (!form.name) {
-      toast.error("Platform name is required.");
-      return;
-    }
+    const name = form.name.trim();
+    const badName = name ? null : "Enter the vendor's name.";
+    const badWebsite = form.website.trim() && !safeHttpUrl(form.website.trim()) ? "Enter a full web address starting with https://" : null;
+    setNameError(badName); setWebsiteError(badWebsite);
+    if (badName || badWebsite) { setFormError("Please fix the highlighted fields."); return; }
     const payload = {
-      name: form.name,
+      name,
       ...(form.category ? { category: form.category } : {}),
       ...(form.website ? { website: form.website } : {}),
       ...(form.logoUrl ? { logoUrl: form.logoUrl } : {}),
@@ -98,74 +125,86 @@ export default function Platforms() {
     try {
       if (editTarget) {
         await updateMutation.mutateAsync({ id: editTarget.id, data: payload });
-        toast.success("Platform updated successfully.");
+        toast.success("Vendor updated.");
       } else {
         await createMutation.mutateAsync({ data: { ...payload, ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}) } });
-        toast.success("Platform created successfully.");
+        toast.success("Vendor added.");
       }
-      invalidate();
+      await invalidate();
       setDialogOpen(false);
-    } catch {
-      toast.error("Failed to save platform.");
+    } catch (err) {
+      // Keep the dialog open with the entered values: nothing was saved.
+      setFormError(`Not saved: ${apiErrorMessage(err, "please try again.")}`);
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await deleteMutation.mutateAsync({ id });
-      toast.success("Platform deleted.");
-      invalidate();
-    } catch {
-      toast.error("Failed to delete platform.");
+      toast.success("Vendor deleted.");
+      await invalidate();
+      setDeleteId(null);
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, "The vendor was not deleted. Please try again."));
     }
-    setDeleteId(null);
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-      {/* Header */}
-      <header className="flex justify-between items-center mb-10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Vendor Intelligence</h1>
-          <p className="text-sm text-slate-400 mt-1">Manage your AI service ecosystem and API credentials.</p>
+    <div className="pb-20">
+      <header className="flex flex-wrap justify-between items-start gap-4 mb-8">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold tracking-tight text-white">Vendors</h1>
+          <p className="text-sm text-slate-300 mt-1">The cloud, AI and SaaS providers you pay. Link expenses to a vendor to see where money goes.</p>
         </div>
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
-        >
-          <Plus size={16} />
-          Add Platform
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            <Plus size={16} aria-hidden />
+            Add vendor
+          </button>
+        )}
       </header>
 
-      {/* Grid */}
-      {isLoading ? (
-        <div className="text-center py-12 text-slate-500 font-medium">Loading platforms...</div>
-      ) : platforms && platforms.length > 0 ? (
+      {!canWrite && activeRole !== null && (
+        <p className="mb-4 text-sm text-slate-300 flex items-center gap-2"><Eye size={14} aria-hidden /> You have read-only access to this workspace's vendors.</p>
+      )}
+
+      {isError ? (
+        <div role="alert" className="py-8 px-6 text-sm text-amber-200 flex flex-wrap items-center gap-3 bg-white/[0.01] border border-amber-500/20 rounded-2xl">
+          <AlertTriangle size={16} aria-hidden />
+          <span>Vendors could not be loaded: {apiErrorMessage(error, "please try again.")}</span>
+          <button type="button" onClick={() => void refetch()} className="underline text-indigo-300">Try again</button>
+        </div>
+      ) : isLoading ? (
+        <div role="status" className="text-center py-12 text-slate-300 font-medium">Loading vendors…</div>
+      ) : platforms.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {platforms.map((platform) => (
             <div 
               key={platform.id} 
-              className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.04] flex flex-col justify-between h-[230px] group relative"
+              className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 backdrop-blur-md transition-colors hover:bg-white/[0.04] flex flex-col justify-between min-h-[210px]"
             >
               <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-4 min-w-0">
                     {platform.logoUrl ? (
                       <img 
                         src={platform.logoUrl} 
-                        alt={platform.name} 
+                        alt="" 
                         className="w-10 h-10 rounded-xl object-contain bg-white/[0.02] border border-white/[0.08]" 
                       />
                     ) : (
-                      <div className={`w-10 h-10 rounded-xl ${getHashColor(platform.name)} flex items-center justify-center text-white font-bold text-lg shrink-0`}>
+                      <div className={`w-10 h-10 rounded-xl ${getHashColor(platform.name)} flex items-center justify-center text-white font-bold text-lg shrink-0`} aria-hidden>
                         {platform.name.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <div>
-                      <h3 className="font-semibold text-white text-lg leading-tight flex items-center gap-1.5">
+                    <div className="min-w-0">
+                      <h2 className="font-semibold text-white text-lg leading-tight break-words">
                         {platform.name}
-                      </h3>
+                      </h2>
                       {platform.category && (
                         <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase rounded-md bg-white/[0.04] border border-white/[0.08] text-indigo-300 inline-block mt-1">
                           {platform.category}
@@ -174,49 +213,53 @@ export default function Platforms() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => openEdit(platform)}
-                      className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-white transition-colors"
-                      title="Edit Platform"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={() => setDeleteId(platform.id)}
-                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
-                      title="Delete Platform"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  {canWrite && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(platform)}
+                        aria-label={`Edit vendor ${platform.name}`}
+                        className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      >
+                        <Pencil size={14} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setDeleteError(null); setDeleteId(platform.id); }}
+                        aria-label={`Delete vendor ${platform.name}`}
+                        className="p-2 rounded-lg hover:bg-red-500/10 text-slate-300 hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                      >
+                        <Trash2 size={14} aria-hidden />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <p className="text-sm text-slate-400 mt-4 line-clamp-2 leading-relaxed">
-                  {platform.notes || <span className="text-slate-600 italic">No notes configured.</span>}
+                <p className="text-sm text-slate-300 mt-4 line-clamp-2 leading-relaxed">
+                  {platform.notes || <span className="text-slate-400 italic">No notes.</span>}
                 </p>
 
                 {platform.apiKey && (
-                  <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-slate-400">
-                    <Key size={12} />
-                    <span>Credential stored (provider sync disabled)</span>
+                  <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-slate-300">
+                    <Key size={12} aria-hidden />
+                    <span>Credential stored, encrypted. Automatic sync is not available yet.</span>
                   </div>
                 )}
               </div>
 
               <div className="border-t border-white/[0.04] pt-4 mt-auto flex justify-between items-center">
-                {platform.website ? (
-                  <a 
-                    href={platform.website} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="text-xs font-medium text-indigo-400 flex items-center gap-1 hover:text-indigo-300 transition-colors"
+                {safeHttpUrl(platform.website) ? (
+                  <a
+                    href={safeHttpUrl(platform.website)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-medium text-indigo-300 flex items-center gap-1 hover:text-indigo-200"
                   >
-                    <ExternalLink size={12} />
-                    Visit Website
+                    <ExternalLink size={12} aria-hidden />
+                    Website<span className="sr-only"> for {platform.name} (opens in a new tab)</span>
                   </a>
                 ) : (
-                  <span className="text-xs text-slate-600">No website</span>
+                  <span className="text-xs text-slate-400">No website</span>
                 )}
 
               </div>
@@ -224,116 +267,101 @@ export default function Platforms() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 text-slate-500 font-medium bg-white/[0.01] border border-white/[0.05] rounded-2xl">
-          No platforms configured yet.
+        <div className="text-center py-12 space-y-3 bg-white/[0.01] border border-white/[0.06] rounded-2xl">
+          <p className="text-slate-200 font-medium">No vendors in this scope yet.</p>
+          {canWrite && (
+            <button type="button" onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl">
+              <Plus size={16} aria-hidden /> Add your first vendor
+            </button>
+          )}
         </div>
       )}
 
-      {/* Add / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-zinc-950/90 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
+      <Dialog open={dialogOpen} onOpenChange={open => { if (!saving) setDialogOpen(open); }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto bg-zinc-950/95 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-white tracking-tight">
-              {editTarget ? "Edit Platform Settings" : "Configure AI Platform"}
-            </DialogTitle>
+            <DialogTitle className="text-xl font-bold text-white tracking-tight">{editTarget ? "Edit vendor" : "Add vendor"}</DialogTitle>
+            <DialogDescription className="text-sm text-slate-300">Fields marked * are required.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Platform Name *</label>
+          <form noValidate onSubmit={e => { e.preventDefault(); void handleSubmit(); }} className="space-y-4 py-2">
+            {formError && <p role="alert" className="text-sm text-red-200 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{formError}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 space-y-1.5">
+                <label htmlFor="vendor-name" className={labelClass}>Vendor name *</label>
                 <input
+                  id="vendor-name"
                   type="text"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  placeholder="e.g. OpenAI, Anthropic, Midjourney"
+                  className={inputClass}
+                  placeholder="e.g. AWS, OpenAI, Datadog"
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  aria-invalid={nameError ? true : undefined}
+                  aria-describedby={nameError ? "vendor-name-error" : undefined}
+                  onChange={e => { setForm({ ...form, name: e.target.value }); setNameError(null); setFormError(null); }}
                 />
+                {nameError && <p id="vendor-name-error" className="text-xs text-red-300">{nameError}</p>}
               </div>
-
-              <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</label>
-                <select
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                >
-                  <option value="LLM Provider" className="bg-zinc-950 text-white">LLM Provider</option>
-                  <option value="Image Generator" className="bg-zinc-950 text-white">Image Generator</option>
-                  <option value="Vector DB" className="bg-zinc-950 text-white">Vector DB</option>
-                  <option value="Hosting / Compute" className="bg-zinc-950 text-white">Hosting / Compute</option>
-                  <option value="API Gateway" className="bg-zinc-950 text-white">API Gateway</option>
+              <div className="sm:col-span-2 space-y-1.5">
+                <label htmlFor="vendor-category" className={labelClass}>Category</label>
+                <select id="vendor-category" className={inputClass} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                  {vendorCategoryOptions(form.category).map(c => <option key={c} value={c} className="bg-zinc-950">{c}</option>)}
                 </select>
               </div>
-
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Website URL</label>
+                <label htmlFor="vendor-website" className={labelClass}>Website</label>
                 <input
+                  id="vendor-website"
                   type="url"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  placeholder="https://openai.com"
+                  inputMode="url"
+                  className={inputClass}
+                  placeholder="https://aws.amazon.com"
                   value={form.website}
-                  onChange={(e) => setForm({ ...form, website: e.target.value })}
+                  aria-invalid={websiteError ? true : undefined}
+                  aria-describedby={websiteError ? "vendor-website-error" : undefined}
+                  onChange={e => { setForm({ ...form, website: e.target.value }); setWebsiteError(null); setFormError(null); }}
                 />
+                {websiteError && <p id="vendor-website-error" className="text-xs text-red-300">{websiteError}</p>}
               </div>
-
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Logo URL</label>
-                <input
-                  type="url"
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  placeholder="Logo image URL"
-                  value={form.logoUrl}
-                  onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-                />
+                <label htmlFor="vendor-logo" className={labelClass}>Logo URL</label>
+                <input id="vendor-logo" type="url" inputMode="url" className={inputClass} placeholder="Optional image address" value={form.logoUrl} onChange={e => setForm({ ...form, logoUrl: e.target.value })} />
               </div>
-
-              <div className="col-span-2 space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Notes & Descriptions</label>
+              <div className="sm:col-span-2 space-y-1.5">
+                <label htmlFor="vendor-notes" className={labelClass}>Notes</label>
                 <textarea
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all h-20 resize-none"
-                  placeholder="Add details about model rates, API tiers, etc."
+                  id="vendor-notes"
+                  className={`${inputClass} h-20 resize-none`}
+                  placeholder="Contract terms, account owner, billing contact…"
                   value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  onChange={e => setForm({ ...form, notes: e.target.value })}
                 />
               </div>
             </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <button
-              onClick={() => setDialogOpen(false)}
-              className="px-4.5 py-2.5 text-sm font-semibold text-slate-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={createMutation.isPending || updateMutation.isPending}
-              className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/15"
-            >
-              {createMutation.isPending || updateMutation.isPending ? "Saving…" : editTarget ? "Save Changes" : "Log Platform"}
-            </button>
-          </DialogFooter>
+            <DialogFooter className="gap-2 pt-2">
+              <button type="button" onClick={() => setDialogOpen(false)} disabled={saving} className="px-4 py-2.5 text-sm font-semibold text-slate-300 hover:text-white">Cancel</button>
+              <button type="submit" disabled={saving} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl">
+                {saving ? "Saving…" : editTarget ? "Save changes" : "Add vendor"}
+              </button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
-      <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent className="sm:max-w-sm bg-zinc-950/90 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
+      <Dialog open={deleteId !== null} onOpenChange={open => { if (!open && !deleteMutation.isPending) setDeleteId(null); }}>
+        <DialogContent className="sm:max-w-sm bg-zinc-950/95 border border-white/[0.08] backdrop-blur-xl rounded-2xl text-white">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-white tracking-tight">Delete platform connection?</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-white tracking-tight">Delete this vendor?</DialogTitle>
+            <DialogDescription className="text-sm text-slate-300">
+              This is permanent and removes any stored credential. Expenses linked to this vendor are kept but will show "No vendor".
+            </DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-slate-400 mt-2">This action is permanent and will delete all stored keys. Expenses linked to this platform will lose their parent metadata references.</p>
+          {deleteError && <p role="alert" className="text-sm text-red-200">{deleteError}</p>}
           <DialogFooter className="gap-2 mt-4">
+            <button type="button" onClick={() => setDeleteId(null)} disabled={deleteMutation.isPending} className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white">Cancel</button>
             <button
-              onClick={() => setDeleteId(null)}
-              className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => deleteId !== null && handleDelete(deleteId)}
+              type="button"
+              onClick={() => deleteId !== null && void handleDelete(deleteId)}
               disabled={deleteMutation.isPending}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-red-600/15"
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
             >
               {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </button>

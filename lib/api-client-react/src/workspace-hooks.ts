@@ -1,3 +1,6 @@
+// SUPERSEDED: these hand-written hooks are replaced by hooks generated from
+// lib/api-spec/openapi.yaml (same names) and are no longer exported. The file is
+// kept only until the owner approves its deletion (REPO_RULES Rule 14).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   UseMutationOptions,

@@ -359,6 +359,38 @@ export const DeleteExpenseParams = zod.object({
 export const DeleteExpenseResponse = zod.void()
 
 
+/**
+ * Every row is validated and authorized like a single create. Any invalid row rejects the whole batch.
+ * @summary Create up to 500 expenses in one all-or-nothing request
+ */
+
+export const importExpensesBatchBodyTransactionsItemAmountMin = -99999999.99;
+export const importExpensesBatchBodyTransactionsItemAmountMax = 99999999.99;
+
+export const importExpensesBatchBodyTransactionsItemCurrencyRegExp = new RegExp('^\\s*[A-Za-z]{3}\\s*$');
+export const importExpensesBatchBodyTransactionsItemDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const importExpensesBatchBodyTransactionsMax = 500;
+
+
+
+export const ImportExpensesBatchBody = zod.object({
+  "transactions": zod.array(zod.object({
+  "workspaceId": zod.int().min(1).optional(),
+  "platformId": zod.int().nullish(),
+  "projectId": zod.int().nullish(),
+  "amount": zod.number().min(importExpensesBatchBodyTransactionsItemAmountMin).max(importExpensesBatchBodyTransactionsItemAmountMax).describe('At most 2 decimal places. Negative values record refunds or credits.'),
+  "currency": zod.string().regex(importExpensesBatchBodyTransactionsItemCurrencyRegExp).optional().describe('ISO 4217 code; stored uppercase.'),
+  "description": zod.string().optional(),
+  "category": zod.string().optional(),
+  "date": zod.string().regex(importExpensesBatchBodyTransactionsItemDateRegExp).describe('Calendar date (YYYY-MM-DD).')
+})).min(1).max(importExpensesBatchBodyTransactionsMax)
+})
+
+export const ImportExpensesBatchResponse = zod.object({
+  "count": zod.int()
+})
+
+
 export const ListSubscriptionsResponseItem = zod.object({
   "id": zod.int(),
   "platformId": zod.int(),
@@ -862,6 +894,7 @@ export const GenerateExpenseExportResponse = zod.unknown()
  * @summary List all workspaces the user belongs to
  */
 export const ListWorkspacesResponseItem = zod.object({
+  "role": zod.enum(['owner', 'admin', 'viewer']).optional().describe('The caller\'s role in this workspace (list and create responses).'),
   "id": zod.int(),
   "name": zod.string(),
   "slug": zod.string(),
@@ -875,12 +908,17 @@ export const ListWorkspacesResponse = zod.array(ListWorkspacesResponseItem)
 /**
  * @summary Create a new workspace
  */
+export const createWorkspaceBodyNameMax = 80;
+
+
+
 export const CreateWorkspaceBody = zod.object({
-  "name": zod.string(),
-  "slug": zod.string()
+  "name": zod.string().min(1).max(createWorkspaceBodyNameMax),
+  "slug": zod.string().optional().describe('Ignored. The server generates a unique identifier; display names need not be unique.')
 })
 
 export const CreateWorkspaceResponse = zod.object({
+  "role": zod.enum(['owner', 'admin', 'viewer']).optional().describe('The caller\'s role in this workspace (list and create responses).'),
   "id": zod.int(),
   "name": zod.string(),
   "slug": zod.string(),
@@ -904,12 +942,25 @@ export const UpdateWorkspaceBody = zod.object({
 })
 
 export const UpdateWorkspaceResponse = zod.object({
+  "role": zod.enum(['owner', 'admin', 'viewer']).optional().describe('The caller\'s role in this workspace (list and create responses).'),
   "id": zod.int(),
   "name": zod.string(),
   "slug": zod.string(),
   "ownerId": zod.string(),
   "createdAt": zod.string(),
   "onboarded": zod.boolean()
+})
+
+
+/**
+ * @summary Delete an empty workspace (owner only)
+ */
+export const DeleteWorkspaceByIdParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteWorkspaceByIdResponse = zod.object({
+  "message": zod.string()
 })
 
 
@@ -926,6 +977,8 @@ export const ListWorkspaceMembersResponseItem = zod.object({
   "userId": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['owner', 'admin', 'viewer']),
+  "status": zod.enum(['active', 'pending', 'expired']).optional(),
+  "joinedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListWorkspaceMembersResponse = zod.array(ListWorkspaceMembersResponseItem)
@@ -950,6 +1003,71 @@ export const InviteToWorkspaceResponse = zod.object({
   "token": zod.string().describe('Private one-time bearer capability. Share only with intended recipients.'),
   "status": zod.enum(['pending']),
   "inviteUrl": zod.string()
+})
+
+
+/**
+ * @summary Leave a workspace (the sole owner cannot leave)
+ */
+export const LeaveWorkspaceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const LeaveWorkspaceResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Remove a member or revoke a pending invitation (owner/admin)
+ */
+export const RemoveMemberParams = zod.object({
+  "memberId": zod.coerce.number().int()
+})
+
+export const RemoveMemberResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Accept an invitation with its one-time token
+ */
+export const acceptInviteBodyTokenRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const AcceptInviteBody = zod.object({
+  "token": zod.string().regex(acceptInviteBodyTokenRegExp)
+})
+
+export const AcceptInviteResponse = zod.object({
+  "message": zod.string(),
+  "member": zod.object({
+  "id": zod.int(),
+  "workspaceId": zod.int(),
+  "userId": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['owner', 'admin', 'viewer']),
+  "status": zod.enum(['active', 'pending', 'expired']).optional(),
+  "joinedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Preview an invitation before accepting it
+ */
+export const GetInviteByTokenParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetInviteByTokenResponse = zod.object({
+  "workspaceName": zod.string(),
+  "workspaceSlug": zod.string(),
+  "email": zod.string(),
+  "status": zod.string(),
+  "expiresAt": zod.string()
 })
 
 

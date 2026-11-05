@@ -17,14 +17,26 @@ The owner exported the repository issue list from the Codacy dashboard: 345 find
 | Set | Result |
 |---|---|
 | **5 historical unresolved findings** (3 new high on PR #8, 2 on PR #9) | **Identified by `git blame`; this supersedes the PR #8 and PR #9 "unidentified" entries in `DEFERRED_WORK.md`.** PR #8: findings 24 and 99 (`0001_eager_makkari.sql` lines 36–37: Oracle `RAC_*` rule, Not Applicable) and 86 (`routes/exports.ts` export loop, **Deferred With Reason**: the 50,000-row cap is in the Batch 2 PR). PR #9: findings 119 and 179 (`scripts/secret-scan.mjs`: existsSync on a fixed report path and a log line; Verified False Positive). |
-| **25 new findings on PR #14** (1 critical, 19 high, 5 medium) | **Not in this export.** The log contains only code present on `main`, so it is the repository backlog rather than PR #14's "new issues" list. They remain **Pending Investigation**; the next step is below. |
+| **25 new findings on PR #14** (1 critical, 19 high, 5 medium) | **Accepted residual risk — internal development merges only.** See the next section. |
+| **1 new finding on PR #15** (1 high) | **Accepted residual risk — internal development merges only.** See the next section. |
+| **12 new findings on PR #16** (10 high, 2 medium) | **Accepted residual risk — internal development merges only.** See the next section. |
 | **Repository backlog** | The 345 findings below |
 
-### Getting PR #14's own list
+### Unidentified PR findings: accepted residual risk
 
-1. In Codacy, open **Costpilot → Pull requests → #14 → Issues**, keep the **New** filter, then copy or export the list the same way as this file.
-2. Or use Codacy's API with a token (do not paste the token into chat):
-   `curl -H "api-token: $CODACY_TOKEN" "https://api.codacy.com/api/v3/analysis/organizations/gh/Thatisshayan/repositories/Costpilot/pull-requests/14/issues?status=new&limit=100"`
+On 2026-11-05 the owner accepted these findings as residual risk **for merging internal development code only**. This is not approval for production or external customer access, and none of them is classified as a false positive.
+
+| PR | Reported by Codacy | Status | Identification limitation |
+|---|---|---|---|
+| #14 Batch 1 trustworthy core | 25 new: 1 critical, 19 high, 5 medium | Accepted residual risk (internal merges only) | Codacy's PR issue list is not reachable from the agent environment (`app.codacy.com` and `api.codacy.com` are blocked; no Codacy connector). A local ESLint/Semgrep approximation did not reproduce the count. Rule, file and line are unknown. |
+| #15 Security remediation | 1 new: high | Accepted residual risk (internal merges only) | Same limitation. |
+| #16 Batch 2 monthly dashboard | 12 new: 10 high, 2 medium | Accepted residual risk (internal merges only) | Same limitation. |
+
+Codacy stays enabled and its reports are kept. **Before any production or external access** these must be identified and triaged like the backlog below. To get each list:
+
+1. In Codacy, open **Costpilot → Pull requests → #N → Issues**, keep the **New** filter, then export the list.
+2. Or use Codacy's API with a token (never paste the token into chat):
+   `curl -H "api-token: $CODACY_TOKEN" "https://api.codacy.com/api/v3/analysis/organizations/gh/Thatisshayan/repositories/Costpilot/pull-requests/N/issues?status=new&limit=100"`
 3. Or allow `app.codacy.com` and `api.codacy.com` in this environment's network settings.
 
 ## Summary
@@ -34,7 +46,7 @@ The owner exported the repository issue list from the Codacy dashboard: 345 find
 | Critical | 4 | 10 | 18 | 2 | 0 |
 | High | 10 | 20 | 42 | 83 | 0 |
 | Medium | 0 | 0 | 137 | 19 | 0 |
-| **Total** | **14** | **30** | **197** | **104** | **0** (plus PR #14's 25) |
+| **Total** | **14** | **30** | **197** | **104** | **0** (plus 38 unidentified PR findings, accepted residual risk above) |
 
 **Live-code findings.** No critical or high finding in reachable production code is left unexplained.
 - **Fixed in this PR:**

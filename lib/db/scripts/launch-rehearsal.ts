@@ -38,6 +38,22 @@ try {
     { userId: "launch-a", amount: "12.50", date: "2026-11-04", description: "personal fixture" },
     { userId: "launch-a", workspaceId: workspace.id, amount: "25.00", date: "2026-11-04", description: "shared fixture" },
   ]).returning();
+  // Display names are not unique: unrelated accounts can both use "Acme". The server
+  // allocates distinct internal slugs, ignores client slugs, and each list stays private.
+  const acmeA = await call("launch-a", "/workspaces", "POST", { name: "Acme", slug: "acme" });
+  const acmeB = await call("launch-b", "/workspaces", "POST", { name: "Acme", slug: "acme" });
+  assert.deepEqual([acmeA.status, acmeB.status], [201, 201]);
+  const [wsA, wsB] = [await acmeA.json(), await acmeB.json()] as { id: number; slug: string; name: string }[];
+  assert.notEqual(wsA.slug, wsB.slug);
+  assert.match(wsA.slug, /^acme-[a-f0-9]{8}$/);
+  assert.equal((await call("launch-a", "/workspaces", "POST", { name: "   " })).status, 400);
+  assert.equal((await call("launch-a", "/workspaces", "POST", { name: "x".repeat(81) })).status, 400);
+  const listB = await (await call("launch-b", "/workspaces")).json() as { id: number }[];
+  assert(listB.some(w => w.id === wsB.id) && !listB.some(w => w.id === wsA.id), "workspace lists stay account-scoped");
+  assert.equal((await call("launch-b", `/workspaces/${wsA.id}/members`)).status, 403);
+  assert.equal((await call("launch-a", `/workspaces/${wsA.id}`, "PATCH", { slug: wsB.slug })).status, 409);
+  assert.equal((await call("launch-a", `/workspaces/${wsA.id}`, "DELETE")).status, 200);
+  assert.equal((await call("launch-b", `/workspaces/${wsB.id}`, "DELETE")).status, 200);
   assert.equal((await call("bad-token", "/expenses")).status, 401);
   assert.equal((await call("launch-b", `/expenses/${privateExpense.id}`)).status, 404);
   assert.equal((await call("launch-viewer", `/expenses/${sharedExpense.id}`)).status, 200);

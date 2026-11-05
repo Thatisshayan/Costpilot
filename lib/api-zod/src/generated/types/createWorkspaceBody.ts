@@ -7,6 +7,14 @@
  */
 
 export interface CreateWorkspaceBody {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
   name: string;
-  slug: string;
+  /**
+     * Ignored. The server generates a unique identifier; display names need not be unique.
+     * @deprecated
+     */
+  slug?: string;
 }
