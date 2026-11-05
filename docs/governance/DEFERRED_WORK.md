@@ -28,5 +28,7 @@ The closed auth and expense items have targeted tests: 30 API auth/expense tests
 ## Remaining release acceptance
 
 - [2026-11-04] launch environment — **OPEN / OPERATOR INPUT REQUIRED**: approved staging web/API origins; matching Clerk server/webhook credentials and Native API/domain settings; encryption-key custody. The authorized test publishable key has been configured without committing it. Secrets belong in the server deployment environment, public client values in the app build environment/GitHub variables.
-- [2026-11-04] release policy and operations — **OPEN / OWNER APPROVAL REQUIRED**: operator/privacy/support contact, terms/data practices, retention/deletion workflow, backup/on-call/monitoring ownership. Draft legal pages explicitly block public release.
+- [2026-11-04] release policy and operations — **OPEN / OWNER APPROVAL REQUIRED**: operator identity, terms/data practices, retention/deletion workflow, backup/on-call/monitoring ownership. Draft legal pages explicitly block public release.
 - [2026-11-04] acceptance — **OPEN**: exact-SHA green CI including native bundle, live two-account web/device journeys, deployed base-path/CORS behavior, monitoring delivery, and Shayan's release approval. Follow [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md). CI rehearsals use disposable fixtures and do not certify production backups or a live Clerk instance.
+
+Shayan supplied the privacy/support contact **Obsidianmedia.yt@gmail.com**, now included in the draft notice. The exact environment setup and next-agent instructions are in [LAUNCH_HANDOFF.md](LAUNCH_HANDOFF.md). The contact is no longer a missing input; public operator identity, approved policy details and live environment acceptance remain open.

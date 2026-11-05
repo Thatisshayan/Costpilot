@@ -1,7 +1,7 @@
 # Costpilot
 
 CostPilot records expenses and organizes them into personal and shared workspaces. The core release includes Clerk sign-in, expense management, platform/project records, invitations and exports. Provider automation, AI analysis and payments are disabled pending separate acceptance.
-Launch readiness: [closure plan](docs/governance/LAUNCH_PLAN.md) and [current audit](audits/2026-11-04_Codex_LaunchReadiness_Audit.md). Public launch remains blocked by the recorded gaps. See [execution evidence](audits/2026-11-04_Codex_LaunchExecution_Audit.md) and the [release runbook](docs/governance/RELEASE_RUNBOOK.md).
+Launch readiness: [closure plan](docs/governance/LAUNCH_PLAN.md) and [current audit](audits/2026-11-04_Codex_LaunchReadiness_Audit.md). Public launch remains blocked by the recorded gaps. See the [branch handoff and configuration guide](docs/governance/LAUNCH_HANDOFF.md). See [execution evidence](audits/2026-11-04_Codex_LaunchExecution_Audit.md) and the [release runbook](docs/governance/RELEASE_RUNBOOK.md).
 
 
 ## Tech Stack

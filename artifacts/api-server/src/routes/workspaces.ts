@@ -4,6 +4,7 @@ import {
   workspacesTable,
   workspaceMembersTable,
   workspaceInvitesTable,
+  expensesTable, projectsTable, platformsTable,
 } from "@workspace/db";
 import { eq, and, or, count } from "drizzle-orm";
 import crypto from "crypto";
@@ -300,17 +301,23 @@ router.patch("/:id", requireWorkspaceMember(["owner", "admin"]), async (req, res
 router.delete("/:id", requireWorkspaceMember(["owner"]), async (req, res) => {
   const workspaceId = parseInt(req.params.id as string);
 
-  const [workspace] = await db
-    .select()
-    .from(workspacesTable)
-    .where(eq(workspacesTable.id, workspaceId));
-
-  if (!workspace) {
-    res.status(404).json({ error: "Workspace not found" });
+  const result = await db.transaction(async tx => {
+    // The parent lock also serializes concurrent FK inserts with deletion.
+    const [workspace] = await tx.select().from(workspacesTable)
+      .where(eq(workspacesTable.id, workspaceId)).for("update");
+    if (!workspace) return "missing";
+    for (const table of [expensesTable, projectsTable, platformsTable]) {
+      const [record] = await tx.select({ id: table.id }).from(table).where(eq(table.workspaceId, workspaceId)).limit(1);
+      if (record) return "nonempty";
+    }
+    await tx.delete(workspacesTable).where(eq(workspacesTable.id, workspaceId));
+    return "deleted";
+  });
+  if (result === "missing") { res.status(404).json({ error: "Workspace not found" }); return; }
+  if (result === "nonempty") {
+    res.status(409).json({ error: "Remove workspace expenses, projects and platforms before deleting the workspace. Shared records will not be converted to personal records." });
     return;
   }
-
-  await db.delete(workspacesTable).where(eq(workspacesTable.id, workspaceId));
 
   res.json({ message: "Workspace deleted successfully" });
 });

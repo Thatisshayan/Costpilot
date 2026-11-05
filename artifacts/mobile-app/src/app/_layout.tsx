@@ -62,6 +62,7 @@ function AuthenticatedTabs() {
 
 export default function TabLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  useEffect(() => { if (!publishableKey) void SplashScreen.hideAsync(); }, [publishableKey]);
   if (!publishableKey) {
     return <ThemedText>Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY to enable sign-in.</ThemedText>;
   }

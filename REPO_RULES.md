@@ -1,7 +1,7 @@
 # Repository Rules
 
-Version: 1.0.0
-Effective: 2026-07-23
+Version: 1.0.1
+Effective: 2026-11-04
 Owner: Shayan
 Applies to: Every human contributor and every agent (Hermes, Codex, etc.) working in this repository.
 Purpose: Preserve project truth, prevent stale documentation, keep work recoverable, and guarantee that `main` is never red.
@@ -235,7 +235,7 @@ See `docs/governance/BRANCH_POLICY.md`.
 
 `.github/workflows/gate.yml` runs on PRs to `main` and on pushes to non-main branches.
 Jobs / checks:
-1. `secret-scan` — gitleaks if available, else fallback grep for `*.p8`, `*credential*`, `API_KEY`, `SECRET`, `PRIVATE_KEY`.
+1. `secret-scan` — gitleaks is required. CI installs it; local verification fails closed when it is unavailable. No weaker grep fallback is accepted.
 2. `doc-freshness` — README exists + link integrity; newest audit < 30 days; `docs/` md count ≥ baseline.
 3. `build` / `test` — repo-adaptive (Node / Python / Rust / static).
 4. `deploy-dry` — if a deploy target config is present (vercel/railway/eas/netlify), run its dry-run; otherwise the smoke build covers it.

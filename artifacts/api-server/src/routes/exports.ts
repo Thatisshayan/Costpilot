@@ -40,7 +40,7 @@ router.post("/generate", async (req, res) => {
     if (format === "csv") {
       let csv = "ID,Date,Amount,Currency,Description,Category,Platform\n";
       for (const e of userExpenses) {
-        csv += [e.id, e.date, e.amount, e.currency, e.description, e.category, e.platformName].map(csvCell).join(",") + "\n";
+        csv += [e.id, e.date, Number(e.amount), e.currency, e.description, e.category, e.platformName].map(csvCell).join(",") + "\n";
       }
 
       res.setHeader("Content-Type", "text/csv");

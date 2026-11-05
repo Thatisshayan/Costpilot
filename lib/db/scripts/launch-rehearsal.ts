@@ -64,6 +64,8 @@ try {
   assert.equal((await call("launch-viewer", `/expenses/${sharedExpense.id}`)).status, 404);
   const visible = await (await call("launch-viewer", "/expenses")).json();
   assert(!visible.some((e: { id: number }) => e.id === sharedExpense.id));
+  assert.equal((await call("launch-a", `/workspaces/${workspace.id}`, "DELETE")).status, 409);
+  assert.equal((await call("launch-a", `/expenses/${sharedExpense.id}`)).status, 200);
   const token = randomBytes(32).toString("hex");
   await db.insert(invites).values({ workspaceId: workspace.id, email: "invite@example.test", token, invitedBy: "launch-a", role: "viewer", expiresAt: new Date(Date.now() + 60000) });
   await db.insert(members).values({ workspaceId: workspace.id, userId: `pending-${Date.now()}`, email: "invite@example.test", status: "pending", inviteToken: token });

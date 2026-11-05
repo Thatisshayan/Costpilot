@@ -28,3 +28,5 @@ API writes use explicit bearer credentials. Cookie-based writes still require a 
 ## Incident ownership and unresolved operational decisions
 
 Shayan must confirm the production/on-call owner, support/privacy contact, backup frequency and retention, recovery objectives, approved monitoring provider, and hosting region. No fixed uptime, compliance, retention or recovery guarantees may be published without that evidence. On a release failure, stop rollout, preserve logs without credentials, restore the last tested application version and verify data integrity before reopening traffic.
+
+Owner-approved contact (2026-11-04): **Obsidianmedia.yt@gmail.com** for privacy/support requests. Operator identity, policy terms, retention/on-call/hosting decisions and live environment verification remain open. Nonempty workspace deletion returns 409: shared expenses/platforms/projects must be explicitly handled before deleting their workspace; they are never reassigned to personal scope through this API.

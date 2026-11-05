@@ -36,10 +36,10 @@ try {
   check(count("docs") >= JSON.parse(readFileSync("docs/_baseline.json", "utf8")).md_count, "Docs below baseline");
   if (existsSync("REPO_DIRECTIVE.md")) {
     const directive = readFileSync("REPO_DIRECTIVE.md", "utf8");
-    const defined = new Set(directive.match(/\b[PSE][0-9]+\b/g)?.map(x => x.trim()) ?? []);
+    const defined = new Set([...directive.matchAll(/^### ([PSE][0-9]+)\b/gm)].map(match => match[1]));
     for (const line of directive.split("\n").filter(l => /^\s*- \[ \] T\d+/.test(l))) {
-      const ref = line.match(/traces-to:\s*([PSE]\d+)/)?.[1];
-      check(ref && defined.has(ref), `Orphan directive task: ${line}`);
+      const ref = line.match(/traces-to:\s*([PSE]\d+(?:\/[PSE]\d+)*)/)?.[1];
+      check(ref && ref.split("/").every(id => defined.has(id)), `Orphan directive task: ${line}`);
     }
   }
   check(!existsSync("package-lock.json"), "pnpm is the supported package manager; an npm lockfile must not be reintroduced");

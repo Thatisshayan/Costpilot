@@ -62,3 +62,7 @@ The 8cbdd43 disposable PostgreSQL/restore/container rehearsal passed, including 
 - [API CI 41947753729](https://github.com/Thatisshayan/Costpilot/actions/runs/41947753729): passed.
 
 The following setup-doc/mobile-default revision (9594a50) triggered the older CI secret scanner on the literal example encryption placeholder in both templates; that string is not a key. The template now leaves the value empty and documents private local generation. No scanner rule was disabled or allowlisted. New exact-revision checks remain required.
+
+### Final review follow-through
+
+Validated PR review findings against source: nonempty workspace deletion previously SET NULL on shared foreign keys. The API now locks the workspace, refuses deletion while core records exist (409), and never changes their classification; added a PostgreSQL regression. CSV exports preserve numeric negative amounts while neutralizing risky strings. Missing Clerk key now dismisses the native splash so configuration errors are visible. Directive reference validation reads actual headings and checks every phase/sprint/epic reference. The documented secret-scan spec now matches the implemented fail-closed gitleaks requirement; no weak fallback or scan suppression was added. Shayan approved the privacy/support contact Obsidianmedia.yt@gmail.com; the draft notice includes it. Operator identity and remaining policy/configuration approvals remain open. Fresh exact-SHA checks are required.

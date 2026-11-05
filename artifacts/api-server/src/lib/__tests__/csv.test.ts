@@ -9,6 +9,8 @@ describe("CSV cell safety", () => {
   });
   it("keeps numbers and absent values as cells", () => {
     expect(csvCell(12.5)).toBe('"12.5"');
+    expect(csvCell(-12.5)).toBe('"-12.5"');
+    expect(csvCell("-1+CMD()")).toBe('"\'-1+CMD()"');
     expect(csvCell(null)).toBe('""');
   });
 });
