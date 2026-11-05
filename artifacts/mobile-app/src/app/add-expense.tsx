@@ -57,7 +57,7 @@ export default function AddExpenseScreen() {
         if (!active) return;
         if (!isPersonalExpense(expense)) { setLoadError(SHARED_EXPENSE_MESSAGE); return; }
         setEntryType(entryTypeOf(expense.amount)); setAmount(String(Math.abs(expense.amount))); setCurrency(expense.currency);
-        setDescription(expense.description ?? ''); setCategory(expense.category); setDate(expense.date);
+        setDescription(expense.description ?? ''); setCategory(expense.category ?? CATEGORIES[0]); setDate(expense.date);
       }).catch(error => { if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load expense'); })
       .finally(() => { if (active) setIsLoading(false); });
     return () => { active = false; };

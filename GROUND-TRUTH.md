@@ -54,7 +54,7 @@ Last updated: September 3, 2026
 4. **Configure KMS_MASTER_KEY**: For production encryption (currently uses fallback)
 
 ### Low Priority
-4. **Fix large chunk warning**: Some chunks still >500KB (acceptable for now)
+5. **Fix large chunk warning**: Some chunks still >500KB (acceptable for now)
 
 ## Environment Variables Required
 
