@@ -19,6 +19,8 @@ const envSchema = z.object({
   ALLOWED_ORIGINS: z.string().optional(),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).optional(),
   AUTH_TEST_BYPASS: z.enum(["0", "1"]).optional(),
+  /** Hours between automatic provider syncs; 0 disables the in-process scheduler. */
+  SYNC_INTERVAL_HOURS: z.coerce.number().min(0).max(168).default(6),
 }).superRefine((env, ctx) => {
   if (env.AUTH_TEST_BYPASS === "1") {
     if (env.NODE_ENV !== "development" && env.NODE_ENV !== "test") {
@@ -62,6 +64,7 @@ export function validateEnv(): Env {
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
     LOG_LEVEL: process.env.LOG_LEVEL,
     AUTH_TEST_BYPASS: process.env.AUTH_TEST_BYPASS,
+    SYNC_INTERVAL_HOURS: process.env.SYNC_INTERVAL_HOURS,
   };
 
   const result = envSchema.safeParse(raw);

@@ -5,6 +5,8 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { PlatformLastSyncStatus } from './platformLastSyncStatus';
+import type { PlatformProviderConfig } from './platformProviderConfig';
 
 export interface Platform {
   /**
@@ -26,5 +28,18 @@ export interface Platform {
   apiKey?: string | null;
   /** @nullable */
   notes?: string | null;
+  /**
+     * Provider-sync adapter id, or null for a manual-only platform
+     * @nullable
+     */
+  provider?: string | null;
+  /** @nullable */
+  providerConfig?: PlatformProviderConfig;
+  /** @nullable */
+  lastSyncedAt?: string | null;
+  /** @nullable */
+  lastSyncStatus?: PlatformLastSyncStatus;
+  /** @nullable */
+  lastSyncError?: string | null;
   createdAt: string;
 }

@@ -595,6 +595,22 @@ export interface HealthStatus {
   status: string;
 }
 
+/**
+ * @nullable
+ */
+export type PlatformProviderConfig = {[key: string]: string} | null;
+
+/**
+ * @nullable
+ */
+export type PlatformLastSyncStatus = typeof PlatformLastSyncStatus[keyof typeof PlatformLastSyncStatus] | null;
+
+
+export const PlatformLastSyncStatus = {
+  ok: 'ok',
+  error: 'error',
+} as const;
+
 export interface Platform {
   /**
      * @minimum 1
@@ -615,8 +631,23 @@ export interface Platform {
   apiKey?: string | null;
   /** @nullable */
   notes?: string | null;
+  /**
+     * Provider-sync adapter id, or null for a manual-only platform
+     * @nullable
+     */
+  provider?: string | null;
+  /** @nullable */
+  providerConfig?: PlatformProviderConfig;
+  /** @nullable */
+  lastSyncedAt?: string | null;
+  /** @nullable */
+  lastSyncStatus?: PlatformLastSyncStatus;
+  /** @nullable */
+  lastSyncError?: string | null;
   createdAt: string;
 }
+
+export type PlatformInputProviderConfig = {[key: string]: string};
 
 export interface PlatformInput {
   /**
@@ -631,7 +662,12 @@ export interface PlatformInput {
   email?: string;
   apiKey?: string;
   notes?: string;
+  /** @nullable */
+  provider?: string | null;
+  providerConfig?: PlatformInputProviderConfig;
 }
+
+export type PlatformUpdateProviderConfig = {[key: string]: string};
 
 export interface PlatformUpdate {
   name?: string;
@@ -645,12 +681,44 @@ export interface PlatformUpdate {
      */
   apiKey?: string | null;
   notes?: string;
+  /** @nullable */
+  provider?: string | null;
+  providerConfig?: PlatformUpdateProviderConfig;
 }
 
+/**
+ * Synced total in the window, per currency, as a decimal string
+ */
+export type SyncResultTotals = {[key: string]: string};
+
+export type SyncResultWindow = {
+  from: string;
+  to: string;
+};
+
 export interface SyncResult {
-  success: boolean;
-  message: string;
-  expensesImported?: number;
+  inserted: number;
+  updated: number;
+  removed: number;
+  /** Synced total in the window, per currency, as a decimal string */
+  totals: SyncResultTotals;
+  window: SyncResultWindow;
+}
+
+export interface ProviderField {
+  name: string;
+  label: string;
+  secret: boolean;
+  required: boolean;
+  placeholder?: string;
+  help?: string;
+}
+
+export interface ProviderInfo {
+  id: string;
+  label: string;
+  keyHelp: string;
+  fields: ProviderField[];
 }
 
 export interface Project {

@@ -65,3 +65,4 @@ export type UploadReceiptBody = _UploadReceiptBodyType;
 
 export const ValidateDeploymentBody = _ValidateDeploymentBodyVal;
 export type ValidateDeploymentBody = _ValidateDeploymentBodyType;
+export * from './generated/types';

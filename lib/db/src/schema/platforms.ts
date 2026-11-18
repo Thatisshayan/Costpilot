@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { workspacesTable } from "./workspaces";
@@ -14,6 +14,14 @@ export const platformsTable = pgTable("platforms", {
   email: text("email"),
   apiKey: text("api_key"),
   notes: text("notes"),
+  /** Provider-sync adapter id (e.g. "anthropic"); null for manual-only platforms. */
+  provider: text("provider"),
+  /** Non-secret adapter settings (team id, project id, region). Secrets stay in the encrypted apiKey. */
+  providerConfig: jsonb("provider_config").$type<Record<string, string>>(),
+  lastSyncedAt: timestamp("last_synced_at"),
+  /** "ok" or "error" for the most recent sync attempt. */
+  lastSyncStatus: text("last_sync_status"),
+  lastSyncError: text("last_sync_error"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

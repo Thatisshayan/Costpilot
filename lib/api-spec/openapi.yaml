@@ -119,10 +119,9 @@ paths:
 
   /platforms/{id}/sync:
     post:
-      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: syncPlatformUsage
       tags: [platforms]
-      summary: Sync usage data from platform API
+      summary: Pull daily costs from the connected provider's billing API now
       parameters:
         - name: id
           in: path
@@ -136,6 +135,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SyncResult"
+        "404":
+          description: Platform not found or not writable
+        "422":
+          description: The provider rejected the request (bad key, missing permission, rate limit)
+
+  /providers:
+    get:
+      operationId: listProviders
+      tags: [platforms]
+      summary: Providers that support automatic cost sync, with the fields needed to connect them
+      responses:
+        "200":
+          description: Provider catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProviderInfo"
 
   /projects:
     get:
@@ -2044,6 +2062,20 @@ components:
           type: ["string", "null"]
         notes:
           type: ["string", "null"]
+        provider:
+          type: ["string", "null"]
+          description: Provider-sync adapter id, or null for a manual-only platform
+        providerConfig:
+          type: ["object", "null"]
+          additionalProperties:
+            type: string
+        lastSyncedAt:
+          type: ["string", "null"]
+        lastSyncStatus:
+          type: ["string", "null"]
+          enum: [ok, error, null]
+        lastSyncError:
+          type: ["string", "null"]
         createdAt:
           type: string
 
@@ -2069,6 +2101,13 @@ components:
           type: string
         notes:
           type: string
+        provider:
+          type: string
+          nullable: true
+        providerConfig:
+          type: object
+          additionalProperties:
+            type: string
 
     PlatformUpdate:
       type: object
@@ -2089,17 +2128,69 @@ components:
           description: Omit to keep the stored credential; send null to clear it. Masked placeholders are rejected.
         notes:
           type: string
+        provider:
+          type: string
+          nullable: true
+        providerConfig:
+          type: object
+          additionalProperties:
+            type: string
 
     SyncResult:
       type: object
-      required: [success, message]
+      required: [inserted, updated, removed, totals, window]
       properties:
-        success:
-          type: boolean
-        message:
-          type: string
-        expensesImported:
+        inserted:
           type: integer
+        updated:
+          type: integer
+        removed:
+          type: integer
+        totals:
+          type: object
+          description: Synced total in the window, per currency, as a decimal string
+          additionalProperties:
+            type: string
+        window:
+          type: object
+          required: [from, to]
+          properties:
+            from:
+              type: string
+            to:
+              type: string
+
+    ProviderField:
+      type: object
+      required: [name, label, secret, required]
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        secret:
+          type: boolean
+        required:
+          type: boolean
+        placeholder:
+          type: string
+        help:
+          type: string
+
+    ProviderInfo:
+      type: object
+      required: [id, label, keyHelp, fields]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        keyHelp:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderField"
 
     Project:
       type: object

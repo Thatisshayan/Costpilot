@@ -32,6 +32,11 @@ export const ListPlatformsResponseItem = zod.object({
   "email": zod.string().nullish(),
   "apiKey": zod.string().nullish(),
   "notes": zod.string().nullish(),
+  "provider": zod.string().nullish().describe('Provider-sync adapter id, or null for a manual-only platform'),
+  "providerConfig": zod.record(zod.string(), zod.string()).nullish(),
+  "lastSyncedAt": zod.string().nullish(),
+  "lastSyncStatus": zod.union([zod.literal('ok'),zod.literal('error'),zod.literal(null)]).nullish(),
+  "lastSyncError": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListPlatformsResponse = zod.array(ListPlatformsResponseItem)
@@ -51,7 +56,9 @@ export const CreatePlatformBody = zod.object({
   "category": zod.string().optional(),
   "email": zod.string().optional(),
   "apiKey": zod.string().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "provider": zod.string().nullish(),
+  "providerConfig": zod.record(zod.string(), zod.string()).optional()
 })
 
 
@@ -67,6 +74,11 @@ export const CreatePlatformResponse = zod.object({
   "email": zod.string().nullish(),
   "apiKey": zod.string().nullish(),
   "notes": zod.string().nullish(),
+  "provider": zod.string().nullish().describe('Provider-sync adapter id, or null for a manual-only platform'),
+  "providerConfig": zod.record(zod.string(), zod.string()).nullish(),
+  "lastSyncedAt": zod.string().nullish(),
+  "lastSyncStatus": zod.union([zod.literal('ok'),zod.literal('error'),zod.literal(null)]).nullish(),
+  "lastSyncError": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -91,6 +103,11 @@ export const GetPlatformResponse = zod.object({
   "email": zod.string().nullish(),
   "apiKey": zod.string().nullish(),
   "notes": zod.string().nullish(),
+  "provider": zod.string().nullish().describe('Provider-sync adapter id, or null for a manual-only platform'),
+  "providerConfig": zod.record(zod.string(), zod.string()).nullish(),
+  "lastSyncedAt": zod.string().nullish(),
+  "lastSyncStatus": zod.union([zod.literal('ok'),zod.literal('error'),zod.literal(null)]).nullish(),
+  "lastSyncError": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -109,7 +126,9 @@ export const UpdatePlatformBody = zod.object({
   "category": zod.string().optional(),
   "email": zod.string().optional(),
   "apiKey": zod.string().nullish().describe('Omit to keep the stored credential; send null to clear it. Masked placeholders are rejected.'),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "provider": zod.string().nullish(),
+  "providerConfig": zod.record(zod.string(), zod.string()).optional()
 })
 
 
@@ -125,6 +144,11 @@ export const UpdatePlatformResponse = zod.object({
   "email": zod.string().nullish(),
   "apiKey": zod.string().nullish(),
   "notes": zod.string().nullish(),
+  "provider": zod.string().nullish().describe('Provider-sync adapter id, or null for a manual-only platform'),
+  "providerConfig": zod.record(zod.string(), zod.string()).nullish(),
+  "lastSyncedAt": zod.string().nullish(),
+  "lastSyncStatus": zod.union([zod.literal('ok'),zod.literal('error'),zod.literal(null)]).nullish(),
+  "lastSyncError": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -140,17 +164,41 @@ export const DeletePlatformResponse = zod.void()
 
 
 /**
- * @summary Sync usage data from platform API
+ * @summary Pull daily costs from the connected provider's billing API now
  */
 export const SyncPlatformUsageParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
 export const SyncPlatformUsageResponse = zod.object({
-  "success": zod.boolean(),
-  "message": zod.string(),
-  "expensesImported": zod.int().optional()
+  "inserted": zod.int(),
+  "updated": zod.int(),
+  "removed": zod.int(),
+  "totals": zod.record(zod.string(), zod.string()).describe('Synced total in the window, per currency, as a decimal string'),
+  "window": zod.object({
+  "from": zod.string(),
+  "to": zod.string()
 })
+})
+
+
+/**
+ * @summary Providers that support automatic cost sync, with the fields needed to connect them
+ */
+export const ListProvidersResponseItem = zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "keyHelp": zod.string(),
+  "fields": zod.array(zod.object({
+  "name": zod.string(),
+  "label": zod.string(),
+  "secret": zod.boolean(),
+  "required": zod.boolean(),
+  "placeholder": zod.string().optional(),
+  "help": zod.string().optional()
+}))
+})
+export const ListProvidersResponse = zod.array(ListProvidersResponseItem)
 
 
 

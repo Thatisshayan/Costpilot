@@ -48,6 +48,11 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // Local development: forward same-origin /api calls to the API server
+    // when no explicit VITE_API_ORIGIN is configured.
+    proxy: process.env.VITE_API_ORIGIN
+      ? undefined
+      : { "/api": { target: process.env.API_PROXY_TARGET || "http://localhost:8787", changeOrigin: false } },
   },
   preview: {
     port,

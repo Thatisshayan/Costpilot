@@ -79,6 +79,7 @@ import type {
   ProjectExpenseStat,
   ProjectInput,
   ProjectUpdate,
+  ProviderInfo,
   ReceiptParseResult,
   RemediationAction,
   SavingsOpportunity,
@@ -692,7 +693,7 @@ export const getSyncPlatformUsageUrl = (id: number,) => {
 }
 
 /**
- * @summary Sync usage data from platform API
+ * @summary Pull daily costs from the connected provider's billing API now
  */
 export const syncPlatformUsage = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<SyncResult> => {
 
@@ -711,7 +712,7 @@ export const syncPlatformUsage = async (id: number, options?: Parameters<typeof 
 
 export const getSyncPlatformUsageMutationKey = () => ['syncPlatformUsage'] as const;
 
-export const getSyncPlatformUsageMutationOptions = <TError = ErrorType<unknown>,
+export const getSyncPlatformUsageMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncPlatformUsage>>, TError,SyncPlatformUsageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof syncPlatformUsage>>, TError,SyncPlatformUsageMutationVariables, TContext> => {
 
@@ -740,13 +741,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SyncPlatformUsageMutationResult = NonNullable<Awaited<ReturnType<typeof syncPlatformUsage>>>
 
-    export type SyncPlatformUsageMutationError = ErrorType<unknown>
+    export type SyncPlatformUsageMutationError = ErrorType<void>
     export type SyncPlatformUsageMutationVariables = {id: number}
 
     /**
- * @summary Sync usage data from platform API
+ * @summary Pull daily costs from the connected provider's billing API now
  */
-export const useSyncPlatformUsage = <TError = ErrorType<unknown>,
+export const useSyncPlatformUsage = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncPlatformUsage>>, TError,SyncPlatformUsageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof syncPlatformUsage>>,
@@ -756,6 +757,107 @@ export const useSyncPlatformUsage = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSyncPlatformUsageMutationOptions(options), queryClient);
     }
+
+export const getListProvidersUrl = () => {
+
+
+
+
+  return `/api/providers`
+}
+
+/**
+ * @summary Providers that support automatic cost sync, with the fields needed to connect them
+ */
+export const listProviders = async ( options?: Parameters<typeof customFetch>[1]): Promise<ProviderInfo[]> => {
+
+  return customFetch<ProviderInfo[]>(getListProvidersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListProvidersQueryKey = () => {
+    return [
+    `/api/providers`
+    ] as const;
+    }
+
+
+export const getListProvidersQueryOptions = <TData = Awaited<ReturnType<typeof listProviders>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProviders>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListProvidersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listProviders>>> = ({ signal }) => listProviders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listProviders>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListProvidersQueryResult = NonNullable<Awaited<ReturnType<typeof listProviders>>>
+export type ListProvidersQueryError = ErrorType<unknown>
+
+
+export function useListProviders<TData = Awaited<ReturnType<typeof listProviders>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProviders>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProviders>>,
+          TError,
+          Awaited<ReturnType<typeof listProviders>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListProviders<TData = Awaited<ReturnType<typeof listProviders>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProviders>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProviders>>,
+          TError,
+          Awaited<ReturnType<typeof listProviders>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListProviders<TData = Awaited<ReturnType<typeof listProviders>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProviders>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Providers that support automatic cost sync, with the fields needed to connect them
+ */
+
+export function useListProviders<TData = Awaited<ReturnType<typeof listProviders>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProviders>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListProvidersQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListProjectsUrl = () => {
 

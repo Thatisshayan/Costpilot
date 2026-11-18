@@ -5,9 +5,14 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { SyncResultTotals } from './syncResultTotals';
+import type { SyncResultWindow } from './syncResultWindow';
 
 export interface SyncResult {
-  success: boolean;
-  message: string;
-  expensesImported?: number;
+  inserted: number;
+  updated: number;
+  removed: number;
+  /** Synced total in the window, per currency, as a decimal string */
+  totals: SyncResultTotals;
+  window: SyncResultWindow;
 }

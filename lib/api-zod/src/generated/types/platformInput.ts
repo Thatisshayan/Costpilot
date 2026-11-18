@@ -5,6 +5,7 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { PlatformInputProviderConfig } from './platformInputProviderConfig';
 
 export interface PlatformInput {
   /**
@@ -19,4 +20,7 @@ export interface PlatformInput {
   email?: string;
   apiKey?: string;
   notes?: string;
+  /** @nullable */
+  provider?: string | null;
+  providerConfig?: PlatformInputProviderConfig;
 }

@@ -5,10 +5,13 @@ import {
   useCreatePlatform,
   useUpdatePlatform,
   useDeletePlatform,
+  useListProviders,
+  useSyncPlatformUsage,
   getListPlatformsQueryKey,
+  type ProviderInfo,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Plus, Pencil, Trash2, Key, AlertTriangle, Eye } from "lucide-react";
+import { ExternalLink, Plus, Pencil, Trash2, Key, AlertTriangle, Eye, RefreshCw } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
 import {
   Dialog,
@@ -28,6 +31,11 @@ type Platform = {
   logoUrl?: string | null;
   apiKey?: string | null;
   notes?: string | null;
+  provider?: string | null;
+  providerConfig?: Record<string, string> | null;
+  lastSyncedAt?: string | null;
+  lastSyncStatus?: string | null;
+  lastSyncError?: string | null;
   createdAt?: string;
 };
 
@@ -37,7 +45,38 @@ type FormState = {
   website: string;
   logoUrl: string;
   notes: string;
+  provider: string;
+  /** Provider field values, secret and non-secret, keyed by field name. */
+  providerValues: Record<string, string>;
 };
+
+/**
+ * Splits provider field values into the credential (stored encrypted) and plain settings.
+ * One secret field is sent as-is; several are sent as one JSON object. When editing, blank
+ * secret fields keep the stored credential.
+ */
+export function providerPayload(adapter: ProviderInfo | undefined, values: Record<string, string>, editing: boolean) {
+  if (!adapter) return { provider: null, providerConfig: {}, apiKey: undefined, missing: [] as string[] };
+  const value = (name: string) => values[name]?.trim() ?? "";
+  const secrets = adapter.fields.filter(f => f.secret);
+  const anySecret = secrets.some(f => value(f.name));
+  const missing = adapter.fields
+    .filter(f => f.required && !value(f.name) && (!f.secret || anySecret || !editing))
+    .map(f => f.label);
+  const providerConfig = Object.fromEntries(adapter.fields.filter(f => !f.secret && value(f.name)).map(f => [f.name, value(f.name)]));
+  const apiKey = !anySecret ? undefined
+    : secrets.length === 1 ? value(secrets[0].name)
+    : JSON.stringify(Object.fromEntries(secrets.map(f => [f.name, value(f.name)])));
+  return { provider: adapter.id, providerConfig, apiKey, missing };
+}
+
+function syncedAgo(iso: string) {
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  return hours < 48 ? `${hours} h ago` : new Date(iso).toLocaleDateString();
+}
 
 const VENDOR_CATEGORIES = ["Cloud infrastructure", "AI / LLM API", "SaaS tool", "Database / data", "Observability", "Hosting / compute", "Other"];
 
@@ -66,6 +105,8 @@ const emptyForm = (): FormState => ({
   website: "",
   logoUrl: "",
   notes: "",
+  provider: "",
+  providerValues: {},
 });
 
 export default function Platforms() {
@@ -76,6 +117,9 @@ export default function Platforms() {
   const createMutation = useCreatePlatform();
   const updateMutation = useUpdatePlatform();
   const deleteMutation = useDeletePlatform();
+  const syncMutation = useSyncPlatformUsage();
+  const { data: providers = [] } = useListProviders();
+  const [syncingId, setSyncingId] = useState<number | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -86,8 +130,25 @@ export default function Platforms() {
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const saving = createMutation.isPending || updateMutation.isPending;
+  const selectedProvider = providers.find(p => p.id === form.provider);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListPlatformsQueryKey() });
+
+  const handleSync = async (p: Platform) => {
+    setSyncingId(p.id);
+    try {
+      const r = await syncMutation.mutateAsync({ id: p.id });
+      const total = Object.entries(r.totals).map(([currency, amount]) => `${amount} ${currency}`).join(", ") || "no costs";
+      toast.success(`${p.name} synced: ${total} since ${r.window.from} (${r.inserted} new, ${r.updated} updated, ${r.removed} removed).`);
+      // Synced rows feed expenses, the dashboard and budgets.
+      await qc.invalidateQueries();
+    } catch (err) {
+      toast.error(`${p.name} sync failed: ${apiErrorMessage(err, "please try again.")}`);
+      await invalidate();
+    } finally {
+      setSyncingId(null);
+    }
+  };
 
   const openAdd = () => {
     setEditTarget(null);
@@ -104,6 +165,8 @@ export default function Platforms() {
       website: p.website ?? "",
       logoUrl: p.logoUrl ?? "",
       notes: p.notes ?? "",
+      provider: p.provider ?? "",
+      providerValues: { ...(p.providerConfig ?? {}) },
     });
     setNameError(null); setWebsiteError(null); setFormError(null);
     setDialogOpen(true);
@@ -115,19 +178,27 @@ export default function Platforms() {
     const badWebsite = form.website.trim() && !safeHttpUrl(form.website.trim()) ? "Enter a full web address starting with https://" : null;
     setNameError(badName); setWebsiteError(badWebsite);
     if (badName || badWebsite) { setFormError("Please fix the highlighted fields."); return; }
+    // A blank secret keeps the stored key only while the provider stays the same.
+    const sameProvider = Boolean(editTarget?.apiKey) && editTarget?.provider === (form.provider || null);
+    const sync = providerPayload(selectedProvider, form.providerValues, sameProvider);
+    if (sync.missing.length > 0) { setFormError(`For automatic sync, fill in: ${sync.missing.join(", ")}.`); return; }
+    const disconnecting = Boolean(editTarget?.provider) && !sync.provider;
     const payload = {
       name,
       ...(form.category ? { category: form.category } : {}),
       ...(form.website ? { website: form.website } : {}),
       ...(form.logoUrl ? { logoUrl: form.logoUrl } : {}),
       ...(form.notes ? { notes: form.notes } : {}),
+      ...(sync.provider || editTarget ? { provider: sync.provider, providerConfig: sync.providerConfig } : {}),
     };
+    // undefined keeps the stored credential, null clears it (only when disconnecting a provider).
+    const apiKey: string | null | undefined = sync.apiKey ?? (disconnecting ? null : undefined);
     try {
       if (editTarget) {
-        await updateMutation.mutateAsync({ id: editTarget.id, data: payload });
+        await updateMutation.mutateAsync({ id: editTarget.id, data: { ...payload, ...(apiKey !== undefined ? { apiKey } : {}) } });
         toast.success("Vendor updated.");
       } else {
-        await createMutation.mutateAsync({ data: { ...payload, ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}) } });
+        await createMutation.mutateAsync({ data: { ...payload, ...(apiKey ? { apiKey } : {}), ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}) } });
         toast.success("Vendor added.");
       }
       await invalidate();
@@ -239,12 +310,27 @@ export default function Platforms() {
                   {platform.notes || <span className="text-slate-400 italic">No notes.</span>}
                 </p>
 
-                {platform.apiKey && (
+                {platform.provider && platform.apiKey ? (
+                  <div className="mt-3 space-y-1 text-xs">
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-300">
+                      <RefreshCw size={12} aria-hidden />
+                      <span>Auto-sync: {providers.find(p => p.id === platform.provider)?.label ?? platform.provider}</span>
+                    </div>
+                    {platform.lastSyncStatus === "error" ? (
+                      <p role="status" className="text-amber-200 flex items-start gap-1.5">
+                        <AlertTriangle size={12} aria-hidden className="mt-0.5 shrink-0" />
+                        <span>Last sync failed: {platform.lastSyncError}</span>
+                      </p>
+                    ) : (
+                      <p className="text-slate-400">{platform.lastSyncedAt ? `Synced ${syncedAgo(platform.lastSyncedAt)}` : "Not synced yet"}</p>
+                    )}
+                  </div>
+                ) : platform.apiKey ? (
                   <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-slate-300">
                     <Key size={12} aria-hidden />
-                    <span>Credential stored, encrypted. Automatic sync is not available yet.</span>
+                    <span>Credential stored, encrypted. Choose a provider to sync automatically.</span>
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div className="border-t border-white/[0.04] pt-4 mt-auto flex justify-between items-center">
@@ -261,7 +347,18 @@ export default function Platforms() {
                 ) : (
                   <span className="text-xs text-slate-400">No website</span>
                 )}
-
+                {canWrite && platform.provider && platform.apiKey && (
+                  <button
+                    type="button"
+                    onClick={() => void handleSync(platform)}
+                    disabled={syncingId !== null}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} aria-hidden className={syncingId === platform.id ? "animate-spin" : undefined} />
+                    {syncingId === platform.id ? "Syncing…" : "Sync now"}
+                    <span className="sr-only"> {platform.name}</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -335,6 +432,43 @@ export default function Platforms() {
                   onChange={e => setForm({ ...form, notes: e.target.value })}
                 />
               </div>
+              <fieldset className="sm:col-span-2 space-y-3 border-t border-white/[0.06] pt-4">
+                <legend className={labelClass}>Automatic sync</legend>
+                <select
+                  id="vendor-provider"
+                  aria-label="Provider for automatic sync"
+                  className={inputClass}
+                  value={form.provider}
+                  onChange={e => { setForm({ ...form, provider: e.target.value, providerValues: {} }); setFormError(null); }}
+                >
+                  <option value="" className="bg-zinc-950">Off: I enter costs myself</option>
+                  {providers.map(p => <option key={p.id} value={p.id} className="bg-zinc-950">{p.label}</option>)}
+                </select>
+                {selectedProvider && (
+                  <>
+                    <p className="text-xs text-slate-300">{selectedProvider.keyHelp}</p>
+                    {selectedProvider.fields.map(f => {
+                      const keepStored = f.secret && editTarget?.apiKey && editTarget.provider === selectedProvider.id;
+                      return (
+                        <div key={f.name} className="space-y-1.5">
+                          <label htmlFor={`provider-${f.name}`} className={labelClass}>{f.label}{f.required && !keepStored ? " *" : ""}</label>
+                          <input
+                            id={`provider-${f.name}`}
+                            type={f.secret ? "password" : "text"}
+                            autoComplete="off"
+                            className={inputClass}
+                            placeholder={keepStored ? "Stored (encrypted). Leave blank to keep it." : f.placeholder}
+                            value={form.providerValues[f.name] ?? ""}
+                            onChange={e => { setForm({ ...form, providerValues: { ...form.providerValues, [f.name]: e.target.value } }); setFormError(null); }}
+                          />
+                          {f.help && <p className="text-xs text-slate-400">{f.help}</p>}
+                        </div>
+                      );
+                    })}
+                    <p className="text-xs text-slate-400">Costs sync every 6 hours while CostPilot runs, and on demand with "Sync now". The key is encrypted and never shown again.</p>
+                  </>
+                )}
+              </fieldset>
             </div>
             <DialogFooter className="gap-2 pt-2">
               <button type="button" onClick={() => setDialogOpen(false)} disabled={saving} className="px-4 py-2.5 text-sm font-semibold text-slate-300 hover:text-white">Cancel</button>

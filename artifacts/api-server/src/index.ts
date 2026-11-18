@@ -6,13 +6,15 @@ const env = validateEnv();
 initSentry();
 const { default: app } = await import("./app");
 const { pool } = await import("@workspace/db");
+const { startSyncScheduler } = await import("./lib/provider-sync/scheduler");
 const server = app.listen(env.PORT, () => logger.info({ port: env.PORT }, "Server listening"));
-// Provider jobs are excluded from this launch runtime. A future worker needs a
-// distributed execution lock, deduplication and explicit provider authorization.
+// Single-instance scheduler; hosting several API instances would need a distributed lock first.
+const stopSyncScheduler = startSyncScheduler(env.SYNC_INTERVAL_HOURS);
 let shuttingDown = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => {
   if (shuttingDown) return;
   shuttingDown = true;
+  stopSyncScheduler();
   const deadline = setTimeout(() => process.exit(1), 15000);
   deadline.unref();
   server.close(async () => {

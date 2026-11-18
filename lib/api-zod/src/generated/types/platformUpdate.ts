@@ -5,6 +5,7 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { PlatformUpdateProviderConfig } from './platformUpdateProviderConfig';
 
 export interface PlatformUpdate {
   name?: string;
@@ -18,4 +19,7 @@ export interface PlatformUpdate {
      */
   apiKey?: string | null;
   notes?: string;
+  /** @nullable */
+  provider?: string | null;
+  providerConfig?: PlatformUpdateProviderConfig;
 }

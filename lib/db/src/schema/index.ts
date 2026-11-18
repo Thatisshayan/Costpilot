@@ -1,4 +1,5 @@
 export * from "./platforms";
+export * from "./provider_snapshots";
 export * from "./projects";
 export * from "./import_batches";
 export * from "./expenses";

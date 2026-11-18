@@ -46,6 +46,8 @@ vi.mock("@workspace/api-client-react", () => {
     useCreatePlatform: mutation(),
     useUpdatePlatform: mutation(),
     useDeletePlatform: mutation(),
+    useSyncPlatformUsage: mutation(),
+    useListProviders: () => ({ data: [], isLoading: false, isError: false }),
     useCreateWorkspace: mutation(),
     useInviteToWorkspace: mutation((...a) => api.invite(...a)),
     useUpdateWorkspace: mutation(),

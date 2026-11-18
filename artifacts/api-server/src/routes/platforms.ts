@@ -10,14 +10,18 @@ import {
   GetPlatformParams,
   UpdatePlatformParams,
   DeletePlatformParams,
+  SyncPlatformUsageParams,
 } from "@workspace/api-zod";
 import { encrypt } from "../lib/kms-vault";
+import { providerAdapters } from "../lib/provider-sync/registry";
+import { loadWritablePlatform, syncPlatform } from "../lib/provider-sync/engine";
+import { ProviderError } from "../lib/provider-sync/types";
 
 const router = Router();
 
 const MASK = "••••••••";
-// Responses only signal whether a credential is stored. Provider sync is
-// disabled for this release, so no endpoint decrypts or returns credentials.
+// Responses only signal whether a credential is stored. Only the provider sync
+// engine decrypts credentials, server side; no endpoint returns them.
 const maskedKey = (stored: string | null) => (stored ? MASK : null);
 // Mask characters (bullets/asterisks) are display placeholders, never credentials.
 const isMaskPlaceholder = (value: string) => /^[\s•*·]+$/.test(value);
@@ -31,6 +35,16 @@ function credentialUpdate(raw: unknown): CredentialResult {
     return { ok: false, error: "apiKey must be a new credential, or null to clear it; omit it to keep the stored value" };
   }
   return { ok: true, value: encrypt(raw) };
+}
+
+/** A provider must be a known adapter; its settings may only name that adapter's non-secret fields. */
+function providerIssue(provider: string | null | undefined, config: Record<string, string> | undefined): string | null {
+  if (provider === undefined || provider === null) return config && Object.keys(config).length > 0 ? "providerConfig requires a provider" : null;
+  const adapter = providerAdapters.get(provider);
+  if (!adapter) return `Unknown provider "${provider}"`;
+  const allowed = new Set(adapter.fields.filter(f => !f.secret).map(f => f.name));
+  const unknown = Object.keys(config ?? {}).filter(k => !allowed.has(k));
+  return unknown.length > 0 ? `Unknown ${adapter.label} setting(s): ${unknown.join(", ")}` : null;
 }
 
 router.get("/", async (req, res) => {
@@ -50,6 +64,8 @@ router.post("/", async (req, res) => {
   }
   const credential = credentialUpdate(req.body?.apiKey);
   if (!credential.ok) { res.status(400).json({ error: credential.error }); return; }
+  const issue = providerIssue(body.provider, body.providerConfig);
+  if (issue) { res.status(400).json({ error: issue }); return; }
   const [platform] = await db.insert(platformsTable).values({ ...body, apiKey: credential.value ?? null, workspaceId, userId: req.userId! }).returning();
   res.status(201).json({ 
     ...platform, 
@@ -78,6 +94,12 @@ router.patch("/:id", async (req, res) => {
   const { apiKey: _rawKey, ...fields } = UpdatePlatformBody.parse(req.body);
   const credential = credentialUpdate(req.body?.apiKey);
   if (!credential.ok) { res.status(400).json({ error: credential.error }); return; }
+  if (fields.provider !== undefined || fields.providerConfig !== undefined) {
+    const [current] = await db.select({ provider: platformsTable.provider }).from(platformsTable)
+      .where(and(eq(platformsTable.id, id), resourceScope(platformsTable, req.userId!, true)));
+    const issue = providerIssue(fields.provider !== undefined ? fields.provider : current?.provider, fields.providerConfig);
+    if (issue) { res.status(400).json({ error: issue }); return; }
+  }
   // Only an explicit replacement or null touches the stored credential.
   const changes = credential.value === undefined ? fields : { ...fields, apiKey: credential.value };
   if (Object.keys(changes).length === 0) { res.status(400).json({ error: "No fields to update" }); return; }
@@ -101,8 +123,18 @@ router.delete("/:id", async (req, res) => {
   res.status(204).send();
 });
 
-// Provider sync (routes/sync.ts -> lib/sync-engine.ts, simulated adapters) is intentionally not
-// mounted: it is disabled for launch and must not be reachable from an enabled route
-// (enforced by scripts/mock-guard.mjs). See docs/governance/DEFERRED_WORK.md.
+// Real provider sync (lib/provider-sync). The legacy simulated engine (routes/sync.ts ->
+// lib/sync-engine.ts) stays unmounted and unreachable (enforced by scripts/mock-guard.mjs).
+router.post("/:id/sync", async (req, res) => {
+  const { id } = SyncPlatformUsageParams.parse({ id: Number(req.params.id) });
+  const platform = await loadWritablePlatform(id, req.userId!);
+  if (!platform) { res.status(404).json({ error: "Not found" }); return; }
+  try {
+    res.json(await syncPlatform(platform));
+  } catch (err) {
+    if (!(err instanceof ProviderError)) throw err;
+    res.status(422).json({ error: "SyncFailed", message: err.message });
+  }
+});
 
 export default router;
