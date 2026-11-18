@@ -184,7 +184,7 @@ export function initCronJobs() {
         .select({
           id: subscriptionsTable.id,
           platformName: platformsTable.name,
-          planName: subscriptionsTable.planName,
+          planName: subscriptionsTable.name,
           expiryDate: subscriptionsTable.trialEndDate,
           workspaceId: subscriptionsTable.workspaceId,
           userId: subscriptionsTable.userId

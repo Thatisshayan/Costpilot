@@ -3,14 +3,14 @@ import type { Request, Response, NextFunction } from "express";
 import { launchScope } from "../launch-scope";
 
 describe("launch API surface", () => {
-  for (const path of ["/expenses", "/expenses/1", "/projects", "/platforms/2", "/platforms/2/sync", "/providers", "/workspaces/accept-invite", "/healthz", "/webhooks/clerk"]) {
+  for (const path of ["/expenses", "/expenses/1", "/projects", "/platforms/2", "/platforms/2/sync", "/providers", "/subscriptions", "/subscriptions/3", "/workspaces/accept-invite", "/healthz", "/webhooks/clerk"]) {
     it(`allows the reviewed core path ${path}`, () => {
       const next = vi.fn();
       launchScope({ path } as Request, {} as Response, next as NextFunction);
       expect(next).toHaveBeenCalledOnce();
     });
   }
-  for (const path of ["/remediation/execute", "/telemetry/chat/completions", "/platforms/1/usage", "/platforms/1/sync/extra", "/webhooks/stripe", "/subscriptions", "/credits"]) {
+  for (const path of ["/remediation/execute", "/telemetry/chat/completions", "/platforms/1/usage", "/platforms/1/sync/extra", "/webhooks/stripe", "/credits"]) {
     it(`fails closed for preview path ${path}`, () => {
       const next = vi.fn();
       const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };

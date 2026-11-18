@@ -60,9 +60,9 @@ router.get("/calendar-events", async (req, res) => {
       platformName: platformsTable.name,
       projectName: projectsTable.name,
       trialEndDate: subscriptionsTable.trialEndDate,
-      renewalDate: subscriptionsTable.renewalDate,
-      planName: subscriptionsTable.planName,
-      monthlyCost: subscriptionsTable.monthlyCost,
+      renewalDate: subscriptionsTable.nextRenewalDate,
+      planName: subscriptionsTable.name,
+      monthlyCost: subscriptionsTable.amount,
     })
     .from(subscriptionsTable)
     .leftJoin(platformsTable, eq(subscriptionsTable.platformId, platformsTable.id))

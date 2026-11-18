@@ -36,6 +36,13 @@
       "when": 1794964860972,
       "tag": "0004_provider_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794971449875,
+      "tag": "0005_subscriptions_tracker",
+      "breakpoints": true
     }
   ]
 }

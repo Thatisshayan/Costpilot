@@ -927,80 +927,77 @@ export const UndoImportResponse = zod.object({
 })
 
 
+/**
+ * @summary Recurring plans in one scope (Personal when workspaceId is omitted)
+ */
+
+
+
+export const ListSubscriptionsQueryParams = zod.object({
+  "workspaceId": zod.coerce.number().int().min(1).optional()
+})
+
 export const ListSubscriptionsResponseItem = zod.object({
   "id": zod.int(),
-  "platformId": zod.int(),
+  "workspaceId": zod.int().nullish(),
+  "platformId": zod.int().nullish(),
   "platformName": zod.string().nullish(),
   "projectId": zod.int().nullish(),
   "projectName": zod.string().nullish(),
-  "planName": zod.string(),
-  "planType": zod.string(),
-  "status": zod.string().optional(),
-  "email": zod.string().nullish(),
-  "trialStartDate": zod.string().nullish(),
+  "name": zod.string(),
+  "amount": zod.string().describe('Price per billing cycle, as a decimal string'),
+  "currency": zod.string(),
+  "billingCycle": zod.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
+  "monthlyEquivalent": zod.string().describe('Amount converted to a per-month figure, as a decimal string'),
+  "status": zod.enum(['active', 'trial', 'paused', 'cancelled']),
+  "nextRenewalDate": zod.string().nullish(),
   "trialEndDate": zod.string().nullish(),
-  "renewalDate": zod.string().nullish(),
-  "monthlyCost": zod.number().nullish(),
-  "daysUntilExpiry": zod.int().nullish(),
+  "autoRecord": zod.boolean(),
+  "lastRecordedDate": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListSubscriptionsResponse = zod.array(ListSubscriptionsResponseItem)
 
 
+/**
+ * @summary Add a plan; passed renewals of an active plan are recorded as expenses
+ */
+
+
+
 export const CreateSubscriptionBody = zod.object({
-  "platformId": zod.int(),
-  "projectId": zod.int().optional(),
-  "planName": zod.string(),
-  "planType": zod.string(),
-  "status": zod.string().optional(),
-  "email": zod.string().optional(),
-  "trialStartDate": zod.string().optional(),
-  "trialEndDate": zod.string().optional(),
-  "renewalDate": zod.string().optional(),
-  "monthlyCost": zod.number().optional(),
-  "notes": zod.string().optional()
+  "workspaceId": zod.int().min(1).nullish(),
+  "platformId": zod.int().nullish(),
+  "projectId": zod.int().nullish(),
+  "name": zod.string(),
+  "amount": zod.string(),
+  "currency": zod.string(),
+  "billingCycle": zod.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
+  "status": zod.enum(['active', 'trial', 'paused', 'cancelled']).optional(),
+  "nextRenewalDate": zod.string().nullish(),
+  "trialEndDate": zod.string().nullish(),
+  "autoRecord": zod.boolean().optional(),
+  "notes": zod.string().nullish()
 })
 
 export const CreateSubscriptionResponse = zod.object({
   "id": zod.int(),
-  "platformId": zod.int(),
+  "workspaceId": zod.int().nullish(),
+  "platformId": zod.int().nullish(),
   "platformName": zod.string().nullish(),
   "projectId": zod.int().nullish(),
   "projectName": zod.string().nullish(),
-  "planName": zod.string(),
-  "planType": zod.string(),
-  "status": zod.string().optional(),
-  "email": zod.string().nullish(),
-  "trialStartDate": zod.string().nullish(),
+  "name": zod.string(),
+  "amount": zod.string().describe('Price per billing cycle, as a decimal string'),
+  "currency": zod.string(),
+  "billingCycle": zod.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
+  "monthlyEquivalent": zod.string().describe('Amount converted to a per-month figure, as a decimal string'),
+  "status": zod.enum(['active', 'trial', 'paused', 'cancelled']),
+  "nextRenewalDate": zod.string().nullish(),
   "trialEndDate": zod.string().nullish(),
-  "renewalDate": zod.string().nullish(),
-  "monthlyCost": zod.number().nullish(),
-  "daysUntilExpiry": zod.int().nullish(),
-  "notes": zod.string().nullish(),
-  "createdAt": zod.string()
-})
-
-
-export const GetSubscriptionParams = zod.object({
-  "id": zod.coerce.number().int()
-})
-
-export const GetSubscriptionResponse = zod.object({
-  "id": zod.int(),
-  "platformId": zod.int(),
-  "platformName": zod.string().nullish(),
-  "projectId": zod.int().nullish(),
-  "projectName": zod.string().nullish(),
-  "planName": zod.string(),
-  "planType": zod.string(),
-  "status": zod.string().optional(),
-  "email": zod.string().nullish(),
-  "trialStartDate": zod.string().nullish(),
-  "trialEndDate": zod.string().nullish(),
-  "renewalDate": zod.string().nullish(),
-  "monthlyCost": zod.number().nullish(),
-  "daysUntilExpiry": zod.int().nullish(),
+  "autoRecord": zod.boolean(),
+  "lastRecordedDate": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -1011,39 +1008,44 @@ export const UpdateSubscriptionParams = zod.object({
 })
 
 export const UpdateSubscriptionBody = zod.object({
-  "platformId": zod.int().optional(),
-  "projectId": zod.int().optional(),
-  "planName": zod.string().optional(),
-  "planType": zod.string().optional(),
-  "status": zod.string().optional(),
-  "email": zod.string().optional(),
-  "trialStartDate": zod.string().optional(),
-  "trialEndDate": zod.string().optional(),
-  "renewalDate": zod.string().optional(),
-  "monthlyCost": zod.number().optional(),
-  "notes": zod.string().optional()
+  "platformId": zod.int().nullish(),
+  "projectId": zod.int().nullish(),
+  "name": zod.string().optional(),
+  "amount": zod.string().optional(),
+  "currency": zod.string().optional(),
+  "billingCycle": zod.enum(['weekly', 'monthly', 'quarterly', 'yearly']).optional(),
+  "status": zod.enum(['active', 'trial', 'paused', 'cancelled']).optional(),
+  "nextRenewalDate": zod.string().nullish(),
+  "trialEndDate": zod.string().nullish(),
+  "autoRecord": zod.boolean().optional(),
+  "notes": zod.string().nullish()
 })
 
 export const UpdateSubscriptionResponse = zod.object({
   "id": zod.int(),
-  "platformId": zod.int(),
+  "workspaceId": zod.int().nullish(),
+  "platformId": zod.int().nullish(),
   "platformName": zod.string().nullish(),
   "projectId": zod.int().nullish(),
   "projectName": zod.string().nullish(),
-  "planName": zod.string(),
-  "planType": zod.string(),
-  "status": zod.string().optional(),
-  "email": zod.string().nullish(),
-  "trialStartDate": zod.string().nullish(),
+  "name": zod.string(),
+  "amount": zod.string().describe('Price per billing cycle, as a decimal string'),
+  "currency": zod.string(),
+  "billingCycle": zod.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
+  "monthlyEquivalent": zod.string().describe('Amount converted to a per-month figure, as a decimal string'),
+  "status": zod.enum(['active', 'trial', 'paused', 'cancelled']),
+  "nextRenewalDate": zod.string().nullish(),
   "trialEndDate": zod.string().nullish(),
-  "renewalDate": zod.string().nullish(),
-  "monthlyCost": zod.number().nullish(),
-  "daysUntilExpiry": zod.int().nullish(),
+  "autoRecord": zod.boolean(),
+  "lastRecordedDate": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
 
+/**
+ * @summary Delete a plan. Expenses already recorded for it are kept.
+ */
 export const DeleteSubscriptionParams = zod.object({
   "id": zod.coerce.number().int()
 })
@@ -1231,19 +1233,21 @@ export const GetDashboardSummaryResponse = zod.object({
 
 export const GetExpiringTrialsResponseItem = zod.object({
   "id": zod.int(),
-  "platformId": zod.int(),
+  "workspaceId": zod.int().nullish(),
+  "platformId": zod.int().nullish(),
   "platformName": zod.string().nullish(),
   "projectId": zod.int().nullish(),
   "projectName": zod.string().nullish(),
-  "planName": zod.string(),
-  "planType": zod.string(),
-  "status": zod.string().optional(),
-  "email": zod.string().nullish(),
-  "trialStartDate": zod.string().nullish(),
+  "name": zod.string(),
+  "amount": zod.string().describe('Price per billing cycle, as a decimal string'),
+  "currency": zod.string(),
+  "billingCycle": zod.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
+  "monthlyEquivalent": zod.string().describe('Amount converted to a per-month figure, as a decimal string'),
+  "status": zod.enum(['active', 'trial', 'paused', 'cancelled']),
+  "nextRenewalDate": zod.string().nullish(),
   "trialEndDate": zod.string().nullish(),
-  "renewalDate": zod.string().nullish(),
-  "monthlyCost": zod.number().nullish(),
-  "daysUntilExpiry": zod.int().nullish(),
+  "autoRecord": zod.boolean(),
+  "lastRecordedDate": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
 })

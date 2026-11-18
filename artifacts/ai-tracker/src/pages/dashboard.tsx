@@ -6,6 +6,7 @@ import { useWorkspace } from "@/context/workspace-context";
 import { apiErrorMessage } from "@/lib/api-error";
 import { formatMoney, formatSignedMoney, isNegative } from "@/lib/money-format";
 import { BudgetAlerts } from "@/components/budget-alerts";
+import { UpcomingRenewals } from "@/components/upcoming-renewals";
 
 /** Last `count` months ending with the current UTC month, newest first, as YYYY-MM. */
 export function recentMonths(today: string, count = 12): string[] {
@@ -168,6 +169,7 @@ export default function Dashboard() {
       </header>
 
       <BudgetAlerts />
+      <UpcomingRenewals />
 
       {query.isLoading && <p role="status" className="text-slate-300">Loading {monthLabel(shownMonth)}…</p>}
 

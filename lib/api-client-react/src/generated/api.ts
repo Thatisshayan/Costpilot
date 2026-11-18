@@ -65,6 +65,7 @@ import type {
   ListBudgetsParams,
   ListConnectedSources200Item,
   ListImportsParams,
+  ListSubscriptionsParams,
   MessageResponse,
   MonthlySpending,
   Platform,
@@ -2846,17 +2847,27 @@ export const useUndoImport = <TError = ErrorType<void>,
       return useMutation(getUndoImportMutationOptions(options), queryClient);
     }
 
-export const getListSubscriptionsUrl = () => {
+export const getListSubscriptionsUrl = (params?: ListSubscriptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/subscriptions`
+  return stringifiedParams.length > 0 ? `/api/subscriptions?${stringifiedParams}` : `/api/subscriptions`
 }
 
-export const listSubscriptions = async ( options?: Parameters<typeof customFetch>[1]): Promise<Subscription[]> => {
+/**
+ * @summary Recurring plans in one scope (Personal when workspaceId is omitted)
+ */
+export const listSubscriptions = async (params?: ListSubscriptionsParams, options?: Parameters<typeof customFetch>[1]): Promise<Subscription[]> => {
 
-  return customFetch<Subscription[]>(getListSubscriptionsUrl(),
+  return customFetch<Subscription[]>(getListSubscriptionsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2869,23 +2880,23 @@ export const listSubscriptions = async ( options?: Parameters<typeof customFetch
 
 
 
-export const getListSubscriptionsQueryKey = () => {
+export const getListSubscriptionsQueryKey = (params?: ListSubscriptionsParams,) => {
     return [
-    `/api/subscriptions`
+    `/api/subscriptions`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListSubscriptionsQueryOptions = <TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getListSubscriptionsQueryOptions = <TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<void>>(params?: ListSubscriptionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListSubscriptionsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListSubscriptionsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSubscriptions>>> = ({ signal }) => listSubscriptions({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSubscriptions>>> = ({ signal }) => listSubscriptions(params, { signal, ...requestOptions });
 
 
 
@@ -2895,11 +2906,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListSubscriptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listSubscriptions>>>
-export type ListSubscriptionsQueryError = ErrorType<unknown>
+export type ListSubscriptionsQueryError = ErrorType<void>
 
 
-export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<unknown>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>> & Pick<
+export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<void>>(
+ params: undefined |  ListSubscriptionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listSubscriptions>>,
           TError,
@@ -2908,8 +2919,8 @@ export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubsc
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>> & Pick<
+export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<void>>(
+ params?: ListSubscriptionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listSubscriptions>>,
           TError,
@@ -2918,17 +2929,20 @@ export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubsc
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<void>>(
+ params?: ListSubscriptionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Recurring plans in one scope (Personal when workspaceId is omitted)
+ */
 
-export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<void>>(
+ params?: ListSubscriptionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getListSubscriptionsQueryOptions(options)
+  const queryOptions = getListSubscriptionsQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -2949,6 +2963,9 @@ export const getCreateSubscriptionUrl = () => {
   return `/api/subscriptions`
 }
 
+/**
+ * @summary Add a plan; passed renewals of an active plan are recorded as expenses
+ */
 export const createSubscription = async (subscriptionInput: SubscriptionInput, options?: Parameters<typeof customFetch>[1]): Promise<Subscription> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
@@ -2980,7 +2997,7 @@ return customFetch<Subscription>(getCreateSubscriptionUrl(),
 
 export const getCreateSubscriptionMutationKey = () => ['createSubscription'] as const;
 
-export const getCreateSubscriptionMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateSubscriptionMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscription>>, TError,CreateSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createSubscription>>, TError,CreateSubscriptionMutationVariables, TContext> => {
 
@@ -3009,10 +3026,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof createSubscription>>>
     export type CreateSubscriptionMutationBody = BodyType<SubscriptionInput>
-    export type CreateSubscriptionMutationError = ErrorType<unknown>
+    export type CreateSubscriptionMutationError = ErrorType<void>
     export type CreateSubscriptionMutationVariables = {data: BodyType<SubscriptionInput>}
 
-    export const useCreateSubscription = <TError = ErrorType<unknown>,
+    /**
+ * @summary Add a plan; passed renewals of an active plan are recorded as expenses
+ */
+export const useCreateSubscription = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscription>>, TError,CreateSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createSubscription>>,
@@ -3022,101 +3042,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateSubscriptionMutationOptions(options), queryClient);
     }
-
-export const getGetSubscriptionUrl = (id: number,) => {
-
-
-
-
-  return `/api/subscriptions/${id}`
-}
-
-export const getSubscription = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Subscription> => {
-
-  return customFetch<Subscription>(getGetSubscriptionUrl(id),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetSubscriptionQueryKey = (id: number,) => {
-    return [
-    `/api/subscriptions/${id}`
-    ] as const;
-    }
-
-
-export const getGetSubscriptionQueryOptions = <TData = Awaited<ReturnType<typeof getSubscription>>, TError = ErrorType<unknown>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSubscription>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetSubscriptionQueryKey(id);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSubscription>>> = ({ signal }) => getSubscription(id, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSubscription>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetSubscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof getSubscription>>>
-export type GetSubscriptionQueryError = ErrorType<unknown>
-
-
-export function useGetSubscription<TData = Awaited<ReturnType<typeof getSubscription>>, TError = ErrorType<unknown>>(
- id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSubscription>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSubscription>>,
-          TError,
-          Awaited<ReturnType<typeof getSubscription>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSubscription<TData = Awaited<ReturnType<typeof getSubscription>>, TError = ErrorType<unknown>>(
- id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSubscription>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSubscription>>,
-          TError,
-          Awaited<ReturnType<typeof getSubscription>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSubscription<TData = Awaited<ReturnType<typeof getSubscription>>, TError = ErrorType<unknown>>(
- id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSubscription>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-
-export function useGetSubscription<TData = Awaited<ReturnType<typeof getSubscription>>, TError = ErrorType<unknown>>(
- id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSubscription>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetSubscriptionQueryOptions(id,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
 
 export const getUpdateSubscriptionUrl = (id: number,) => {
 
@@ -3158,7 +3083,7 @@ return customFetch<Subscription>(getUpdateSubscriptionUrl(id),
 
 export const getUpdateSubscriptionMutationKey = () => ['updateSubscription'] as const;
 
-export const getUpdateSubscriptionMutationOptions = <TError = ErrorType<unknown>,
+export const getUpdateSubscriptionMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,UpdateSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,UpdateSubscriptionMutationVariables, TContext> => {
 
@@ -3187,10 +3112,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof updateSubscription>>>
     export type UpdateSubscriptionMutationBody = BodyType<SubscriptionUpdate>
-    export type UpdateSubscriptionMutationError = ErrorType<unknown>
+    export type UpdateSubscriptionMutationError = ErrorType<void>
     export type UpdateSubscriptionMutationVariables = {id: number;data: BodyType<SubscriptionUpdate>}
 
-    export const useUpdateSubscription = <TError = ErrorType<unknown>,
+    export const useUpdateSubscription = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,UpdateSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateSubscription>>,
@@ -3209,6 +3134,9 @@ export const getDeleteSubscriptionUrl = (id: number,) => {
   return `/api/subscriptions/${id}`
 }
 
+/**
+ * @summary Delete a plan. Expenses already recorded for it are kept.
+ */
 export const deleteSubscription = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
   return customFetch<void>(getDeleteSubscriptionUrl(id),
@@ -3226,7 +3154,7 @@ export const deleteSubscription = async (id: number, options?: Parameters<typeof
 
 export const getDeleteSubscriptionMutationKey = () => ['deleteSubscription'] as const;
 
-export const getDeleteSubscriptionMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteSubscriptionMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSubscription>>, TError,DeleteSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteSubscription>>, TError,DeleteSubscriptionMutationVariables, TContext> => {
 
@@ -3255,10 +3183,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSubscription>>>
 
-    export type DeleteSubscriptionMutationError = ErrorType<unknown>
+    export type DeleteSubscriptionMutationError = ErrorType<void>
     export type DeleteSubscriptionMutationVariables = {id: number}
 
-    export const useDeleteSubscription = <TError = ErrorType<unknown>,
+    /**
+ * @summary Delete a plan. Expenses already recorded for it are kept.
+ */
+export const useDeleteSubscription = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSubscription>>, TError,DeleteSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteSubscription>>,

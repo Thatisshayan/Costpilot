@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Target,
   Upload,
+  Repeat,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WorkspaceSwitcher } from "./workspace-switcher";
@@ -28,6 +29,7 @@ export const navigation = [
   { name: "Expenses", href: "/expenses", icon: DollarSign },
   { name: "Import", href: "/import", icon: Upload },
   { name: "Budgets", href: "/budgets", icon: Target },
+  { name: "Subscriptions", href: "/subscriptions", icon: Repeat },
   { name: "Projects", href: "/projects", icon: Folder },
   { name: "Vendors", href: "/vendors", icon: Building },
   { name: "Team", href: "/collaboration", icon: Users },

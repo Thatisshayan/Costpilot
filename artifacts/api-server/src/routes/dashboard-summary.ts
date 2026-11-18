@@ -39,13 +39,13 @@ router.get("/summary", async (req, res) => {
     .where(and(sql`${expensesTable.date} >= ${lastMonthStart} AND ${expensesTable.date} <= ${lastMonthEnd}`, eq(expensesTable.userId, userId)));
 
   const renewals = await db
-    .select({ cost: subscriptionsTable.monthlyCost })
+    .select({ cost: subscriptionsTable.amount })
     .from(subscriptionsTable)
     .where(
       and(
         eq(subscriptionsTable.status, "active"),
-        isNotNull(subscriptionsTable.renewalDate),
-        sql`${subscriptionsTable.renewalDate} >= ${today} AND ${subscriptionsTable.renewalDate} <= ${sevenDaysFromNow}`,
+        isNotNull(subscriptionsTable.nextRenewalDate),
+        sql`${subscriptionsTable.nextRenewalDate} >= ${today} AND ${subscriptionsTable.nextRenewalDate} <= ${sevenDaysFromNow}`,
         eq(subscriptionsTable.userId, userId)
       )
     );
@@ -143,12 +143,12 @@ router.get("/kpi-summary", async (req, res) => {
     .where(and(sql`${expensesTable.date} >= ${lastMonthStart} AND ${expensesTable.date} <= ${lastMonthEnd}`, eq(expensesTable.userId, userId)));
 
   const renewals = await db
-    .select({ cost: subscriptionsTable.monthlyCost })
+    .select({ cost: subscriptionsTable.amount })
     .from(subscriptionsTable)
     .where(
       and(
         eq(subscriptionsTable.status, "active"),
-        sql`${subscriptionsTable.renewalDate} >= ${today} AND ${subscriptionsTable.renewalDate} <= ${sevenDaysFromNow}`,
+        sql`${subscriptionsTable.nextRenewalDate} >= ${today} AND ${subscriptionsTable.nextRenewalDate} <= ${sevenDaysFromNow}`,
         eq(subscriptionsTable.userId, userId)
       )
     );

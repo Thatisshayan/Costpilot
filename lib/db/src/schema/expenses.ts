@@ -19,7 +19,7 @@ export const expensesTable = pgTable("expenses", {
   category: text("category"),
   date: text("date").notNull(),
   tags: text("tags"),
-  /** Provenance: "manual" (entered in the app), "import" (CSV) or "sync" (provider cost API). */
+  /** Provenance: "manual", "import" (CSV), "sync" (provider cost API) or "subscription" (recorded renewal). */
   source: text("source").default("manual").notNull(),
   /** The source's own transaction id, when the file has one; unique per scope and source. */
   externalId: text("external_id"),
@@ -29,7 +29,7 @@ export const expensesTable = pgTable("expenses", {
   index("expenses_user_date_idx").on(table.userId, table.date),
   index("expenses_workspace_date_idx").on(table.workspaceId, table.date),
   index("expenses_import_batch_idx").on(table.importBatchId),
-  check("expenses_source_known", sql`${table.source} IN ('manual', 'import', 'sync')`),
+  check("expenses_source_known", sql`${table.source} IN ('manual', 'import', 'sync', 'subscription')`),
   // NULL workspace ids are distinct in a unique index, so Personal rows need their own index.
   uniqueIndex("expenses_workspace_external_unique").on(table.workspaceId, table.source, table.externalId)
     .where(sql`${table.workspaceId} IS NOT NULL AND ${table.externalId} IS NOT NULL`),

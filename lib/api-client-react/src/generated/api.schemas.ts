@@ -808,61 +808,139 @@ export interface ExpenseUpdate {
   date?: string;
 }
 
+export type SubscriptionBillingCycle = typeof SubscriptionBillingCycle[keyof typeof SubscriptionBillingCycle];
+
+
+export const SubscriptionBillingCycle = {
+  weekly: 'weekly',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
+} as const;
+
+export type SubscriptionStatus = typeof SubscriptionStatus[keyof typeof SubscriptionStatus];
+
+
+export const SubscriptionStatus = {
+  active: 'active',
+  trial: 'trial',
+  paused: 'paused',
+  cancelled: 'cancelled',
+} as const;
+
 export interface Subscription {
   id: number;
-  platformId: number;
+  /** @nullable */
+  workspaceId?: number | null;
+  /** @nullable */
+  platformId?: number | null;
   /** @nullable */
   platformName?: string | null;
   /** @nullable */
   projectId?: number | null;
   /** @nullable */
   projectName?: string | null;
-  planName: string;
-  planType: string;
-  status?: string;
+  name: string;
+  /** Price per billing cycle, as a decimal string */
+  amount: string;
+  currency: string;
+  billingCycle: SubscriptionBillingCycle;
+  /** Amount converted to a per-month figure, as a decimal string */
+  monthlyEquivalent: string;
+  status: SubscriptionStatus;
   /** @nullable */
-  email?: string | null;
-  /** @nullable */
-  trialStartDate?: string | null;
+  nextRenewalDate?: string | null;
   /** @nullable */
   trialEndDate?: string | null;
+  autoRecord: boolean;
   /** @nullable */
-  renewalDate?: string | null;
-  /** @nullable */
-  monthlyCost?: number | null;
-  /** @nullable */
-  daysUntilExpiry?: number | null;
+  lastRecordedDate?: string | null;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
 }
 
+export type SubscriptionInputBillingCycle = typeof SubscriptionInputBillingCycle[keyof typeof SubscriptionInputBillingCycle];
+
+
+export const SubscriptionInputBillingCycle = {
+  weekly: 'weekly',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
+} as const;
+
+export type SubscriptionInputStatus = typeof SubscriptionInputStatus[keyof typeof SubscriptionInputStatus];
+
+
+export const SubscriptionInputStatus = {
+  active: 'active',
+  trial: 'trial',
+  paused: 'paused',
+  cancelled: 'cancelled',
+} as const;
+
 export interface SubscriptionInput {
-  platformId: number;
-  projectId?: number;
-  planName: string;
-  planType: string;
-  status?: string;
-  email?: string;
-  trialStartDate?: string;
-  trialEndDate?: string;
-  renewalDate?: string;
-  monthlyCost?: number;
-  notes?: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  workspaceId?: number | null;
+  /** @nullable */
+  platformId?: number | null;
+  /** @nullable */
+  projectId?: number | null;
+  name: string;
+  amount: string;
+  currency: string;
+  billingCycle: SubscriptionInputBillingCycle;
+  status?: SubscriptionInputStatus;
+  /** @nullable */
+  nextRenewalDate?: string | null;
+  /** @nullable */
+  trialEndDate?: string | null;
+  autoRecord?: boolean;
+  /** @nullable */
+  notes?: string | null;
 }
 
+export type SubscriptionUpdateBillingCycle = typeof SubscriptionUpdateBillingCycle[keyof typeof SubscriptionUpdateBillingCycle];
+
+
+export const SubscriptionUpdateBillingCycle = {
+  weekly: 'weekly',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
+} as const;
+
+export type SubscriptionUpdateStatus = typeof SubscriptionUpdateStatus[keyof typeof SubscriptionUpdateStatus];
+
+
+export const SubscriptionUpdateStatus = {
+  active: 'active',
+  trial: 'trial',
+  paused: 'paused',
+  cancelled: 'cancelled',
+} as const;
+
 export interface SubscriptionUpdate {
-  platformId?: number;
-  projectId?: number;
-  planName?: string;
-  planType?: string;
-  status?: string;
-  email?: string;
-  trialStartDate?: string;
-  trialEndDate?: string;
-  renewalDate?: string;
-  monthlyCost?: number;
-  notes?: string;
+  /** @nullable */
+  platformId?: number | null;
+  /** @nullable */
+  projectId?: number | null;
+  name?: string;
+  amount?: string;
+  currency?: string;
+  billingCycle?: SubscriptionUpdateBillingCycle;
+  status?: SubscriptionUpdateStatus;
+  /** @nullable */
+  nextRenewalDate?: string | null;
+  /** @nullable */
+  trialEndDate?: string | null;
+  autoRecord?: boolean;
+  /** @nullable */
+  notes?: string | null;
 }
 
 export interface Tool {
@@ -1180,6 +1258,11 @@ export type ListImportsParams = {
 
 export type UndoImport200 = {
   deletedCount: number;
+};
+
+export type ListSubscriptionsParams = {
+  /** @minimum 1 */
+  workspaceId?: number;
 };
 
 export type UploadReceiptBody = {

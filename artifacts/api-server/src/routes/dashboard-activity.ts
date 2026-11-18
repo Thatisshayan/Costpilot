@@ -30,9 +30,9 @@ router.get("/intelligence-activity", async (req, res) => {
     .select({
       id: subscriptionsTable.id,
       platformName: platformsTable.name,
-      monthlyCost: subscriptionsTable.monthlyCost,
+      monthlyCost: subscriptionsTable.amount,
       status: subscriptionsTable.status,
-      planType: subscriptionsTable.planType,
+      planType: subscriptionsTable.billingCycle,
       createdAt: subscriptionsTable.createdAt,
     })
     .from(subscriptionsTable)

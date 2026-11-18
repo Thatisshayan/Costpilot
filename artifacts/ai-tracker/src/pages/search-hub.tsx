@@ -75,15 +75,15 @@ export default function SearchHub() {
       }));
 
     const subResults: SearchResult[] = subscriptions
-      .filter(s => s.planName.toLowerCase().includes(q) || (s.platformName && s.platformName.toLowerCase().includes(q)))
+      .filter(s => s.name.toLowerCase().includes(q) || (s.platformName && s.platformName.toLowerCase().includes(q)))
       .slice(0, 5)
       .map(s => ({
         id: `sub-${s.id}`,
-        label: `${s.planName}${s.platformName ? ` — ${s.platformName}` : ''}`,
-        category: `${s.planType} • ${s.monthlyCost ? `$${s.monthlyCost.toFixed(2)}/mo` : 'N/A'}`,
+        label: `${s.name}${s.platformName ? ` — ${s.platformName}` : ''}`,
+        category: `${s.billingCycle} • ${s.monthlyEquivalent} ${s.currency}/mo`,
         icon: <CreditCard size={14} />,
         type: 'subscription' as const,
-        amount: s.monthlyCost ?? undefined,
+        amount: Number(s.monthlyEquivalent),
       }));
 
     return [...expenseResults, ...platformResults, ...subResults];

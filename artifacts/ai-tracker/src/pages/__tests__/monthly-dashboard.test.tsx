@@ -9,6 +9,7 @@ vi.mock("@/context/workspace-context", () => ({ useWorkspace: () => ws.value }))
 vi.mock("@workspace/api-client-react", () => ({
   useGetSpendSummary: (params: unknown) => { summaryHook.calls.push(params); return summaryHook.result; },
   useGetBudgetStatus: (params: unknown) => { budgetHook.calls.push(params); return budgetHook.isError ? { data: undefined, isError: true, refetch: budgetHook.refetch } : { data: { budgets: budgetHook.budgets }, isError: false, refetch: budgetHook.refetch }; },
+  useListSubscriptions: () => ({ data: [], isError: false }),
 }));
 
 import Dashboard, { comparisonText, recentMonths } from "../dashboard";

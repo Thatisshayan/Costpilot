@@ -624,9 +624,16 @@ paths:
 
   /subscriptions:
     get:
-      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: listSubscriptions
       tags: [subscriptions]
+      summary: Recurring plans in one scope (Personal when workspaceId is omitted)
+      parameters:
+        - name: workspaceId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
       responses:
         "200":
           description: List of subscriptions
@@ -636,10 +643,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Subscription"
+        "403":
+          description: Not a member of the workspace
     post:
-      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: createSubscription
       tags: [subscriptions]
+      summary: Add a plan; passed renewals of an active plan are recorded as expenses
       requestBody:
         required: true
         content:
@@ -653,27 +662,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Subscription"
+        "400":
+          description: Invalid input
+        "403":
+          description: Workspace write permission required
 
   /subscriptions/{id}:
-    get:
-      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
-      operationId: getSubscription
-      tags: [subscriptions]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Subscription
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Subscription"
     patch:
-      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: updateSubscription
       tags: [subscriptions]
       parameters:
@@ -695,10 +690,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Subscription"
+        "400":
+          description: Invalid input
+        "404":
+          description: Not found or not writable
     delete:
-      x-costpilot-availability: disabled  # blocked by the API launch scope (503)
       operationId: deleteSubscription
       tags: [subscriptions]
+      summary: Delete a plan. Expenses already recorded for it are kept.
       parameters:
         - name: id
           in: path
@@ -708,6 +707,8 @@ paths:
       responses:
         "204":
           description: Deleted
+        "404":
+          description: Not found or not writable
 
   /tools:
     get:
@@ -2335,36 +2336,44 @@ components:
 
     Subscription:
       type: object
-      required: [id, platformId, planName, planType, createdAt]
+      required: [id, name, amount, currency, billingCycle, monthlyEquivalent, status, autoRecord, createdAt]
       properties:
         id:
           type: integer
+        workspaceId:
+          type: ["integer", "null"]
         platformId:
-          type: integer
+          type: ["integer", "null"]
         platformName:
           type: ["string", "null"]
         projectId:
           type: ["integer", "null"]
         projectName:
           type: ["string", "null"]
-        planName:
+        name:
           type: string
-        planType:
+        amount:
           type: string
+          description: Price per billing cycle, as a decimal string
+        currency:
+          type: string
+        billingCycle:
+          type: string
+          enum: [weekly, monthly, quarterly, yearly]
+        monthlyEquivalent:
+          type: string
+          description: Amount converted to a per-month figure, as a decimal string
         status:
           type: string
-        email:
-          type: ["string", "null"]
-        trialStartDate:
+          enum: [active, trial, paused, cancelled]
+        nextRenewalDate:
           type: ["string", "null"]
         trialEndDate:
           type: ["string", "null"]
-        renewalDate:
+        autoRecord:
+          type: boolean
+        lastRecordedDate:
           type: ["string", "null"]
-        monthlyCost:
-          type: ["number", "null"]
-        daysUntilExpiry:
-          type: ["integer", "null"]
         notes:
           type: ["string", "null"]
         createdAt:
@@ -2372,56 +2381,74 @@ components:
 
     SubscriptionInput:
       type: object
-      required: [platformId, planName, planType]
+      required: [name, amount, currency, billingCycle]
       properties:
+        workspaceId:
+          type: integer
+          nullable: true
+          minimum: 1
         platformId:
           type: integer
+          nullable: true
         projectId:
           type: integer
-        planName:
+          nullable: true
+        name:
           type: string
-        planType:
+        amount:
           type: string
+        currency:
+          type: string
+        billingCycle:
+          type: string
+          enum: [weekly, monthly, quarterly, yearly]
         status:
           type: string
-        email:
+          enum: [active, trial, paused, cancelled]
+        nextRenewalDate:
           type: string
-        trialStartDate:
-          type: string
+          nullable: true
         trialEndDate:
           type: string
-        renewalDate:
-          type: string
-        monthlyCost:
-          type: number
+          nullable: true
+        autoRecord:
+          type: boolean
         notes:
           type: string
+          nullable: true
 
     SubscriptionUpdate:
       type: object
       properties:
         platformId:
           type: integer
+          nullable: true
         projectId:
           type: integer
-        planName:
+          nullable: true
+        name:
           type: string
-        planType:
+        amount:
           type: string
+        currency:
+          type: string
+        billingCycle:
+          type: string
+          enum: [weekly, monthly, quarterly, yearly]
         status:
           type: string
-        email:
+          enum: [active, trial, paused, cancelled]
+        nextRenewalDate:
           type: string
-        trialStartDate:
-          type: string
+          nullable: true
         trialEndDate:
           type: string
-        renewalDate:
-          type: string
-        monthlyCost:
-          type: number
+          nullable: true
+        autoRecord:
+          type: boolean
         notes:
           type: string
+          nullable: true
 
     Tool:
       type: object

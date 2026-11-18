@@ -10,6 +10,7 @@ import spendRouter from "./spend";
 import spendBudgetsRouter from "./spend-budgets";
 import importsRouter from "./imports";
 import providersRouter from "./providers";
+import subscriptionsRouter from "./subscriptions";
 import { launchScope } from "../middlewares/launch-scope";
 
 const router: IRouter = Router();
@@ -25,4 +26,5 @@ router.use("/spend", spendRouter);
 router.use("/budgets", spendBudgetsRouter);
 router.use("/imports", importsRouter);
 router.use("/providers", providersRouter);
+router.use("/subscriptions", subscriptionsRouter);
 export default router;

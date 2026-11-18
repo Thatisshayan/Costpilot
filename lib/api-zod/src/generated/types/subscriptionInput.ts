@@ -5,17 +5,29 @@
  * AI Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { SubscriptionInputBillingCycle } from './subscriptionInputBillingCycle';
+import type { SubscriptionInputStatus } from './subscriptionInputStatus';
 
 export interface SubscriptionInput {
-  platformId: number;
-  projectId?: number;
-  planName: string;
-  planType: string;
-  status?: string;
-  email?: string;
-  trialStartDate?: string;
-  trialEndDate?: string;
-  renewalDate?: string;
-  monthlyCost?: number;
-  notes?: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  workspaceId?: number | null;
+  /** @nullable */
+  platformId?: number | null;
+  /** @nullable */
+  projectId?: number | null;
+  name: string;
+  amount: string;
+  currency: string;
+  billingCycle: SubscriptionInputBillingCycle;
+  status?: SubscriptionInputStatus;
+  /** @nullable */
+  nextRenewalDate?: string | null;
+  /** @nullable */
+  trialEndDate?: string | null;
+  autoRecord?: boolean;
+  /** @nullable */
+  notes?: string | null;
 }

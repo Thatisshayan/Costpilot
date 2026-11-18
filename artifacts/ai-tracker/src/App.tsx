@@ -13,6 +13,7 @@ import Projects from "@/pages/projects";
 import MonthlyBudgets from "@/pages/monthly-budgets";
 import CsvImport from "@/pages/csv-import";
 import Platforms from "@/pages/platforms";
+import Subscriptions from "@/pages/subscriptions";
 import Collaboration from "@/pages/collaboration";
 import AcceptInvite from "@/pages/accept-invite";
 import Terms from "@/pages/terms";
@@ -24,7 +25,7 @@ export default function App() {
     <TooltipProvider><WorkspaceProvider><ErrorBoundary><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Layout><Switch>
         <Route path="/" component={Dashboard} /><Route path="/expenses" component={Expenses} />
-        <Route path="/projects" component={Projects} /><Route path="/budgets" component={MonthlyBudgets} /><Route path="/import" component={CsvImport} /><Route path="/platforms" component={Platforms} />
+        <Route path="/projects" component={Projects} /><Route path="/budgets" component={MonthlyBudgets} /><Route path="/import" component={CsvImport} /><Route path="/platforms" component={Platforms} /><Route path="/subscriptions" component={Subscriptions} />
         <Route path="/vendors" component={Platforms} /><Route path="/collaboration" component={Collaboration} />
         <Route path="/accept-invite" component={AcceptInvite} /><Route path="/terms" component={Terms} />
         <Route path="/privacy-policy" component={PrivacyPolicy} /><Route component={Unavailable} />

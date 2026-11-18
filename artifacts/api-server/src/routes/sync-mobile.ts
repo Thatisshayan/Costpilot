@@ -90,7 +90,7 @@ router.get("/", async (req, res, next) => {
 
     const formattedSubscriptions = subscriptions.map((s) => ({
       ...s,
-      monthlyCost: s.monthlyCost ? Number(s.monthlyCost) : null,
+      monthlyCost: s.amount ? Number(s.amount) : null,
       createdAt: s.createdAt.toISOString(),
     }));
 
